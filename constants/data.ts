@@ -1,5 +1,21 @@
 import { NavItem } from '@/types';
 
+export type Products = {
+  _id: string;
+  name: string;
+  description: string;
+  price: Number;
+  sellPrice: Number;
+  addedBy: string;
+  quantity: number;
+  units: string;
+  category: string;
+  vendor: string;
+  isQuantityBased: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+};
+
 export type User = {
   id: number;
   name: string;

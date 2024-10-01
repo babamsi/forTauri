@@ -8,13 +8,14 @@ import {
   DropdownMenuLabel,
   DropdownMenuTrigger
 } from '@/components/ui/dropdown-menu';
-import { User } from '@/constants/data';
+import { Products } from '@/constants/data';
 import { Edit, MoreHorizontal, Trash } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
+import { editProductStore } from '../../hooks/stuffProducts';
 
 interface CellActionProps {
-  data: User;
+  data: Products;
 }
 
 export const CellAction: React.FC<CellActionProps> = ({ data }) => {
@@ -23,7 +24,11 @@ export const CellAction: React.FC<CellActionProps> = ({ data }) => {
   const router = useRouter();
 
   const onConfirm = async () => {};
-
+  const edit = editProductStore((state) => state.setEditProductName);
+  const handleClick = (data: Products) => {
+    edit(data);
+    router.push(`/dashboard/user/${data._id}`);
+  };
   return (
     <>
       <AlertModal
@@ -42,9 +47,7 @@ export const CellAction: React.FC<CellActionProps> = ({ data }) => {
         <DropdownMenuContent align="end">
           <DropdownMenuLabel>Actions</DropdownMenuLabel>
 
-          <DropdownMenuItem
-            onClick={() => router.push(`/dashboard/user/${data.id}`)}
-          >
+          <DropdownMenuItem onClick={() => handleClick(data)}>
             <Edit className="mr-2 h-4 w-4" /> Update
           </DropdownMenuItem>
           <DropdownMenuItem onClick={() => setOpen(true)}>

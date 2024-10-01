@@ -27,7 +27,7 @@ export default async function RootLayout({
         suppressHydrationWarning={true}
       >
         <NextTopLoader showSpinner={false} />
-        <Providers session={session}>
+        <Providers>
           <Toaster />
           {children}
         </Providers>
