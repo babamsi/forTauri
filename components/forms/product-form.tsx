@@ -1,12 +1,13 @@
 'use client';
 import * as z from 'zod';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import { Trash } from 'lucide-react';
 import { useParams, useRouter } from 'next/navigation';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
+// import { Checkbox } from "@/components/ui/checkbox"
 import {
   Form,
   FormControl,
@@ -28,31 +29,40 @@ import {
 import { Checkbox } from '@/components/ui/checkbox';
 // import FileUpload from "@/components/FileUpload";
 import { useToast } from '../ui/use-toast';
+import {
+  useUpdateProductMutation,
+  useCreateProductMutation
+} from '@/store/authApi';
+import { getAuthCookie } from '@/actions/auth.actions';
 import FileUpload from '../file-upload';
-const ImgSchema = z.object({
-  fileName: z.string(),
-  name: z.string(),
-  fileSize: z.number(),
-  size: z.number(),
-  fileKey: z.string(),
-  key: z.string(),
-  fileUrl: z.string(),
-  url: z.string()
-});
+// const ImgSchema = z.object({
+//   fileName: z.string(),
+//   name: z.string(),
+//   fileSize: z.number(),
+//   size: z.number(),
+//   fileKey: z.string(),
+//   key: z.string(),
+//   fileUrl: z.string(),
+//   url: z.string()
+// }); / imgUrl: z
+//   .array(ImgSchema)
+//   .max(IMG_MAX_LIMIT, { message: 'You can only add up to 3 images' })
+//   .min(1, { message: 'At least one image must be added.' }),
 export const IMG_MAX_LIMIT = 3;
 const formSchema = z.object({
   name: z
     .string()
     .min(3, { message: 'Product Name must be at least 3 characters' }),
-  imgUrl: z
-    .array(ImgSchema)
-    .max(IMG_MAX_LIMIT, { message: 'You can only add up to 3 images' })
-    .min(1, { message: 'At least one image must be added.' }),
   description: z
     .string()
     .min(3, { message: 'Product description must be at least 3 characters' }),
   price: z.coerce.number(),
-  category: z.string().min(1, { message: 'Please select a category' })
+  sellPrice: z.coerce.number(),
+  category: z.string().min(1, { message: 'Please select a category' }),
+  units: z.string().min(1, { message: 'Please mention the units' }),
+  quantity: z.coerce.number(),
+  isQuantityBased: z.boolean(),
+  vendor: z.string().min(4, { message: 'Please mention vendor' })
 });
 
 type ProductFormValues = z.infer<typeof formSchema>;
@@ -72,10 +82,22 @@ export const ProductForm: React.FC<ProductFormProps> = ({
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [imgLoading, setImgLoading] = useState(false);
+  const [quantityOn, setQuantityOn] = useState(false);
+  const [cookies, setcookies] = useState(null);
   const title = initialData ? 'Edit product' : 'Create product';
   const description = initialData ? 'Edit a product.' : 'Add a new product';
   const toastMessage = initialData ? 'Product updated.' : 'Product created.';
   const action = initialData ? 'Save changes' : 'Create';
+
+  const [updateProduct, { isLoading }] = useUpdateProductMutation();
+  const [create, { isLoading: isLoadingCreate, error }] =
+    useCreateProductMutation();
+
+  useEffect(() => {
+    getAuthCookie().then((k: any) => {
+      setcookies(k); //setting the token so the server can verify and give us output
+    });
+  }, []);
 
   const defaultValues = initialData
     ? initialData
@@ -83,8 +105,12 @@ export const ProductForm: React.FC<ProductFormProps> = ({
         name: '',
         description: '',
         price: 0,
+        sellPrice: 0,
         imgUrl: [],
-        category: ''
+        category: '',
+        units: '',
+        quantity: '',
+        isQuantityBased: false
       };
 
   const form = useForm<ProductFormValues>({
@@ -95,19 +121,53 @@ export const ProductForm: React.FC<ProductFormProps> = ({
   const onSubmit = async (data: ProductFormValues) => {
     try {
       setLoading(true);
+      console.log('data', initialData);
       if (initialData) {
+        console.log(initialData._id);
+        const all = {
+          id: initialData._id,
+          data: data,
+          cookies: cookies
+        };
+        // console.log(all);
+        const result = await updateProduct(all);
+        // console.log("result", result);
+        if (result) {
+          toast({
+            variant: 'default',
+            title: 'Success',
+            description: 'Updated Successfully'
+          });
+        }
         // await axios.post(`/api/products/edit-product/${initialData._id}`, data);
       } else {
+        // console.log("new data", data);
+
+        const result = await create({
+          data: data,
+          cookies
+        });
+        if (error) {
+          console.log('error', error);
+        }
+        // console.log("result", result);
+        if (result) {
+          toast({
+            variant: 'default',
+            title: 'Success',
+            description: 'Created Successfully'
+          });
+        }
         // const res = await axios.post(`/api/products/create-product`, data);
         // console.log("product", res);
       }
       router.refresh();
-      router.push(`/dashboard/products`);
-      toast({
-        variant: 'destructive',
-        title: 'Uh oh! Something went wrong.',
-        description: 'There was a problem with your request.'
-      });
+      // router.push(`/dashboard/products`);
+      // toast({
+      //   variant: 'destructive',
+      //   title: 'Uh oh! Something went wrong.',
+      //   description: 'There was a problem with your request.'
+      // });
     } catch (error: any) {
       toast({
         variant: 'destructive',
@@ -132,7 +192,7 @@ export const ProductForm: React.FC<ProductFormProps> = ({
     }
   };
 
-  const triggerImgUrlValidation = () => form.trigger('imgUrl');
+  // const triggerImgUrlValidation = () => form.trigger('imgUrl');
 
   return (
     <>
@@ -161,23 +221,19 @@ export const ProductForm: React.FC<ProductFormProps> = ({
           onSubmit={form.handleSubmit(onSubmit)}
           className="w-full space-y-8"
         >
-          <FormField
+          {/* <FormField
             control={form.control}
             name="imgUrl"
             render={({ field }) => (
               <FormItem>
                 <FormLabel>Images</FormLabel>
                 <FormControl>
-                  <FileUpload
-                    onChange={field.onChange}
-                    value={field.value}
-                    onRemove={field.onChange}
-                  />
+                  /
                 </FormControl>
                 <FormMessage />
               </FormItem>
             )}
-          />
+          /> */}
           <div className="gap-8 md:grid md:grid-cols-3">
             <FormField
               control={form.control}
@@ -215,12 +271,25 @@ export const ProductForm: React.FC<ProductFormProps> = ({
             />
             <FormField
               control={form.control}
-              name="price"
+              name="sellPrice"
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Price</FormLabel>
                   <FormControl>
                     <Input type="number" disabled={loading} {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="units"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Units</FormLabel>
+                  <FormControl>
+                    <Input disabled={loading} {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -259,6 +328,107 @@ export const ProductForm: React.FC<ProductFormProps> = ({
                 </FormItem>
               )}
             />
+
+            {initialData && initialData.isQuantityBased && (
+              <FormField
+                control={form.control}
+                name="quantity"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Quantity</FormLabel>
+                    <FormControl>
+                      <Input type="number" disabled={loading} {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            )}
+            {!initialData && (
+              <>
+                <FormField
+                  control={form.control}
+                  name="price"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Original Price </FormLabel>
+                      <FormControl>
+                        <Input type="number" disabled={loading} {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="isQuantityBased"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Quantity Based </FormLabel>
+                      <FormControl>
+                        <Checkbox
+                          checked={field.value}
+                          className="mt-4 h-4 w-4"
+                          onCheckedChange={() => {
+                            form.setValue('isQuantityBased', !field.value);
+                            field.onChange(!field.value);
+                            setQuantityOn(!field.value);
+                          }}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                {quantityOn && (
+                  <FormField
+                    control={form.control}
+                    name="quantity"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Quantity </FormLabel>
+                        <FormControl>
+                          <Input disabled={loading} {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                )}
+
+                <FormField
+                  control={form.control}
+                  name="vendor"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Vendor </FormLabel>
+                      <FormControl>
+                        <Input disabled={loading} {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </>
+            )}
+            {/* <FormField 
+              control={form.control}
+              name="isQuantityBased"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Quantity Based </FormLabel>
+                  <FormControl>
+                    <Checkbox checked={field.value}
+                    className="h-4 w-4 mt-4" 
+                    onCheckedChange={field.onChange}
+                    disabled />
+                      
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+              
+            /> */}
           </div>
           <Button disabled={loading} className="ml-auto" type="submit">
             {action}

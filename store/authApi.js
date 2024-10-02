@@ -54,6 +54,38 @@ export const authApi = createApi({
           Authorization: `Bearer ${cred.cookies}`
         }
       })
+    }),
+    updateProduct: builder.mutation({
+      query: (cred) => ({
+        url: `/products/${cred.id}`,
+        method: 'PUT',
+        body: cred.data,
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${cred.cookies}`
+        }
+      })
+    }),
+    createProduct: builder.mutation({
+      query: (cred) => ({
+        url: `/products/`,
+        method: 'POST',
+        body: cred.data,
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${cred.cookies}`
+        }
+      })
+    }),
+    deleteProduct: builder.mutation({
+      query: (cred) => ({
+        url: `/products/${cred.id}`,
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${cred.cookies}`
+        }
+      })
     })
   })
 });
@@ -63,5 +95,8 @@ export const {
   useLogoutMutation,
   useGetProductsQuery,
   useGetSoldProductsQuery,
-  useSelProductMutation
+  useSelProductMutation,
+  useUpdateProductMutation,
+  useCreateProductMutation,
+  useDeleteProductMutation
 } = authApi;

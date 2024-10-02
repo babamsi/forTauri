@@ -10,6 +10,11 @@ export interface NavItem {
   description?: string;
 }
 
+export declare type SearchParamProps = {
+  params: { [key: string]: string };
+  searchParams: { [key: string]: string | string[] | undefined };
+};
+
 export interface NavItemWithChildren extends NavItem {
   items: NavItemWithChildren[];
 }

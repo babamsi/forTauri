@@ -52,9 +52,30 @@ export const columns: ColumnDef<Products>[] = [
       if (row.original.isQuantityBased === true) {
         // console.log(row)
         return (
-          <div className="text-right font-medium">
+          <div
+            className={`text-right font-medium ${
+              (row.getValue('quantity') as number) < 10 && 'text-red-700'
+            }`}
+          >
             {row.getValue('quantity')}
           </div>
+        );
+      } else {
+        return (
+          <div className="text-right font-medium">{row.getValue('units')}</div>
+        );
+      }
+    }
+  },
+  {
+    accessorKey: 'units',
+    header: () => <div className="text-right">Units</div>,
+    cell: ({ row }) => {
+      //   return <div className="text-right font-medium">{row.getValue("quantity")}</div>
+      if (row.original.isQuantityBased === true) {
+        // console.log(row)
+        return (
+          <div className="text-right font-medium">{row.getValue('units')}</div>
         );
       } else {
         return (
@@ -77,13 +98,13 @@ export const columns: ColumnDef<Products>[] = [
         // console.log(row)
         return (
           <div className="text-right font-medium">
-            {row.getValue('sellPrice')}
+            $ {row.getValue('sellPrice')}
           </div>
         );
       } else {
         return (
           <div className="text-right font-medium">
-            {row.getValue('sellPrice')}/kg
+            $ {row.getValue('sellPrice')}/kg
           </div>
         );
       }
