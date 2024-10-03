@@ -9,7 +9,7 @@ const breadcrumbItems = [
   { title: 'Kanban', link: '/dashboard/kanban' }
 ];
 
-export default function page() {
+export default function Page() {
   return (
     <PageContainer>
       <div className="space-y-4">
@@ -18,7 +18,10 @@ export default function page() {
           <Heading title={`Kanban`} description="Manage tasks by dnd" />
           <NewTaskDialog />
         </div>
-        <KanbanBoard />
+        {
+          // @ts-ignore
+          <KanbanBoard />
+        }
       </div>
     </PageContainer>
   );

@@ -34,7 +34,7 @@ interface SoldProducts {
   isQuantityBased: boolean;
 }
 
-export default function page() {
+export default function Page() {
   const [cookies, setcookies] = useState(null);
   const {
     data: products,

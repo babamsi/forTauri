@@ -299,9 +299,7 @@ export default function POSSystem() {
         const result = await sell(datas);
         console.log(result);
         if ('error' in result) {
-          toast.error(
-            result.error.data?.message || 'An error occurred during checkout'
-          );
+          toast.error('An error occurred during checkout');
           setScannedItems([]);
         } else {
           toast.success('Order placed successfully');
@@ -709,10 +707,12 @@ export default function POSSystem() {
               readOnly
               className="mb-4 text-right text-2xl"
             />
+
             <NumericKeypad
               onInput={handleKeypadInput}
               onClear={handleKeypadClear}
               onSubmit={handleKeypadSubmit}
+              // @ts-ignore
               allowDecimal={
                 !currentItemId ||
                 (currentItemId &&
