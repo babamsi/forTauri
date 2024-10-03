@@ -10,7 +10,7 @@ import { getAuthCookie } from '@/actions/auth.actions';
 
 const breadcrumbItems = [
   { title: 'Dashboard', link: '/dashboard' },
-  { title: 'Products', link: '/dashboard/products' }
+  { title: 'Products', link: '/dashboard/product' }
 ];
 export default function Page() {
   const [cookies, setcookies] = useState(null);

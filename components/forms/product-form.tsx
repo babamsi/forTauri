@@ -1,6 +1,6 @@
 'use client';
 import * as z from 'zod';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import { Trash } from 'lucide-react';
@@ -34,6 +34,7 @@ import {
   useCreateProductMutation
 } from '@/store/authApi';
 import { getAuthCookie } from '@/actions/auth.actions';
+import { BarcodeScanner } from '@thewirv/react-barcode-scanner';
 import FileUpload from '../file-upload';
 // const ImgSchema = z.object({
 //   fileName: z.string(),
@@ -62,7 +63,8 @@ const formSchema = z.object({
   units: z.string().min(1, { message: 'Please mention the units' }),
   quantity: z.coerce.number(),
   isQuantityBased: z.boolean(),
-  vendor: z.string().min(4, { message: 'Please mention vendor' })
+  vendor: z.string().min(4, { message: 'Please mention vendor' }),
+  barcode: z.string()
 });
 
 type ProductFormValues = z.infer<typeof formSchema>;
@@ -79,7 +81,10 @@ export const ProductForm: React.FC<ProductFormProps> = ({
   const params = useParams();
   const router = useRouter();
   const { toast } = useToast();
+  const barcodeInputRef = useRef<HTMLInputElement>(null);
+  const [barcode, setBarcode] = useState('');
   const [open, setOpen] = useState(false);
+  const [isCameraActive, setIsCameraActive] = useState(false);
   const [loading, setLoading] = useState(false);
   const [imgLoading, setImgLoading] = useState(false);
   const [quantityOn, setQuantityOn] = useState(false);
@@ -110,7 +115,9 @@ export const ProductForm: React.FC<ProductFormProps> = ({
         category: '',
         units: '',
         quantity: '',
-        isQuantityBased: false
+        isQuantityBased: false,
+        vendor: '',
+        barcode: ''
       };
 
   const form = useForm<ProductFormValues>({
@@ -142,7 +149,7 @@ export const ProductForm: React.FC<ProductFormProps> = ({
         // await axios.post(`/api/products/edit-product/${initialData._id}`, data);
       } else {
         // console.log("new data", data);
-
+        data.barcode = barcode;
         const result = await create({
           data: data,
           cookies
@@ -184,7 +191,8 @@ export const ProductForm: React.FC<ProductFormProps> = ({
       setLoading(true);
       //   await axios.delete(`/api/${params.storeId}/products/${params.productId}`);
       router.refresh();
-      router.push(`/${params.storeId}/products`);
+      // router.push(`/${params.storeId}/product`);
+      console.log(params);
     } catch (error: any) {
     } finally {
       setLoading(false);
@@ -381,19 +389,55 @@ export const ProductForm: React.FC<ProductFormProps> = ({
                   )}
                 />
                 {quantityOn && (
-                  <FormField
-                    control={form.control}
-                    name="quantity"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Quantity </FormLabel>
-                        <FormControl>
-                          <Input disabled={loading} {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+                  <>
+                    <FormField
+                      control={form.control}
+                      name="quantity"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Quantity </FormLabel>
+                          <FormControl>
+                            <Input disabled={loading} {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <div className="mb-4 flex space-x-2">
+                      <Input
+                        ref={barcodeInputRef}
+                        type="text"
+                        placeholder="Scan or enter barcode"
+                        value={barcode}
+                        onChange={(e) => setBarcode(e.target.value)}
+                        // onKeyPress={(e) => e.key === 'Enter' && handleScan(barcode)}
+                        className="flex-grow"
+                      />
+                      <Button
+                        onClick={() => setIsCameraActive(!isCameraActive)}
+                      >
+                        {isCameraActive ? 'Stop Camera' : 'Start Camera'}
+                      </Button>
+                      {isCameraActive && (
+                        <div className="mb-4">
+                          <BarcodeScanner
+                            onSuccess={(result) => {
+                              if (result) {
+                                console.log(result);
+                                setBarcode(result);
+                              }
+                            }}
+                            onError={(error) => {
+                              if (error) {
+                                console.error(error.message);
+                              }
+                            }}
+                            containerStyle={{ width: '100%', height: '300px' }}
+                          />
+                        </div>
+                      )}
+                    </div>
+                  </>
                 )}
 
                 <FormField

@@ -50,7 +50,7 @@ export const CellAction: React.FC<CellActionProps> = ({ data }) => {
         title: 'Success',
         description: 'Deleted Successfully'
       });
-      router.push(`/dashboard/products`);
+      router.push(`/dashboard/product`);
       router.refresh();
     }
   };

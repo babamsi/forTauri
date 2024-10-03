@@ -1,4 +1,5 @@
 'use client';
+
 import { getAuthCookie } from '@/actions/auth.actions';
 import { useState, useRef, useEffect } from 'react';
 import { Input } from '@/components/ui/input';
@@ -28,16 +29,30 @@ import {
   MinusIcon,
   PlusIcon,
   ShoppingCartIcon,
-  XIcon
+  XIcon,
+  SearchIcon,
+  Loader2
 } from 'lucide-react';
-// import Scanner from "react-barcode-scanner"
 import { BarcodeScanner } from '@thewirv/react-barcode-scanner';
 import {
   useSelProductMutation,
   useGetProductsQuery
 } from '../../../store/authApi';
-// import { AddUser } from '@/components/accounts/add-user'
-import { on } from 'events';
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList
+} from '@/components/ui/command';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger
+} from '@/components/ui/popover';
+import PhoneInput from 'react-phone-number-input';
+import 'react-phone-number-input/style.css';
 
 interface Product {
   _id: string;
@@ -57,7 +72,7 @@ interface Product {
 }
 
 interface ScannedItem extends Product {
-  quantity: number;
+  scannedQuantity: number;
 }
 
 interface CustomerDetails {
@@ -65,12 +80,6 @@ interface CustomerDetails {
   email: string;
   phone: string;
 }
-
-// const mockProducts: Product[] = [
-//   { _id: '1', name: 'Product A', price: 10.99, barcode: '123456' },
-//   { _id: '2', name: 'Product B', price: 15.99, barcode: '789012' },
-//   { _id: '3', name: 'Product C', price: 5.99, barcode: '345678' },
-// ]
 
 const fetchProductDetailsByName = async (
   name: string,
@@ -88,8 +97,6 @@ const fetchProductByBarcode = async (
   barcode: string,
   productServer: Product[]
 ): Promise<Product> => {
-  // Simulating API call
-  // await new Promise(resolve => setTimeout(resolve, 300))
   const product = productServer.find((p) => p.barcode === barcode);
   if (product) {
     return product;
@@ -144,6 +151,10 @@ export default function POSSystem() {
   const [change, setChange] = useState(0);
   const [cookies, setcookies] = useState(null);
   const barcodeInputRef = useRef<HTMLInputElement>(null);
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [formErrors, setFormErrors] = useState<{ [key: string]: string }>({});
+  const [isProcessingOrder, setIsProcessingOrder] = useState(false);
   const {
     data: productServer,
     error,
@@ -155,7 +166,7 @@ export default function POSSystem() {
 
   useEffect(() => {
     getAuthCookie().then((k: any) => {
-      setcookies(k); //setting the token so the server can verify and give us output
+      setcookies(k);
     });
     if (barcodeInputRef.current) {
       barcodeInputRef.current.focus();
@@ -163,12 +174,18 @@ export default function POSSystem() {
   }, []);
 
   const handleScan = async (scannedBarcode: string) => {
+    if (!scannedBarcode.trim()) {
+      toast.error('Please enter a barcode');
+      return;
+    }
     const product = await fetchProductByBarcode(scannedBarcode, productServer);
-    if (product) {
+    if (product && product.quantity > 0) {
       addProductToCart(product);
       setBarcode('');
     } else {
-      toast.error(`No product found with barcode: ${scannedBarcode}`);
+      toast.error(
+        `No product found with barcode: ${scannedBarcode} or Product is out of stock`
+      );
     }
   };
 
@@ -176,13 +193,18 @@ export default function POSSystem() {
     setScannedItems((prevItems) => {
       const existingItem = prevItems.find((item) => item._id === product._id);
       if (existingItem) {
-        return prevItems.map((item) =>
-          item._id === product._id
-            ? { ...item, quantity: item.quantity + 1 }
-            : item
-        );
+        if (existingItem.scannedQuantity < product.quantity) {
+          return prevItems.map((item) =>
+            item._id === product._id
+              ? { ...item, scannedQuantity: item.scannedQuantity + 1 }
+              : item
+          );
+        } else {
+          toast.error(`Cannot add more ${product.name}. Stock limit reached.`);
+          return prevItems;
+        }
       } else {
-        return [...prevItems, { ...product, quantity: 1 }];
+        return [...prevItems, { ...product, scannedQuantity: 1 }];
       }
     });
   };
@@ -190,12 +212,29 @@ export default function POSSystem() {
   const handleQuantityChange = (id: string, newQuantity: number) => {
     setScannedItems((prevItems) =>
       prevItems
-        .map((item) =>
-          item._id === id
-            ? { ...item, quantity: Math.max(0, newQuantity) }
-            : item
-        )
-        .filter((item) => item.quantity > 0)
+        .map((item) => {
+          if (item._id === id) {
+            if (item.isQuantityBased) {
+              if (newQuantity > item.quantity) {
+                toast.error(
+                  `Cannot add more ${item.name}. Stock limit reached.`
+                );
+                return item;
+              }
+              return { ...item, scannedQuantity: Math.max(0, newQuantity) };
+            } else {
+              if (newQuantity > Number(item.units.split(' ')[0])) {
+                toast.error(
+                  `Cannot add more ${item.name}. Stock limit reached.`
+                );
+                return item;
+              }
+              return { ...item, scannedQuantity: Math.max(0, newQuantity) };
+            }
+          }
+          return item;
+        })
+        .filter((item) => item.scannedQuantity > 0)
     );
   };
 
@@ -204,7 +243,7 @@ export default function POSSystem() {
   };
 
   const totalAmount = scannedItems.reduce(
-    (sum, item) => sum + item.price * item.quantity,
+    (sum, item) => sum + item.price * item.scannedQuantity,
     0
   );
 
@@ -212,20 +251,40 @@ export default function POSSystem() {
     setIsCheckoutOpen(true);
     setAmountPaid('');
     setChange(0);
+    setFormErrors({});
+  };
+
+  const validateForm = () => {
+    const errors: { [key: string]: string } = {};
+    if (!customerDetails.name.trim()) {
+      errors.name = 'Name is required';
+    }
+    if (!customerDetails.email.trim()) {
+      errors.email = 'Email is required';
+    } else if (!/\S+@\S+\.\S+/.test(customerDetails.email)) {
+      errors.email = 'Email is invalid';
+    }
+    if (!customerDetails.phone.trim()) {
+      errors.phone = 'Phone number is required';
+    }
+    if (
+      isCashPayment &&
+      (!amountPaid || parseFloat(amountPaid) < totalAmount)
+    ) {
+      errors.amountPaid = 'Amount paid must be at least the total amount';
+    }
+    setFormErrors(errors);
+    return Object.keys(errors).length === 0;
   };
 
   const handleCompleteCheckout = async () => {
-    // Here you would typically send the order to your backend
-    console.log('Order:', {
-      items: scannedItems,
-      customer: customerDetails,
-      isCashPayment,
-      amountPaid,
-      change
-    });
+    if (!validateForm()) {
+      return;
+    }
+    setIsProcessingOrder(true);
     const products = scannedItems.map((item) => ({
       productId: item._id,
-      quantity: String(item.quantity)
+      quantity: String(item.scannedQuantity)
     }));
     const datas = {
       data: {
@@ -236,26 +295,36 @@ export default function POSSystem() {
       cookies
     };
     if (products.length > 0) {
-      const result = await sell(datas);
-      console.log(result);
-      if (isSellError) {
-        toast.error(result?.error?.data?.message);
-        setScannedItems([]);
+      try {
+        const result = await sell(datas);
+        console.log(result);
+        if ('error' in result) {
+          toast.error(
+            result.error.data?.message || 'An error occurred during checkout'
+          );
+          setScannedItems([]);
+        } else {
+          toast.success('Order placed successfully');
+          toast.success(
+            `Total: $${totalAmount.toFixed(
+              2
+            )}, Paid: $${amountPaid}, Change: $${change.toFixed(2)}`
+          );
+          setScannedItems([]);
+          setCustomerDetails({ name: '', email: '', phone: '' });
+          setIsCheckoutOpen(false);
+          setAmountPaid('');
+          setChange(0);
+        }
+      } catch (error) {
+        toast.error('An unexpected error occurred during checkout');
+      } finally {
+        setIsProcessingOrder(false);
       }
-      if (result) {
-        toast.success('Order placed successfully');
-        toast.success(
-          `Total: $${totalAmount.toFixed(
-            2
-          )}, Paid: $${amountPaid}, Change: $${change.toFixed(2)}`
-        );
-      }
+    } else {
+      setIsProcessingOrder(false);
+      toast.error('No products in the cart');
     }
-    setScannedItems([]);
-    setCustomerDetails({ name: '', email: '', phone: '' });
-    setIsCheckoutOpen(false);
-    setAmountPaid('');
-    setChange(0);
   };
 
   const openKeypad = (id: string | null) => {
@@ -277,7 +346,23 @@ export default function POSSystem() {
 
   const handleKeypadSubmit = () => {
     if (currentItemId) {
-      handleQuantityChange(currentItemId, parseInt(keypadValue) || 0);
+      const item = scannedItems.find((item) => item._id === currentItemId);
+      if (item) {
+        const newQuantity = parseFloat(keypadValue) || 0;
+        if (item.isQuantityBased) {
+          if (newQuantity > item.quantity) {
+            toast.error(`Cannot add more ${item.name}. Stock limit reached.`);
+          } else {
+            handleQuantityChange(currentItemId, newQuantity);
+          }
+        } else {
+          if (newQuantity > Number(item.units.split(' ')[0])) {
+            toast.error(`Cannot add more ${item.name}. Stock limit reached.`);
+          } else {
+            handleQuantityChange(currentItemId, newQuantity);
+          }
+        }
+      }
     } else {
       setAmountPaid(keypadValue);
       const paid = parseFloat(keypadValue);
@@ -287,63 +372,18 @@ export default function POSSystem() {
     }
     setIsKeypadOpen(false);
   };
-  const handleOnSearch = (string: string, results: string) => {
-    // onSearch will have as the first callback parameter
-    // the string searched and for the second the results.
-    // console.log("enter pressed", string)
-    // if (!string) return
-    // console.log(string, results)
-  };
 
-  const handleOnHover = (result: string) => {
-    // the item hovered
-    console.log(result);
-  };
-
-  const handleOnSelect = async (item: any) => {
-    // the item selected
-    console.log('item selected', item);
-    if (!item) return;
-
-    // setIsScanning(true)
-    try {
-      const kk = item.name;
-      const product = await fetchProductDetailsByName(kk, productServer!);
-      if (product) {
-        addProductToCart(product);
-        setBarcode('');
-      }
-    } catch (error) {
-      toast('Product not found. Please try again.');
+  const handleSearch = (productName: string) => {
+    const product = productServer.find((p: Product) => p.name === productName);
+    if (product) {
+      addProductToCart(product);
+      setIsSearchOpen(false);
+      setSearchQuery('');
     }
   };
 
-  const handleOnFocus = () => {
-    console.log('Focused');
-  };
-  const orderPlacingHandler = async () => {
-    // console.log(scannedItems)
-    // const products = scannedItems.map(item => ({
-    //   productId: item._id,
-    //   quantity: String(item.scannedQuantity)
-    // }))
-    // const datas = {
-    //   data: {...products},
-    //   cookies
-    // }
-    // console.log(datas)
-    // if (products.length > 0) {
-    //   const result = await sell(data)
-    //   console.log(result)
-    //   if (result) {
-    //     toast.success('Order placed successfully')
-    //     setScannedItems([])
-    //   }
-    // }
-  };
-
   return (
-    <div className="h-scree flex">
+    <div className="flex">
       <Toaster />
       {/* Left side - Product list */}
       <div className="flex-1 overflow-auto p-4">
@@ -358,20 +398,59 @@ export default function POSSystem() {
             onKeyPress={(e) => e.key === 'Enter' && handleScan(barcode)}
             className="flex-grow"
           />
-          <Button onClick={() => handleScan(barcode)}>
+          <Button
+            onClick={() => handleScan(barcode)}
+            disabled={!barcode.trim()}
+          >
             <BarcodeIcon className="mr-2 h-4 w-4" />
             Scan
           </Button>
           <Button onClick={() => setIsCameraActive(!isCameraActive)}>
             {isCameraActive ? 'Stop Camera' : 'Start Camera'}
           </Button>
+          <Popover open={isSearchOpen} onOpenChange={setIsSearchOpen}>
+            <PopoverTrigger asChild>
+              <Button variant="outline">
+                <SearchIcon className="mr-2 h-4 w-4" />
+                Search
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-[300px] p-0">
+              <Command>
+                <CommandInput
+                  placeholder="Search products..."
+                  value={searchQuery}
+                  onValueChange={setSearchQuery}
+                />
+                <CommandList>
+                  <CommandEmpty>No products found.</CommandEmpty>
+                  <CommandGroup>
+                    {productServer &&
+                      productServer
+                        .filter((product: Product) =>
+                          product.name
+                            .toLowerCase()
+                            .includes(searchQuery.toLowerCase())
+                        )
+                        .map((product: Product) => (
+                          <CommandItem
+                            key={product._id}
+                            onSelect={() => handleSearch(product.name)}
+                          >
+                            {product.name}
+                          </CommandItem>
+                        ))}
+                  </CommandGroup>
+                </CommandList>
+              </Command>
+            </PopoverContent>
+          </Popover>
         </div>
         {isCameraActive && (
           <div className="mb-4">
             <BarcodeScanner
               onSuccess={(result) => {
                 if (result) {
-                  //   handleScan(result)
                   console.log(result);
                   setBarcode(result);
                 }
@@ -381,18 +460,10 @@ export default function POSSystem() {
                   console.error(error.message);
                 }
               }}
-              //   constraints={{ facingMode: 'environment' }}
               containerStyle={{ width: '100%', height: '300px' }}
             />
           </div>
         )}
-        {/* <AddUser
-            items={productServer ? productServer : []}
-            onSearch={() => handleOnSearch}
-            onHover={handleOnHover}
-            onSelect={handleOnSelect}
-            onFocus={handleOnFocus}
-            /> */}
         <Table>
           <TableHeader>
             <TableRow>
@@ -414,7 +485,11 @@ export default function POSSystem() {
                       variant="outline"
                       size="sm"
                       onClick={() =>
-                        handleQuantityChange(item._id, item.quantity - 1)
+                        handleQuantityChange(
+                          item._id,
+                          item.scannedQuantity -
+                            (item.isQuantityBased ? 1 : 0.1)
+                        )
                       }
                     >
                       <MinusIcon className="h-4 w-4" />
@@ -424,13 +499,20 @@ export default function POSSystem() {
                       onClick={() => openKeypad(item._id)}
                       className="w-16 text-center"
                     >
-                      {item.quantity}
+                      {item.isQuantityBased
+                        ? item.scannedQuantity
+                        : item.scannedQuantity.toFixed(2)}
+                      {item.isQuantityBased ? '' : ' kg'}
                     </Button>
                     <Button
                       variant="outline"
                       size="sm"
                       onClick={() =>
-                        handleQuantityChange(item._id, item.quantity + 1)
+                        handleQuantityChange(
+                          item._id,
+                          item.scannedQuantity +
+                            (item.isQuantityBased ? 1 : 0.1)
+                        )
                       }
                     >
                       <PlusIcon className="h-4 w-4" />
@@ -438,7 +520,7 @@ export default function POSSystem() {
                   </div>
                 </TableCell>
                 <TableCell>
-                  ${(item.price * item.quantity).toFixed(2)}
+                  ${(item.price * item.scannedQuantity).toFixed(2)}
                 </TableCell>
                 <TableCell>
                   <Button
@@ -498,6 +580,11 @@ export default function POSSystem() {
                 }
                 className="col-span-3"
               />
+              {formErrors.name && (
+                <p className="col-span-3 col-start-2 text-red-500">
+                  {formErrors.name}
+                </p>
+              )}
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="email" className="text-right">
@@ -515,23 +602,37 @@ export default function POSSystem() {
                 }
                 className="col-span-3"
               />
+              {formErrors.email && (
+                <p className="col-span-3 col-start-2 text-red-500">
+                  {formErrors.email}
+                </p>
+              )}
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="phone" className="text-right">
                 Phone
               </Label>
-              <Input
-                id="phone"
-                type="tel"
-                value={customerDetails.phone}
-                onChange={(e) =>
-                  setCustomerDetails({
-                    ...customerDetails,
-                    phone: e.target.value
-                  })
-                }
-                className="col-span-3"
-              />
+              {
+                // @ts-ignore
+                <PhoneInput
+                  international
+                  defaultCountry="KE"
+                  value={customerDetails.phone}
+                  onChange={(value) =>
+                    setCustomerDetails({
+                      ...customerDetails,
+                      phone: value || ''
+                    })
+                  }
+                  className="col-span-3"
+                />
+              }
+
+              {formErrors.phone && (
+                <p className="col-span-3 col-start-2 text-red-500">
+                  {formErrors.phone}
+                </p>
+              )}
             </div>
             <div className="flex items-center space-x-2">
               <Checkbox
@@ -557,6 +658,11 @@ export default function POSSystem() {
                     {amountPaid ? `$${amountPaid}` : 'Enter amount'}
                   </Button>
                 </div>
+                {formErrors.amountPaid && (
+                  <p className="col-span-3 col-start-2 text-red-500">
+                    {formErrors.amountPaid}
+                  </p>
+                )}
                 {change > 0 && (
                   <Alert>
                     <AlertTitle>Change Due</AlertTitle>
@@ -570,11 +676,19 @@ export default function POSSystem() {
             <Button
               onClick={handleCompleteCheckout}
               disabled={
-                isCashPayment &&
-                (!amountPaid || parseFloat(amountPaid) < totalAmount)
+                isProcessingOrder ||
+                (isCashPayment &&
+                  (!amountPaid || parseFloat(amountPaid) < totalAmount))
               }
             >
-              Complete Order
+              {isProcessingOrder ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Processing...
+                </>
+              ) : (
+                'Complete Order'
+              )}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -599,6 +713,12 @@ export default function POSSystem() {
               onInput={handleKeypadInput}
               onClear={handleKeypadClear}
               onSubmit={handleKeypadSubmit}
+              allowDecimal={
+                !currentItemId ||
+                (currentItemId &&
+                  !scannedItems.find((item) => item._id === currentItemId)
+                    ?.isQuantityBased)
+              }
             />
           </div>
         </DialogContent>

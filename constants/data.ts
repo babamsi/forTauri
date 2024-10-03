@@ -135,9 +135,15 @@ export const navItems: NavItem[] = [
   },
   {
     title: 'Products',
-    href: '/dashboard/products',
+    href: '/dashboard/product',
     icon: 'cart',
     label: 'products'
+  },
+  {
+    title: 'POS',
+    href: '/dashboard/pos',
+    icon: 'pos',
+    label: 'POS'
   },
   {
     title: 'Employee',
