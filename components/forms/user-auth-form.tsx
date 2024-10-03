@@ -34,8 +34,8 @@ const formSchema = z.object({
 type UserFormValue = z.infer<typeof formSchema>;
 
 export default function UserAuthForm() {
-  const searchParams = useSearchParams();
-  const callbackUrl = searchParams.get('callbackUrl');
+  // const searchParams = useSearchParams();
+  // const callbackUrl = searchParams.get('callbackUrl');
   const [login, { isLoading }] = useLoginMutation();
   const [loading, setLoading] = useState(false);
   const defaultValues = {
