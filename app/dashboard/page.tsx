@@ -139,7 +139,9 @@ export default function Page() {
                   </svg>
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold">$ {amountInEvc}</div>
+                  <div className="text-2xl font-bold">
+                    $ {amountInEvc.toFixed(2)}
+                  </div>
                   <p className="text-xs text-muted-foreground">
                     {/* +180.1% from last month */}
                   </p>
@@ -165,7 +167,9 @@ export default function Page() {
                   </svg>
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold">$ {amountInCash}</div>
+                  <div className="text-2xl font-bold">
+                    $ {amountInCash.toFixed(2)}
+                  </div>
                   <p className="text-xs text-muted-foreground">
                     {/* +19% from last month */}
                   </p>
