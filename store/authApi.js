@@ -86,6 +86,16 @@ export const authApi = createApi({
           Authorization: `Bearer ${cred.cookies}`
         }
       })
+    }),
+    getSpecificProduct: builder.query({
+      query: (cred) => ({
+        url: `/products/${cred.id}`,
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${cred.cookies}`
+        }
+      })
     })
   })
 });
@@ -98,5 +108,6 @@ export const {
   useSelProductMutation,
   useUpdateProductMutation,
   useCreateProductMutation,
-  useDeleteProductMutation
+  useDeleteProductMutation,
+  useGetSpecificProductQuery
 } = authApi;

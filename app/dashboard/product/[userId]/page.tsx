@@ -1,30 +1,42 @@
+'use client';
+
 import { Breadcrumbs } from '@/components/breadcrumbs';
 import { ProductForm } from '@/components/forms/product-form';
 import PageContainer from '@/components/layout/page-container';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { SearchParamProps } from '@/types/index';
 import { getAuthCookie } from '@/actions/auth.actions';
+import { useGetSpecificProductQuery } from '@/store/authApi';
 
 const breadcrumbItems = [
   { title: 'Dashboard', link: '/dashboard' },
   { title: 'Products', link: '/dashboard/product' },
   { title: 'Create', link: '/dashboard/product/create' }
 ];
-const Page = async ({ params: { userId } }: SearchParamProps) => {
+const Page = ({ params: { userId } }: SearchParamProps) => {
   console.log(userId);
-  const cookie = await getAuthCookie();
-  const getProduct = await fetch(
-    `http://localhost:5000/api/products/${userId}`,
-    {
-      cache: 'no-store',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${cookie}`
-      }
-    }
-  );
-  const product = await getProduct.json();
+  const [cookies, setcookies] = useState(null);
+  useEffect(() => {
+    getAuthCookie().then((k: any) => {
+      setcookies(k); //setting the token so the server can verify and give us output
+    });
+  }, []);
+
+  const data = {
+    cookies,
+    id: userId
+  };
+
+  const {
+    data: product,
+    error,
+    isLoading,
+    isFetching,
+    isError
+  } = useGetSpecificProductQuery(data);
+
+  // const product = await getProduct.json();
   console.log(product);
 
   return (
@@ -34,8 +46,8 @@ const Page = async ({ params: { userId } }: SearchParamProps) => {
         {userId !== 'new' ? (
           <ProductForm
             categories={[
-              { _id: 'market', name: product.category },
-              { _id: 'qudaar', name: product.category }
+              { _id: 'market', name: product?.category },
+              { _id: 'qudaar', name: product?.category }
             ]}
             initialData={product}
             key={null}

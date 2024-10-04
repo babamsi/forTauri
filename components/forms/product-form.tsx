@@ -1,4 +1,5 @@
 'use client';
+
 import * as z from 'zod';
 import { useEffect, useState, useRef } from 'react';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -7,7 +8,6 @@ import { Trash } from 'lucide-react';
 import { useParams, useRouter } from 'next/navigation';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-// import { Checkbox } from "@/components/ui/checkbox"
 import {
   Form,
   FormControl,
@@ -27,7 +27,6 @@ import {
   SelectValue
 } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
-// import FileUpload from "@/components/FileUpload";
 import { useToast } from '../ui/use-toast';
 import {
   useUpdateProductMutation,
@@ -36,20 +35,9 @@ import {
 import { getAuthCookie } from '@/actions/auth.actions';
 import { BarcodeScanner } from '@thewirv/react-barcode-scanner';
 import FileUpload from '../file-upload';
-// const ImgSchema = z.object({
-//   fileName: z.string(),
-//   name: z.string(),
-//   fileSize: z.number(),
-//   size: z.number(),
-//   fileKey: z.string(),
-//   key: z.string(),
-//   fileUrl: z.string(),
-//   url: z.string()
-// }); / imgUrl: z
-//   .array(ImgSchema)
-//   .max(IMG_MAX_LIMIT, { message: 'You can only add up to 3 images' })
-//   .min(1, { message: 'At least one image must be added.' }),
+
 export const IMG_MAX_LIMIT = 3;
+
 const formSchema = z.object({
   name: z
     .string()
@@ -82,12 +70,14 @@ export const ProductForm: React.FC<ProductFormProps> = ({
   const router = useRouter();
   const { toast } = useToast();
   const barcodeInputRef = useRef<HTMLInputElement>(null);
-  const [barcode, setBarcode] = useState('');
+  const [barcode, setBarcode] = useState(initialData?.barcode || '');
   const [open, setOpen] = useState(false);
   const [isCameraActive, setIsCameraActive] = useState(false);
   const [loading, setLoading] = useState(false);
   const [imgLoading, setImgLoading] = useState(false);
-  const [quantityOn, setQuantityOn] = useState(false);
+  const [quantityOn, setQuantityOn] = useState(
+    initialData?.isQuantityBased || false
+  );
   const [cookies, setcookies] = useState(null);
   const title = initialData ? 'Edit product' : 'Create product';
   const description = initialData ? 'Edit a product.' : 'Add a new product';
@@ -100,81 +90,62 @@ export const ProductForm: React.FC<ProductFormProps> = ({
 
   useEffect(() => {
     getAuthCookie().then((k: any) => {
-      setcookies(k); //setting the token so the server can verify and give us output
+      setcookies(k);
     });
   }, []);
 
-  const defaultValues = initialData
-    ? initialData
-    : {
-        name: '',
-        description: '',
-        price: 0,
-        sellPrice: 0,
-        imgUrl: [],
-        category: '',
-        units: '',
-        quantity: '',
-        isQuantityBased: false,
-        vendor: '',
-        barcode: ''
-      };
-
   const form = useForm<ProductFormValues>({
     resolver: zodResolver(formSchema),
-    defaultValues
+    defaultValues: {
+      name: initialData?.name || '',
+      description: initialData?.description || '',
+      price: initialData?.price || 0,
+      sellPrice: initialData?.sellPrice || 0,
+      category: initialData?.category || '',
+      units: initialData?.units || '',
+      quantity: initialData?.quantity || 0,
+      isQuantityBased: initialData?.isQuantityBased || false,
+      vendor: initialData?.vendor || '',
+      barcode: initialData?.barcode || ''
+    }
   });
 
   const onSubmit = async (data: ProductFormValues) => {
     try {
       setLoading(true);
-      console.log('data', initialData);
       if (initialData) {
-        console.log(initialData._id);
         const all = {
           id: initialData._id,
           data: data,
           cookies: cookies
         };
-        // console.log(all);
         const result = await updateProduct(all);
-        // console.log("result", result);
-        if (result) {
+        if ('data' in result) {
           toast({
             variant: 'default',
             title: 'Success',
             description: 'Updated Successfully'
           });
+        } else {
+          throw new Error('Failed to update product');
         }
-        // await axios.post(`/api/products/edit-product/${initialData._id}`, data);
       } else {
-        // console.log("new data", data);
         data.barcode = barcode;
         const result = await create({
           data: data,
           cookies
         });
-        if (error) {
-          console.log('error', error);
-        }
-        // console.log("result", result);
-        if (result) {
+        if ('data' in result) {
           toast({
             variant: 'default',
             title: 'Success',
             description: 'Created Successfully'
           });
+        } else {
+          throw new Error('Failed to create product');
         }
-        // const res = await axios.post(`/api/products/create-product`, data);
-        // console.log("product", res);
       }
       router.refresh();
-      // router.push(`/dashboard/products`);
-      // toast({
-      //   variant: 'destructive',
-      //   title: 'Uh oh! Something went wrong.',
-      //   description: 'There was a problem with your request.'
-      // });
     } catch (error: any) {
       toast({
         variant: 'destructive',
@@ -189,27 +160,22 @@ export const ProductForm: React.FC<ProductFormProps> = ({
   const onDelete = async () => {
     try {
       setLoading(true);
-      //   await axios.delete(`/api/${params.storeId}/products/${params.productId}`);
+      // Implement delete functionality here
       router.refresh();
-      // router.push(`/${params.storeId}/product`);
-      console.log(params);
     } catch (error: any) {
+      toast({
+        variant: 'destructive',
+        title: 'Error',
+        description: 'Failed to delete the product.'
+      });
     } finally {
       setLoading(false);
       setOpen(false);
     }
   };
 
-  // const triggerImgUrlValidation = () => form.trigger('imgUrl');
-
   return (
     <>
-      {/* <AlertModal
-        isOpen={open}
-        onClose={() => setOpen(false)}
-        onConfirm={onDelete}
-        loading={loading}
-      /> */}
       <div className="flex items-center justify-between">
         <Heading title={title} description={description} />
         {initialData && (
@@ -229,19 +195,6 @@ export const ProductForm: React.FC<ProductFormProps> = ({
           onSubmit={form.handleSubmit(onSubmit)}
           className="w-full space-y-8"
         >
-          {/* <FormField
-            control={form.control}
-            name="imgUrl"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Images</FormLabel>
-                <FormControl>
-                  /
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          /> */}
           <div className="gap-8 md:grid md:grid-cols-3">
             <FormField
               control={form.control}
@@ -317,15 +270,11 @@ export const ProductForm: React.FC<ProductFormProps> = ({
                   >
                     <FormControl>
                       <SelectTrigger>
-                        <SelectValue
-                          defaultValue={field.value}
-                          placeholder="Select a category"
-                        />
+                        <SelectValue placeholder="Select a category" />
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      {/* @ts-ignore  */}
-                      {categories.map((category) => (
+                      {categories.map((category: any) => (
                         <SelectItem key={category._id} value={category._id}>
                           {category.name}
                         </SelectItem>
@@ -337,7 +286,7 @@ export const ProductForm: React.FC<ProductFormProps> = ({
               )}
             />
 
-            {initialData && initialData.isQuantityBased && (
+            {(initialData?.isQuantityBased || quantityOn) && (
               <FormField
                 control={form.control}
                 name="quantity"
@@ -377,10 +326,9 @@ export const ProductForm: React.FC<ProductFormProps> = ({
                         <Checkbox
                           checked={field.value}
                           className="mt-4 h-4 w-4"
-                          onCheckedChange={() => {
-                            form.setValue('isQuantityBased', !field.value);
-                            field.onChange(!field.value);
-                            setQuantityOn(!field.value);
+                          onCheckedChange={(checked) => {
+                            field.onChange(checked);
+                            setQuantityOn(!!checked);
                           }}
                         />
                       </FormControl>
@@ -397,7 +345,11 @@ export const ProductForm: React.FC<ProductFormProps> = ({
                         <FormItem>
                           <FormLabel>Quantity </FormLabel>
                           <FormControl>
-                            <Input disabled={loading} {...field} />
+                            <Input
+                              type="number"
+                              disabled={loading}
+                              {...field}
+                            />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
@@ -410,7 +362,6 @@ export const ProductForm: React.FC<ProductFormProps> = ({
                         placeholder="Scan or enter barcode"
                         value={barcode}
                         onChange={(e) => setBarcode(e.target.value)}
-                        // onKeyPress={(e) => e.key === 'Enter' && handleScan(barcode)}
                         className="flex-grow"
                       />
                       <Button
@@ -418,25 +369,25 @@ export const ProductForm: React.FC<ProductFormProps> = ({
                       >
                         {isCameraActive ? 'Stop Camera' : 'Start Camera'}
                       </Button>
-                      {isCameraActive && (
-                        <div className="mb-4">
-                          <BarcodeScanner
-                            onSuccess={(result) => {
-                              if (result) {
-                                console.log(result);
-                                setBarcode(result);
-                              }
-                            }}
-                            onError={(error) => {
-                              if (error) {
-                                console.error(error.message);
-                              }
-                            }}
-                            containerStyle={{ width: '100%', height: '300px' }}
-                          />
-                        </div>
-                      )}
                     </div>
+                    {isCameraActive && (
+                      <div className="mb-4">
+                        <BarcodeScanner
+                          onSuccess={(result) => {
+                            if (result) {
+                              console.log(result);
+                              setBarcode(result);
+                            }
+                          }}
+                          onError={(error) => {
+                            if (error) {
+                              console.error(error.message);
+                            }
+                          }}
+                          containerStyle={{ width: '100%', height: '300px' }}
+                        />
+                      </div>
+                    )}
                   </>
                 )}
 
@@ -455,24 +406,6 @@ export const ProductForm: React.FC<ProductFormProps> = ({
                 />
               </>
             )}
-            {/* <FormField 
-              control={form.control}
-              name="isQuantityBased"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Quantity Based </FormLabel>
-                  <FormControl>
-                    <Checkbox checked={field.value}
-                    className="h-4 w-4 mt-4" 
-                    onCheckedChange={field.onChange}
-                    disabled />
-                      
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-              
-            /> */}
           </div>
           <Button disabled={loading} className="ml-auto" type="submit">
             {action}
