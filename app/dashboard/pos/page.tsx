@@ -381,12 +381,12 @@ export default function POSSystem() {
   };
 
   return (
-    <div className="flex">
+    <div className="flex flex-col lg:flex-row">
       <Toaster />
       {/* Left side - Product list */}
       <div className="flex-1 overflow-auto p-4">
-        <h1 className="mb-4 text-2xl font-bold">POS System</h1>
-        <div className="mb-4 flex space-x-2">
+        <h1 className="mb-4 text-xl font-bold md:text-2xl">POS System</h1>
+        <div className="mb-4 flex flex-col space-y-2 sm:flex-row sm:space-x-2 sm:space-y-0">
           <Input
             ref={barcodeInputRef}
             type="text"
@@ -399,16 +399,20 @@ export default function POSSystem() {
           <Button
             onClick={() => handleScan(barcode)}
             disabled={!barcode.trim()}
+            className="w-full sm:w-auto"
           >
             <BarcodeIcon className="mr-2 h-4 w-4" />
             Scan
           </Button>
-          <Button onClick={() => setIsCameraActive(!isCameraActive)}>
+          <Button
+            className="w-full sm:w-auto"
+            onClick={() => setIsCameraActive(!isCameraActive)}
+          >
             {isCameraActive ? 'Stop Camera' : 'Start Camera'}
           </Button>
           <Popover open={isSearchOpen} onOpenChange={setIsSearchOpen}>
             <PopoverTrigger asChild>
-              <Button variant="outline">
+              <Button className="w-full sm:w-auto" variant="outline">
                 <SearchIcon className="mr-2 h-4 w-4" />
                 Search
               </Button>
@@ -462,82 +466,84 @@ export default function POSSystem() {
             />
           </div>
         )}
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Product</TableHead>
-              <TableHead>Price</TableHead>
-              <TableHead>Quantity</TableHead>
-              <TableHead>Total</TableHead>
-              <TableHead>Action</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {scannedItems.map((item) => (
-              <TableRow key={item._id}>
-                <TableCell>{item.name}</TableCell>
-                <TableCell>${item.price.toFixed(2)}</TableCell>
-                <TableCell>
-                  <div className="flex items-center space-x-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() =>
-                        handleQuantityChange(
-                          item._id,
-                          item.scannedQuantity -
-                            (item.isQuantityBased ? 1 : 0.1)
-                        )
-                      }
-                    >
-                      <MinusIcon className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      variant="outline"
-                      onClick={() => openKeypad(item._id)}
-                      className="w-16 text-center"
-                    >
-                      {item.isQuantityBased
-                        ? item.scannedQuantity
-                        : item.scannedQuantity.toFixed(2)}
-                      {item.isQuantityBased ? '' : ' kg'}
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() =>
-                        handleQuantityChange(
-                          item._id,
-                          item.scannedQuantity +
-                            (item.isQuantityBased ? 1 : 0.1)
-                        )
-                      }
-                    >
-                      <PlusIcon className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </TableCell>
-                <TableCell>
-                  ${(item.price * item.scannedQuantity).toFixed(2)}
-                </TableCell>
-                <TableCell>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => handleRemoveItem(item._id)}
-                  >
-                    <XIcon className="h-4 w-4 text-red-500" />
-                  </Button>
-                </TableCell>
+        <div className="overflow-x-auto">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Product</TableHead>
+                <TableHead>Price</TableHead>
+                <TableHead>Quantity</TableHead>
+                <TableHead>Total</TableHead>
+                <TableHead>Action</TableHead>
               </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+            </TableHeader>
+            <TableBody>
+              {scannedItems.map((item) => (
+                <TableRow key={item._id}>
+                  <TableCell>{item.name}</TableCell>
+                  <TableCell>${item.price.toFixed(2)}</TableCell>
+                  <TableCell>
+                    <div className="flex items-center space-x-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() =>
+                          handleQuantityChange(
+                            item._id,
+                            item.scannedQuantity -
+                              (item.isQuantityBased ? 1 : 0.1)
+                          )
+                        }
+                      >
+                        <MinusIcon className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="outline"
+                        onClick={() => openKeypad(item._id)}
+                        className="w-16 text-center"
+                      >
+                        {item.isQuantityBased
+                          ? item.scannedQuantity
+                          : item.scannedQuantity.toFixed(2)}
+                        {item.isQuantityBased ? '' : ' kg'}
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() =>
+                          handleQuantityChange(
+                            item._id,
+                            item.scannedQuantity +
+                              (item.isQuantityBased ? 1 : 0.1)
+                          )
+                        }
+                      >
+                        <PlusIcon className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    ${(item.price * item.scannedQuantity).toFixed(2)}
+                  </TableCell>
+                  <TableCell>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleRemoveItem(item._id)}
+                    >
+                      <XIcon className="h-4 w-4 text-red-500" />
+                    </Button>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
       </div>
 
       {/* Right side - Total and Checkout */}
-      <Card className="flex h-full w-80 flex-col justify-between p-4">
-        <CardContent>
+      <Card className="p-4 lg:h-full lg:w-80">
+        <CardContent className="flex h-full flex-col justify-between">
           <h2 className="mb-4 text-xl font-bold">Order Summary</h2>
           <div className="space-y-2">
             <div className="flex justify-between">
@@ -558,7 +564,7 @@ export default function POSSystem() {
 
       {/* Checkout Dialog */}
       <Dialog open={isCheckoutOpen} onOpenChange={setIsCheckoutOpen}>
-        <DialogContent>
+        <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
             <DialogTitle>Complete Your Order</DialogTitle>
           </DialogHeader>
