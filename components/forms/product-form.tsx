@@ -137,6 +137,7 @@ export const ProductForm: React.FC<ProductFormProps> = ({
         }
       } else {
         data.barcode = barcode;
+        console.log(data);
         const result = await create({
           data: data,
           cookies
