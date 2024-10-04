@@ -52,7 +52,7 @@ const formSchema = z.object({
   quantity: z.coerce.number(),
   isQuantityBased: z.boolean(),
   vendor: z.string().min(4, { message: 'Please mention vendor' }),
-  barcode: z.string()
+  barcode: z.string().optional()
 });
 
 type ProductFormValues = z.infer<typeof formSchema>;
@@ -109,6 +109,12 @@ export const ProductForm: React.FC<ProductFormProps> = ({
       barcode: initialData?.barcode || ''
     }
   });
+
+  useEffect(() => {
+    if (initialData) {
+      form.reset(initialData);
+    }
+  }, [initialData, form]);
 
   const onSubmit = async (data: ProductFormValues) => {
     try {
@@ -286,6 +292,30 @@ export const ProductForm: React.FC<ProductFormProps> = ({
               )}
             />
 
+            <FormField
+              control={form.control}
+              name="isQuantityBased"
+              render={({ field }) => (
+                <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
+                  <FormControl>
+                    <Checkbox
+                      checked={field.value}
+                      onCheckedChange={(checked) => {
+                        field.onChange(checked);
+                        setQuantityOn(!!checked);
+                      }}
+                    />
+                  </FormControl>
+                  <div className="space-y-1 leading-none">
+                    <FormLabel>Quantity Based</FormLabel>
+                    <FormDescription>
+                      This product is sold in discrete quantities
+                    </FormDescription>
+                  </div>
+                </FormItem>
+              )}
+            />
+
             {(initialData?.isQuantityBased || quantityOn) && (
               <FormField
                 control={form.control}
@@ -316,45 +346,8 @@ export const ProductForm: React.FC<ProductFormProps> = ({
                     </FormItem>
                   )}
                 />
-                <FormField
-                  control={form.control}
-                  name="isQuantityBased"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Quantity Based </FormLabel>
-                      <FormControl>
-                        <Checkbox
-                          checked={field.value}
-                          className="mt-4 h-4 w-4"
-                          onCheckedChange={(checked) => {
-                            field.onChange(checked);
-                            setQuantityOn(!!checked);
-                          }}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
                 {quantityOn && (
                   <>
-                    <FormField
-                      control={form.control}
-                      name="quantity"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Quantity </FormLabel>
-                          <FormControl>
-                            <Input
-                              type="number"
-                              disabled={loading}
-                              {...field}
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
                     <div className="mb-4 flex space-x-2">
                       <Input
                         ref={barcodeInputRef}
