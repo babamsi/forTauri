@@ -97,6 +97,7 @@ export default function RefundPage() {
     const fetchCookies = async () => {
       try {
         const cookiesData = await getAuthCookie();
+        // @ts-ignore
         setCookies(cookiesData);
       } catch (error) {
         console.error('Error fetching auth cookie:', error);
@@ -109,7 +110,7 @@ export default function RefundPage() {
   useEffect(() => {
     if (orderData) {
       setRefundProducts(
-        orderData.products.map((product) => ({
+        orderData.products.map((product: Product) => ({
           ...product,
           keepQuantity: parseInt(product.quantity)
         }))
@@ -144,7 +145,9 @@ export default function RefundPage() {
     }
 
     if (
-      orderData.products.every((product) => parseInt(product.quantity) === 0)
+      orderData.products.every(
+        (product: Product) => parseInt(product.quantity) === 0
+      )
     ) {
       toast.error('All products in this order have already been refunded.');
       return;
@@ -183,6 +186,7 @@ export default function RefundPage() {
       setIsRefundDialogOpen(false);
     } catch (error) {
       console.error('Refund error:', error);
+      // @ts-ignore
       toast.error(
         `Error processing refund: ${error.message || 'Unknown error'}`
       );
