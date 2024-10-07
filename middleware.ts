@@ -7,13 +7,14 @@ export function middleware(request: NextRequest) {
   if (pathname === '/' && request.cookies.has('access_token'))
     return NextResponse.redirect(new URL('/dashboard', request.url));
 
-  if (
-    pathname === '/dashboard' ||
-    pathname === '/dashboard/pos' ||
-    (pathname === '/dashboard/product' && !request.cookies.has('access_token'))
-  ) {
+  if (pathname === '/dashboard' && !request.cookies.has('access_token'))
     return NextResponse.redirect(new URL('/', request.url));
-  }
+
+  if (pathname === '/dashboard/product' && !request.cookies.has('access_token'))
+    return NextResponse.redirect(new URL('/', request.url));
+
+  if (pathname === '/dashboard/pos' && !request.cookies.has('access_token'))
+    return NextResponse.redirect(new URL('/', request.url));
 
   return NextResponse.next();
 }
