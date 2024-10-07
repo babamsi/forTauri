@@ -28,7 +28,7 @@ export default function AuthenticationPage() {
           <div className="absolute inset-0 bg-zinc-900" />
           <div className="relative z-20 flex h-full items-center justify-center">
             <Image
-              src=""
+              src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/logo-BUjLpY7dNTNQEhfD0bPofihGPDkKzo.jpeg"
               alt="ALQURASHI PERFUME Logo"
               width={400}
               height={400}
