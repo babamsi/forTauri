@@ -67,12 +67,6 @@ interface RefundProduct extends Product {
   keepQuantity: number;
 }
 
-const LoadingSpinner = () => (
-  <div className="flex h-screen items-center justify-center">
-    <Loader2 className="h-8 w-8 animate-spin" />
-  </div>
-);
-
 export default function RefundPage() {
   const [isRefundDialogOpen, setIsRefundDialogOpen] = useState(false);
   const [invoiceNumber, setInvoiceNumber] = useState('');
@@ -144,54 +138,38 @@ export default function RefundPage() {
       return;
     }
 
-    if (
-      orderData.products.every(
-        (product: Product) => parseInt(product.quantity) === 0
-      )
-    ) {
-      toast.error('All products in this order have already been refunded.');
-      return;
-    }
-
     setIsProcessingRefund(true);
     try {
-      const updatedProducts = refundProducts.map((product) => ({
-        ...product,
-        quantity: product.keepQuantity.toString()
-      }));
+      for (const product of refundProducts) {
+        if (product.keepQuantity < parseInt(product.quantity)) {
+          const result = await updateOrder({
+            id: product.productId,
+            data: { quantity: product.keepQuantity, invoiceNumber },
+            cookies
+          }).unwrap();
 
-      const updatedTotalAmount = updatedProducts.reduce(
-        (total, product) => total + product.keepQuantity * product.price,
-        0
-      );
-      const updatedRevenue =
-        orderData.revenue - (orderData.totalAmount - updatedTotalAmount);
-
-      const result = await updateOrder({
-        id: orderData._id,
-        data: {
-          products: updatedProducts,
-          totalAmount: updatedTotalAmount,
-          revenue: updatedRevenue,
-          status: 'Refunded'
-        },
-        cookies
-      }).unwrap();
-
-      if ('error' in result) {
-        throw new Error(result.error);
+          if ('error' in result) {
+            throw new Error(result.error);
+          }
+        }
       }
+
+      //   const result = await updateOrder({
+      //     data: {
+      //       products: updatedProducts,
+      //       invoiceNumber: orderData.invoiceNumber,
+      //     },
+      //     cookies
+      //   }).unwrap();
 
       toast.success('Refund processed successfully');
       setIsRefundDialogOpen(false);
     } catch (error) {
       console.error('Refund error:', error);
+      // @ts-ignore
       toast.error(
-        // @ts-ignore
-        error.message || 'Error processing refund. Please try again.'
+        `Error processing refund: ${error.message || 'Unknown error'}`
       );
-      //   toast.error(`Error processing refund: ${error.message || 'Unknown error'}`
-      //   );
     } finally {
       setIsProcessingRefund(false);
     }
@@ -230,15 +208,17 @@ export default function RefundPage() {
 
   const isRefundButtonDisabled = useMemo(() => {
     return (
+      !orderData ||
+      orderData.status === 'Refunded' ||
       refundProducts.length === 0 ||
       refundProducts.every(
         (product) => product.keepQuantity === parseInt(product.quantity)
       )
     );
-  }, [refundProducts]);
+  }, [refundProducts, orderData]);
 
   if (!cookies) {
-    return <LoadingSpinner />;
+    return <Loader2 className="mr-2 h-4 w-4 animate-spin" />;
   }
 
   return (
@@ -340,7 +320,10 @@ export default function RefundPage() {
                                 onClick={() =>
                                   handleQuantityChange(product._id, -1)
                                 }
-                                disabled={product.keepQuantity <= 0}
+                                disabled={
+                                  product.keepQuantity <= 0 ||
+                                  orderData.status === 'Refunded'
+                                }
                               >
                                 <Minus className="h-4 w-4" />
                               </Button>
@@ -355,7 +338,8 @@ export default function RefundPage() {
                                 }
                                 disabled={
                                   product.keepQuantity >=
-                                  parseInt(product.quantity)
+                                    parseInt(product.quantity) ||
+                                  orderData.status === 'Refunded'
                                 }
                               >
                                 <Plus className="h-4 w-4" />
@@ -378,11 +362,7 @@ export default function RefundPage() {
                 <CardFooter>
                   <Button
                     onClick={handleRefund}
-                    disabled={
-                      isProcessingRefund ||
-                      isRefundButtonDisabled ||
-                      orderData.status === 'Refunded'
-                    }
+                    disabled={isProcessingRefund || isRefundButtonDisabled}
                     className="w-full"
                   >
                     {isProcessingRefund ? (
@@ -390,6 +370,8 @@ export default function RefundPage() {
                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                         Processing Refund...
                       </>
+                    ) : orderData.status === 'Refunded' ? (
+                      'Already Refunded'
                     ) : (
                       'Confirm Refund'
                     )}
