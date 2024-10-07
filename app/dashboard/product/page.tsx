@@ -7,6 +7,7 @@ import { users } from '@/constants/data';
 import { useGetProductsQuery } from '@/store/authApi';
 import { useState, useEffect } from 'react';
 import { getAuthCookie } from '@/actions/auth.actions';
+import Loading from '@/components/loading/loading';
 
 const breadcrumbItems = [
   { title: 'Dashboard', link: '/dashboard' },
@@ -27,12 +28,12 @@ export default function Page() {
     });
   }, []);
   if (error) return <div> Error </div>;
-  if (isLoading) return <div>Loading...</div>;
+  if (isLoading) return <Loading />;
   return (
     <PageContainer>
       <div className="space-y-2">
         <Breadcrumbs items={breadcrumbItems} />
-        <UserClient data={products} />
+        {isLoading || isFetching ? <Loading /> : <UserClient data={products} />}
       </div>
     </PageContainer>
   );

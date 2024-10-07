@@ -30,7 +30,8 @@ import {
   UserX2Icon,
   X,
   ShoppingCart,
-  ScanLine
+  ScanLine,
+  RefreshCcw
 } from 'lucide-react';
 
 export type Icon = LucideIcon;
@@ -64,6 +65,7 @@ export const Icons = {
   laptop: Laptop,
   cart: ShoppingCart,
   pos: ScanLine,
+  refund: RefreshCcw,
   gitHub: ({ ...props }: LucideProps) => (
     <svg
       aria-hidden="true"

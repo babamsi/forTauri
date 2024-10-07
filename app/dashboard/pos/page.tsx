@@ -31,7 +31,8 @@ import {
   ShoppingCartIcon,
   XIcon,
   SearchIcon,
-  Loader2
+  Loader2,
+  RefreshCcw
 } from 'lucide-react';
 import { BarcodeScanner } from '@thewirv/react-barcode-scanner';
 import {
@@ -143,6 +144,7 @@ export default function POSSystem() {
     email: '',
     phone: ''
   });
+
   const [isCashPayment, setIsCashPayment] = useState(true);
   const [isKeypadOpen, setIsKeypadOpen] = useState(false);
   const [currentItemId, setCurrentItemId] = useState<string | null>(null);
@@ -161,6 +163,7 @@ export default function POSSystem() {
     isFetching,
     isError
   } = useGetProductsQuery(cookies);
+  // const { data: orderData, error: orderError, refetch } = useGetOrderByInvoiceQuery({ invoiceNumber, cookies }, { skip: !invoiceNumber });
   const [sell, { isLoading, isError: isSellError, isSuccess }] =
     useSelProductMutation();
 
@@ -404,6 +407,7 @@ export default function POSSystem() {
             <BarcodeIcon className="mr-2 h-4 w-4" />
             Scan
           </Button>
+
           <Button
             className="w-full sm:w-auto"
             onClick={() => setIsCameraActive(!isCameraActive)}

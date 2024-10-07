@@ -97,6 +97,51 @@ export const authApi = createApi({
           Authorization: `Bearer ${cred.cookies}`
         }
       })
+    }),
+    getOrders: builder.query({
+      query: (cred) => ({
+        url: `/orders/`,
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${cred}`
+        }
+      })
+    }),
+    addExpenses: builder.mutation({
+      query: (cred) => ({
+        url: `/orders/addExpense`,
+        method: 'POST',
+        body: cred.data,
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${cred.cookies}`
+        }
+      })
+    }),
+    getOrderByInvoice: builder.query({
+      query: (cred) => {
+        console.log(cred);
+        return {
+          url: `/orders/invoice/${cred.invoiceNumber}`,
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${cred.cookies}`
+          }
+        };
+      }
+    }),
+    updateOrder: builder.mutation({
+      query: (cred) => ({
+        url: `/products/refundQuantity/${cred.id}`,
+        method: 'PUT',
+        body: cred.data,
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${cred.cookies}`
+        }
+      })
     })
   })
 });
@@ -110,5 +155,9 @@ export const {
   useUpdateProductMutation,
   useCreateProductMutation,
   useDeleteProductMutation,
-  useGetSpecificProductQuery
+  useGetSpecificProductQuery,
+  useGetOrdersQuery,
+  useAddExpensesMutation,
+  useGetOrderByInvoiceQuery,
+  useUpdateOrderMutation
 } = authApi;

@@ -6,54 +6,33 @@ import { Checkbox } from '@/components/ui/checkbox';
 
 export const columns: ColumnDef<Products>[] = [
   {
-    id: 'select',
-    header: ({ table }) => (
-      <Checkbox
-        checked={table.getIsAllPageRowsSelected()}
-        onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
-        aria-label="Select all"
-      />
-    ),
-    cell: ({ row }) => (
-      <Checkbox
-        checked={row.getIsSelected()}
-        onCheckedChange={(value) => row.toggleSelected(!!value)}
-        aria-label="Select row"
-      />
-    ),
-    enableSorting: false,
-    enableHiding: false
-  },
-  {
     accessorKey: 'name',
-    header: () => <div className="text-right">Products</div>,
+    header: () => <div>Products</div>,
     cell: ({ row }) => {
       //   return <div className="text-right font-medium">{row.getValue("quantity")}</div>
       if (row.original.isQuantityBased === true) {
         // console.log(row)
         return (
-          <div className="text-right font-medium">
+          <div className="font-medium">
             {row.getValue('name')} {row.getValue('units')}
           </div>
         );
       } else {
-        return (
-          <div className="text-right font-medium">{row.getValue('name')}</div>
-        );
+        return <div className="font-medium">{row.getValue('name')}</div>;
       }
     }
   },
 
   {
     accessorKey: 'quantity',
-    header: () => <div className="text-right">In Stock</div>,
+    header: () => <div>In Stock</div>,
     cell: ({ row }) => {
       //   return <div className="text-right font-medium">{row.getValue("quantity")}</div>
       if (row.original.isQuantityBased === true) {
         // console.log(row)
         return (
           <div
-            className={`text-right font-medium ${
+            className={`font-medium ${
               (row.getValue('quantity') as number) < 10 && 'text-red-700'
             }`}
           >
@@ -61,26 +40,24 @@ export const columns: ColumnDef<Products>[] = [
           </div>
         );
       } else {
-        return (
-          <div className="text-right font-medium">{row.getValue('units')}</div>
-        );
+        return <div className="font-medium">{row.getValue('units')}</div>;
       }
     }
   },
   {
+    accessorKey: 'category',
+    header: 'Category'
+  },
+  {
     accessorKey: 'units',
-    header: () => <div className="text-right">Units</div>,
+    header: () => <div>Units</div>,
     cell: ({ row }) => {
       //   return <div className="text-right font-medium">{row.getValue("quantity")}</div>
       if (row.original.isQuantityBased === true) {
         // console.log(row)
-        return (
-          <div className="text-right font-medium">{row.getValue('units')}</div>
-        );
+        return <div className="font-medium">{row.getValue('units')}</div>;
       } else {
-        return (
-          <div className="text-right font-medium">{row.getValue('units')}</div>
-        );
+        return <div className="font-medium">{row.getValue('units')}</div>;
       }
     }
   },
@@ -91,21 +68,15 @@ export const columns: ColumnDef<Products>[] = [
 
   {
     accessorKey: 'sellPrice',
-    header: () => <div className="text-right">Price</div>,
+    header: () => <div>Price</div>,
     cell: ({ row }) => {
       //   return <div className="text-right font-medium">{row.getValue("quantity")}</div>
       if (row.original.isQuantityBased === true) {
         // console.log(row)
-        return (
-          <div className="text-right font-medium">
-            $ {row.getValue('sellPrice')}
-          </div>
-        );
+        return <div className="font-medium">$ {row.getValue('sellPrice')}</div>;
       } else {
         return (
-          <div className="text-right font-medium">
-            $ {row.getValue('sellPrice')}/kg
-          </div>
+          <div className=" font-medium">$ {row.getValue('sellPrice')}/kg</div>
         );
       }
     }

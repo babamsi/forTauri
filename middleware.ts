@@ -3,16 +3,20 @@ import type { NextRequest } from 'next/server';
 
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
-  console.log(pathname);
+  // console.log(pathname);
   if (pathname === '/' && request.cookies.has('access_token'))
     return NextResponse.redirect(new URL('/dashboard', request.url));
 
-  if (pathname === '/dashboard' && !request.cookies.has('access_token'))
+  if (
+    pathname === '/dashboard/' ||
+    pathname === '/dashboard/product' ||
+    (pathname === '/dashboard/pos' && !request.cookies.has('access_token'))
+  )
     return NextResponse.redirect(new URL('/', request.url));
 
   return NextResponse.next();
 }
 
 export const config = {
-  matcher: ['/', '/dashboard']
+  matcher: ['/', '/dashboard', '/dashboard/:path*']
 };

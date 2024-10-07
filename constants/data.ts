@@ -146,6 +146,12 @@ export const navItems: NavItem[] = [
     label: 'POS'
   },
   {
+    title: 'Refund',
+    href: '/dashboard/refund',
+    icon: 'refund',
+    label: 'Refund'
+  },
+  {
     title: 'Employee',
     href: '/dashboard/employee',
     icon: 'employee',

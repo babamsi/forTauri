@@ -7,12 +7,21 @@ import { CalendarDateRangePicker } from '@/components/date-range-picker';
 import PageContainer from '@/components/layout/page-container';
 import { RecentSales } from '@/components/recent-sales';
 import { Button } from '@/components/ui/button';
-
-import { useGetSoldProductsQuery } from '@/store/authApi';
+import { DateRange } from 'react-day-picker';
+import { useAddExpensesMutation, useGetOrdersQuery } from '@/store/authApi';
 import { useEffect, useState } from 'react';
-import { stuffProductStore } from '@/components/hooks/stuffProducts';
 import { getAuthCookie } from '@/actions/auth.actions';
-import { ShoppingCart } from 'lucide-react';
+import { ShoppingCart, PlusIcon } from 'lucide-react';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger
+} from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 
 import {
   Card,
@@ -22,27 +31,42 @@ import {
   CardTitle
 } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { toast } from '@/components/ui/use-toast';
 
-interface SoldProducts {
-  id: string;
-  quantity: number;
-  status: 'pending' | 'processing' | 'success' | 'failed';
+interface Product {
   product: string;
-  cashType: 'CASH' | 'EVC';
-  price: number;
-  revenue: number;
-  isQuantityBased: boolean;
+  quantity: string;
+  price: string;
+  subtotal: string;
 }
-
+interface Order {
+  _id: string;
+  products: Product[];
+  totalAmount: number;
+  cashType: string;
+  soldBy: string;
+  invoiceNumber: string;
+  user: {
+    name: string;
+    phone: string;
+    email: string;
+  };
+  revenue: string;
+  createdAt: string;
+}
 export default function Page() {
   const [cookies, setcookies] = useState(null);
-  const {
-    data: products,
-    error,
-    isLoading,
-    isFetching,
-    isError
-  } = useGetSoldProductsQuery(cookies);
+  const [date, setDate] = useState<DateRange | undefined>({
+    from: new Date(new Date().setDate(new Date().getDate() - 30)),
+    to: new Date()
+  });
+  const [isExpenseDialogOpen, setIsExpenseDialogOpen] = useState(false);
+  const [expenseAmount, setExpenseAmount] = useState('');
+  const [expenseReason, setExpenseReason] = useState('');
+
+  const { data: orders, error, isLoading } = useGetOrdersQuery(cookies);
+  const [addExpense, { error: addExpenseError }] = useAddExpensesMutation();
+
   useEffect(() => {
     getAuthCookie().then((k: any) => {
       setcookies(k); //setting the token so the server can verify and give us output
@@ -52,34 +76,103 @@ export default function Page() {
   let total = 0;
   let evcAmout = 0;
   let cashAmount = 0;
+
+  const calculateMetrics = (orders: Order[]) => {
+    if (!orders || !date?.from || !date?.to)
+      return { totalSales: 0, totalOrders: 0, averageOrderValue: 0 };
+    // console.log(date?.from, date?.to, new Date(order.createdAt));
+    const filteredOrders = orders.filter((order) => {
+      const orderDate = new Date(order.createdAt);
+      // console.log(orderDate, date?.from, date?.to);
+      // @ts-ignore
+      return orderDate >= date?.from && orderDate <= date?.to;
+    });
+    // console.log(filteredOrders);
+    // const totalSales = filteredOrders.reduce((sum, order) => sum + order.totalAmount);
+    const totalOrders = filteredOrders.length;
+    // const averageOrderValue = totalOrders > 0 ? totalSales / totalOrders : 0;
+
+    return { filteredOrders };
+  };
+
+  const { filteredOrders } = calculateMetrics(orders || []);
+
+  const sortedRecentOrders = orders
+    ? [...orders]
+        .sort(
+          (a, b) =>
+            new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+        )
+        .slice(0, 5)
+    : [];
+
+  // console.log(filteredOrders?.length);
+  // filteredOrders?.reduce(
+  //   (sum, order) => {
+  //   console.log(order.totalAmount + sum);
+  // })
+
   // setData(products)
-  products?.soldItems.forEach((s: SoldProducts) => (total += s.revenue));
-  products?.soldItems.forEach((s: SoldProducts) => {
-    if (s.cashType == 'EVC') evcAmout += s.price;
+  filteredOrders?.forEach((s: Order) => (total += s.totalAmount));
+  filteredOrders?.forEach((s: Order) => {
+    if (s.cashType == 'EVC') evcAmout += s.totalAmount;
+    if (s.cashType == 'CASH') cashAmount += s.totalAmount;
   });
-  products?.soldItems.forEach((s: SoldProducts) => {
-    if (s.cashType == 'CASH') cashAmount += s.price;
-  });
-  const calculateAmountEvc = stuffProductStore(
-    (state) => state.calculateAmountByEVC
-  );
-  const getSoldProudcts = stuffProductStore(
-    (state) => state.calculateSoldProducts
-  );
-  const getRevenue = stuffProductStore((state) => state.calculateRevenue);
-  const getAmountInCash = stuffProductStore(
-    (state) => state.calculateAmountByCash
-  );
+  // products?.soldItems.forEach((s: SoldProducts) => {
+  //   if (s.cashType == 'EVC') evcAmout += s.price;
+  // });
+  // products?.soldItems.forEach((s: SoldProducts) => {
+  //   if (s.cashType == 'CASH') cashAmount += s.price;
+  // });
+  // const calculateAmountEvc = stuffProductStore(
+  //   (state) => state.calculateAmountByEVC
+  // );
+  // const getSoldProudcts = stuffProductStore(
+  //   (state) => state.calculateSoldProducts
+  // );
+  // const getRevenue = stuffProductStore((state) => state.calculateRevenue);
+  // const getAmountInCash = stuffProductStore(
+  //   (state) => state.calculateAmountByCash
+  // );
 
-  const soldProducts = stuffProductStore((state) => state.soldProducts);
-  const productsRevenue = stuffProductStore((state) => state.revenue);
-  const amountInEvc = stuffProductStore((state) => state.amountInEVC);
-  const amountInCash = stuffProductStore((state) => state.amountInCash);
+  // console.log(total)
 
-  getSoldProudcts(products);
-  getRevenue(total);
-  calculateAmountEvc(evcAmout);
-  getAmountInCash(cashAmount);
+  // const soldProducts = stuffProductStore((state) => state.soldProducts);
+  // const productsRevenue = stuffProductStore((state) => state.revenue);
+  // const amountInEvc = stuffProductStore((state) => state.amountInEVC);
+  // const amountInCash = stuffProductStore((state) => state.amountInCash);
+
+  // getSoldProudcts(products);
+  // getRevenue(total);
+  // calculateAmountEvc(evcAmout);
+  // getAmountInCash(cashAmount);
+
+  const handleExpenseSubmit = async (e: React.FormEvent) => {
+    console.log(cookies);
+    e.preventDefault();
+    setExpenseAmount('');
+    setExpenseReason('');
+    setIsExpenseDialogOpen(false);
+
+    // const data = {
+    //   data: {
+    //     amount: expenseAmount,
+    //     description: expenseReason
+    //   },
+    //   cookies: cookies
+    // }
+
+    const res = await addExpense({
+      data: {
+        amount: expenseAmount,
+        description: expenseReason
+      },
+      cookies: cookies
+    });
+
+    console.log(res);
+    // console.log('Expense submitted:', { amount: expenseAmount, reason: expenseReason });
+  };
 
   return (
     <PageContainer scrollable={true}>
@@ -89,8 +182,58 @@ export default function Page() {
             Hi, Welcome back 👋
           </h2>
           <div className="hidden items-center space-x-2 md:flex">
-            <CalendarDateRangePicker />
-            <Button>Download</Button>
+            <CalendarDateRangePicker date={date} setDate={setDate} />
+            <Dialog
+              open={isExpenseDialogOpen}
+              onOpenChange={setIsExpenseDialogOpen}
+            >
+              <DialogTrigger asChild>
+                <Button>
+                  <PlusIcon className="mr-2 h-4 w-4" />
+                  Add Expense
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="sm:max-w-[425px]">
+                <DialogHeader>
+                  <DialogTitle>Add Expense</DialogTitle>
+                </DialogHeader>
+                <form
+                  onSubmit={handleExpenseSubmit}
+                  className="grid gap-4 py-4"
+                >
+                  <div className="grid grid-cols-4 items-center gap-4">
+                    <Label htmlFor="amount" className="text-right">
+                      Amount
+                    </Label>
+                    <Input
+                      id="amount"
+                      type="number"
+                      value={expenseAmount}
+                      onChange={(e) => setExpenseAmount(e.target.value)}
+                      className="col-span-3"
+                    />
+                  </div>
+                  <div className="grid grid-cols-4 items-center gap-4">
+                    <Label htmlFor="reason" className="text-right">
+                      Reason
+                    </Label>
+                    <Textarea
+                      id="reason"
+                      value={expenseReason}
+                      onChange={(e) => setExpenseReason(e.target.value)}
+                      className="col-span-3"
+                    />
+                  </div>
+                  <Button
+                    type="submit"
+                    disabled={!expenseAmount || !expenseReason}
+                    className="ml-auto"
+                  >
+                    Submit Expense
+                  </Button>
+                </form>
+              </DialogContent>
+            </Dialog>
           </div>
         </div>
         <Tabs defaultValue="overview" className="space-y-4">
@@ -111,7 +254,7 @@ export default function Page() {
                 </CardHeader>
                 <CardContent>
                   <div className="text-2xl font-bold">
-                    {soldProducts?.soldItems?.length}
+                    {filteredOrders?.length}
                   </div>
                   <p className="text-xs text-muted-foreground">
                     {/* +20.1% from last month */}
@@ -140,7 +283,7 @@ export default function Page() {
                 </CardHeader>
                 <CardContent>
                   <div className="text-2xl font-bold">
-                    $ {amountInEvc.toFixed(2)}
+                    $ {evcAmout.toFixed(2)}
                   </div>
                   <p className="text-xs text-muted-foreground">
                     {/* +180.1% from last month */}
@@ -168,7 +311,7 @@ export default function Page() {
                 </CardHeader>
                 <CardContent>
                   <div className="text-2xl font-bold">
-                    $ {amountInCash.toFixed(2)}
+                    $ {cashAmount.toFixed(2)}
                   </div>
                   <p className="text-xs text-muted-foreground">
                     {/* +19% from last month */}
@@ -209,11 +352,11 @@ export default function Page() {
                 <CardHeader>
                   <CardTitle>Recent Sales</CardTitle>
                   <CardDescription>
-                    You made 265 sales this month.
+                    Your last {sortedRecentOrders.length} sales this month.
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <RecentSales />
+                  <RecentSales recentOrders={sortedRecentOrders} />
                 </CardContent>
               </Card>
               <div className="col-span-4">
