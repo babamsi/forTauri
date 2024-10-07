@@ -166,8 +166,9 @@ export default function RefundPage() {
       setIsRefundDialogOpen(false);
     } catch (error) {
       console.error('Refund error:', error);
-      // @ts-ignore
+
       toast.error(
+        // @ts-ignore
         `Error processing refund: ${error.message || 'Unknown error'}`
       );
     } finally {
