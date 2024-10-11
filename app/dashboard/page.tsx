@@ -162,7 +162,7 @@ export default function Page() {
 
   filteredOrders?.forEach((s: Order) => (total += s.totalAmount));
   filteredOrders?.forEach((s: Order) => {
-    if (s.cashType == 'MPESA') evcAmout += s.totalAmount;
+    if (s.cashType == 'EVC') evcAmout += s.totalAmount;
     if (s.cashType == 'CASH') cashAmount += s.totalAmount;
   });
 
@@ -186,7 +186,7 @@ export default function Page() {
     );
 
     const pieData = [
-      { name: 'MPESA', value: evcAmout },
+      { name: 'EVC', value: evcAmout },
       { name: 'CASH', value: cashAmount }
     ];
 
@@ -341,7 +341,7 @@ export default function Page() {
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                   <CardTitle className="text-sm font-medium">
-                    MPESA amount
+                    EVC amount
                   </CardTitle>
                   <svg
                     xmlns="http://www.w3.org/2000/svg"
@@ -437,10 +437,7 @@ export default function Page() {
                 }
               </div>
               <div className="col-span-4 md:col-span-3">
-                {
-                  // @ts-ignore
-                  <PieGraph data={chartData.pieData} />
-                }
+                <PieGraph data={chartData.pieData} />
               </div>
             </div>
           </TabsContent>
