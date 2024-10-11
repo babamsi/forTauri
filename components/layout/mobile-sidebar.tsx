@@ -1,18 +1,31 @@
 'use client';
 import { DashboardNav } from '@/components/dashboard-nav';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
-import { navItems } from '@/constants/data';
+import { navItems, adminNavItems } from '@/constants/data';
 import { MenuIcon } from 'lucide-react';
-import { useState } from 'react';
+import { useState, useEffect, use } from 'react';
 
 // import { Playlist } from "../data/playlists";
 
 interface SidebarProps extends React.HTMLAttributes<HTMLDivElement> {
   // playlists: Playlist[];
 }
+interface UserStoreItem {
+  // Define the structure of your stored items
+  id: string;
+  name: string;
+  username: string;
+  role: string;
+  // Add other properties as needed
+}
 
 export function MobileSidebar({ className }: SidebarProps) {
   const [open, setOpen] = useState(false);
+  const [user, setUser] = useState<UserStoreItem | null>(null);
+  useEffect(() => {
+    const savedValue = window.localStorage.getItem('count');
+    setUser(JSON.parse(savedValue || '{}'));
+  }, []);
   return (
     <>
       <Sheet open={open} onOpenChange={setOpen}>
@@ -26,11 +39,24 @@ export function MobileSidebar({ className }: SidebarProps) {
                 Overview
               </h2>
               <div className="space-y-1">
-                <DashboardNav
+                {user?.role === 'admin' ? (
+                  <DashboardNav
+                    items={adminNavItems}
+                    isMobileNav={true}
+                    setOpen={setOpen}
+                  />
+                ) : (
+                  <DashboardNav
+                    items={navItems}
+                    isMobileNav={true}
+                    setOpen={setOpen}
+                  />
+                )}
+                {/* <DashboardNav
                   items={navItems}
                   isMobileNav={true}
                   setOpen={setOpen}
-                />
+                /> */}
               </div>
             </div>
           </div>

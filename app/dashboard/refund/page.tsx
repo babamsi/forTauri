@@ -61,6 +61,7 @@ interface Order {
   createdAt: string;
   updatedAt: string;
   status: string;
+  discount: number;
 }
 
 interface RefundProduct extends Product {
@@ -117,6 +118,10 @@ export default function RefundPage() {
     setInvoiceNumber('');
   };
 
+  const refreshPage = () => {
+    window.location.reload();
+  };
+
   const handleInvoiceSubmit = async () => {
     if (!invoiceNumber.trim()) {
       toast.error('Please enter an invoice number');
@@ -140,30 +145,26 @@ export default function RefundPage() {
 
     setIsProcessingRefund(true);
     try {
-      for (const product of refundProducts) {
-        if (product.keepQuantity < parseInt(product.quantity)) {
-          const result = await updateOrder({
-            id: product.productId,
-            data: { quantity: product.keepQuantity, invoiceNumber },
-            cookies
-          }).unwrap();
+      const updatedProducts = refundProducts.map((product) => ({
+        productId: product.productId,
+        quantity: parseInt(product.quantity) - product.keepQuantity
+      }));
 
-          if ('error' in result) {
-            throw new Error(result.error);
-          }
-        }
+      const result = await updateOrder({
+        data: {
+          products: updatedProducts,
+          invoiceNumber: orderData.invoiceNumber
+        },
+        cookies
+      }).unwrap();
+
+      if ('error' in result) {
+        throw new Error(result.error);
       }
-
-      //   const result = await updateOrder({
-      //     data: {
-      //       products: updatedProducts,
-      //       invoiceNumber: orderData.invoiceNumber,
-      //     },
-      //     cookies
-      //   }).unwrap();
 
       toast.success('Refund processed successfully');
       setIsRefundDialogOpen(false);
+      refreshPage(); // refresh the page after successful refund
     } catch (error) {
       console.error('Refund error:', error);
 
@@ -174,7 +175,7 @@ export default function RefundPage() {
     } finally {
       setIsProcessingRefund(false);
     }
-  }, [refundProducts, updateOrder, cookies, orderData]);
+  }, [refundProducts, updateOrder, cookies, orderData, invoiceNumber]);
 
   const handleQuantityChange = useCallback(
     (productId: string, change: number) => {
@@ -199,13 +200,17 @@ export default function RefundPage() {
   );
 
   const calculateRefundTotal = useCallback(() => {
-    return refundProducts.reduce(
+    if (!orderData) return 0;
+    const subtotal = refundProducts.reduce(
       (total, product) =>
         total +
         product.price * (parseInt(product.quantity) - product.keepQuantity),
       0
     );
-  }, [refundProducts]);
+    const discountPercentage = orderData.discount / 100;
+    const discountAmount = subtotal * discountPercentage;
+    return subtotal - discountAmount;
+  }, [refundProducts, orderData]);
 
   const isRefundButtonDisabled = useMemo(() => {
     return (
@@ -225,19 +230,19 @@ export default function RefundPage() {
   return (
     <div className="container mx-auto p-4">
       <Toaster />
-      <h1 className="mb-6 text-3xl font-bold">Refund System</h1>
+      <h1 className="mb-6 text-2xl font-bold sm:text-3xl">Refund System</h1>
       <Button onClick={handleRefundClick}>
         <RefreshCcw className="mr-2 h-4 w-4" />
         Process Refund
       </Button>
 
       <Dialog open={isRefundDialogOpen} onOpenChange={setIsRefundDialogOpen}>
-        <DialogContent className="sm:max-w-[600px]">
+        <DialogContent className="h-[90vh] w-full max-w-[95vw] overflow-y-auto sm:max-w-[600px]">
           <DialogHeader>
             <DialogTitle>Process Refund</DialogTitle>
           </DialogHeader>
           <div className="grid gap-4 py-4">
-            <div className="grid grid-cols-4 items-center gap-4">
+            <div className="grid grid-cols-1 items-center gap-2 sm:grid-cols-4 sm:gap-4">
               <Label htmlFor="invoiceNumber" className="text-right">
                 Invoice Number
               </Label>
@@ -270,7 +275,7 @@ export default function RefundPage() {
                   <CardTitle>Order Details</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="grid gap-2">
+                  <div className="grid gap-2 text-sm sm:text-base">
                     <div>
                       <strong>Customer:</strong> {orderData.user.name}
                     </div>
@@ -295,65 +300,75 @@ export default function RefundPage() {
                       {orderData.totalAmount.toFixed(2)}
                     </div>
                     <div>
+                      <strong>Discount:</strong> {orderData.discount}%
+                    </div>
+                    <div>
                       <strong>Status:</strong> {orderData.status}
                     </div>
                   </div>
                   <Separator className="my-4" />
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Product</TableHead>
-                        <TableHead>Price</TableHead>
-                        <TableHead>Quantity</TableHead>
-                        <TableHead>Subtotal</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {refundProducts.map((product) => (
-                        <TableRow key={product._id}>
-                          <TableCell>{product.product}</TableCell>
-                          <TableCell>${product.price.toFixed(2)}</TableCell>
-                          <TableCell>
-                            <div className="flex items-center space-x-2">
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() =>
-                                  handleQuantityChange(product._id, -1)
-                                }
-                                disabled={
-                                  product.keepQuantity <= 0 ||
-                                  orderData.status === 'Refunded'
-                                }
-                              >
-                                <Minus className="h-4 w-4" />
-                              </Button>
-                              <span className="w-16 text-center">
-                                {product.keepQuantity} / {product.quantity}
-                              </span>
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() =>
-                                  handleQuantityChange(product._id, 1)
-                                }
-                                disabled={
-                                  product.keepQuantity >=
-                                    parseInt(product.quantity) ||
-                                  orderData.status === 'Refunded'
-                                }
-                              >
-                                <Plus className="h-4 w-4" />
-                              </Button>
-                            </div>
-                          </TableCell>
-                          <TableCell>
-                            ${(product.price * product.keepQuantity).toFixed(2)}
-                          </TableCell>
+                  <div className="overflow-x-auto">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Product</TableHead>
+                          <TableHead>Price</TableHead>
+                          <TableHead>Quantity</TableHead>
+                          <TableHead>Subtotal</TableHead>
                         </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
+                      </TableHeader>
+                      <TableBody>
+                        {refundProducts.map((product) => (
+                          <TableRow key={product._id}>
+                            <TableCell>{product.product}</TableCell>
+                            <TableCell>${product.price.toFixed(2)}</TableCell>
+                            <TableCell>
+                              <div className="flex items-center space-x-2">
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() =>
+                                    handleQuantityChange(product._id, -1)
+                                  }
+                                  className="h-8 w-8 p-0"
+                                  disabled={
+                                    product.keepQuantity <= 0 ||
+                                    orderData.status === 'Refunded'
+                                  }
+                                >
+                                  <Minus className="h-3 w-3 sm:h-4 sm:w-4" />
+                                </Button>
+                                <span className="w-16 text-center">
+                                  {product.keepQuantity}
+                                </span>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() =>
+                                    handleQuantityChange(product._id, 1)
+                                  }
+                                  disabled={
+                                    product.keepQuantity >=
+                                      parseInt(product.quantity) ||
+                                    orderData.status === 'Refunded'
+                                  }
+                                  className="h-8 w-8 p-0"
+                                >
+                                  <Plus className="h-3 w-3 sm:h-4 sm:w-4" />
+                                </Button>
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              $
+                              {(product.price * product.keepQuantity).toFixed(
+                                2
+                              )}
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
                   <div className="mt-4 text-right">
                     <strong>
                       Refund Total: ${calculateRefundTotal().toFixed(2)}
@@ -364,7 +379,7 @@ export default function RefundPage() {
                   <Button
                     onClick={handleRefund}
                     disabled={isProcessingRefund || isRefundButtonDisabled}
-                    className="w-full"
+                    className="w-full sm:w-auto"
                   >
                     {isProcessingRefund ? (
                       <>

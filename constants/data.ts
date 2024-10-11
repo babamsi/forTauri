@@ -126,6 +126,33 @@ export type Employee = {
   profile_picture?: string | null; // Profile picture can be a string (URL) or null (if no picture)
 };
 
+export const adminNavItems: NavItem[] = [
+  {
+    title: 'Dashboard',
+    href: '/dashboard',
+    icon: 'dashboard',
+    label: 'Dashboard'
+  },
+  {
+    title: 'Products',
+    href: '/dashboard/product',
+    icon: 'cart',
+    label: 'products'
+  },
+  {
+    title: 'Employee',
+    href: '/dashboard/employee',
+    icon: 'employee',
+    label: 'employee'
+  },
+  {
+    title: 'Orders',
+    href: '/dashboard/orders',
+    icon: 'profile',
+    label: 'profile'
+  }
+];
+
 export const navItems: NavItem[] = [
   {
     title: 'Dashboard',
@@ -152,27 +179,33 @@ export const navItems: NavItem[] = [
     label: 'Refund'
   },
   {
-    title: 'Employee',
-    href: '/dashboard/employee',
-    icon: 'employee',
-    label: 'employee'
-  },
-  {
-    title: 'Profile',
-    href: '/dashboard/profile',
-    icon: 'profile',
-    label: 'profile'
-  },
-  {
-    title: 'Kanban',
-    href: '/dashboard/kanban',
-    icon: 'kanban',
-    label: 'kanban'
-  },
-  {
-    title: 'Login',
-    href: '/',
-    icon: 'login',
-    label: 'login'
+    title: 'Sold Products',
+    href: '/dashboard/soldproducts',
+    icon: 'sold',
+    label: 'sold'
   }
+  // {
+  //   title: 'Employee',
+  //   href: '/dashboard/employee',
+  //   icon: 'employee',
+  //   label: 'employee'
+  // },
+  // {
+  //   title: 'Profile',
+  //   href: '/dashboard/profile',
+  //   icon: 'profile',
+  //   label: 'profile'
+  // },
+  // {
+  //   title: 'Kanban',
+  //   href: '/dashboard/kanban',
+  //   icon: 'kanban',
+  //   label: 'kanban'
+  // },
+  // {
+  //   title: 'Login',
+  //   href: '/',
+  //   icon: 'login',
+  //   label: 'login'
+  // }
 ];

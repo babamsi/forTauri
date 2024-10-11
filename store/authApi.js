@@ -141,6 +141,26 @@ export const authApi = createApi({
           Authorization: `Bearer ${cred.cookies}`
         }
       })
+    }),
+    getExpense: builder.query({
+      query: (cred) => ({
+        url: `/expense`,
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${cred}`
+        }
+      })
+    }),
+    getAllOrders: builder.query({
+      query: (cred) => ({
+        url: `/orders/all`,
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${cred}`
+        }
+      })
     })
   })
 });
@@ -158,5 +178,7 @@ export const {
   useGetOrdersQuery,
   useAddExpensesMutation,
   useGetOrderByInvoiceQuery,
-  useUpdateOrderMutation
+  useUpdateOrderMutation,
+  useGetExpenseQuery,
+  useGetAllOrdersQuery
 } = authApi;

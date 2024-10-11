@@ -157,6 +157,12 @@ export default function POSSystem() {
   const [searchQuery, setSearchQuery] = useState('');
   const [formErrors, setFormErrors] = useState<{ [key: string]: string }>({});
   const [isProcessingOrder, setIsProcessingOrder] = useState(false);
+  const [lastScanTime, setLastScanTime] = useState(0);
+  const [discount, setDiscount] = useState(0);
+  const [discountType, setDiscountType] = useState<'percentage' | 'fixed'>(
+    'percentage'
+  );
+
   const {
     data: productServer,
     error,
@@ -177,6 +183,13 @@ export default function POSSystem() {
   }, []);
 
   const handleScan = async (scannedBarcode: string) => {
+    const currentTime = Date.now();
+    if (currentTime - lastScanTime < 1000) {
+      // If less than 1 second has passed since the last scan, ignore this scan
+      return;
+    }
+    setLastScanTime(currentTime);
+
     if (!scannedBarcode.trim()) {
       toast.error('Please enter a barcode');
       return;
@@ -246,9 +259,30 @@ export default function POSSystem() {
   };
 
   const totalAmount = scannedItems.reduce(
-    (sum, item) => sum + item.price * item.scannedQuantity,
+    (sum, item) => sum + item.sellPrice * item.scannedQuantity,
     0
   );
+
+  const calculateTotalWithDiscount = () => {
+    if (discountType === 'percentage') {
+      return totalAmount * (1 - discount / 100);
+    } else {
+      return Math.max(0, totalAmount - discount);
+    }
+  };
+
+  const handleDiscountChange = (value: string) => {
+    const discountValue = parseFloat(value);
+    if (!isNaN(discountValue)) {
+      if (discountType === 'percentage' && discountValue > 100) {
+        setDiscount(100);
+      } else {
+        setDiscount(discountValue);
+      }
+    } else {
+      setDiscount(0);
+    }
+  };
 
   const handleCheckout = () => {
     setIsCheckoutOpen(true);
@@ -293,21 +327,29 @@ export default function POSSystem() {
       data: {
         products,
         cashType: isCashPayment ? 'CASH' : 'EVC',
-        customer: customerDetails
+        customer: customerDetails,
+        discount: {
+          type: discountType,
+          value: discount,
+          amount: totalAmount - calculateTotalWithDiscount()
+        }
       },
       cookies
     };
     if (products.length > 0) {
       try {
         const result = await sell(datas);
-        console.log(result);
+        // console.log(datas);
         if ('error' in result) {
           toast.error('An error occurred during checkout');
           setScannedItems([]);
         } else {
+          const totalWithDiscount = calculateTotalWithDiscount();
           toast.success('Order placed successfully');
           toast.success(
-            `Total: $${totalAmount.toFixed(
+            `Total: $${totalAmount.toFixed(2)}, Discount: $${(
+              totalAmount - totalWithDiscount
+            ).toFixed(2)}, Final Total: $${totalWithDiscount.toFixed(
               2
             )}, Paid: $${amountPaid}, Change: $${change.toFixed(2)}`
           );
@@ -390,7 +432,7 @@ export default function POSSystem() {
       <div className="flex-1 overflow-auto p-4">
         <h1 className="mb-4 text-xl font-bold md:text-2xl">POS System</h1>
         <div className="mb-4 flex flex-col space-y-2 sm:flex-row sm:space-x-2 sm:space-y-0">
-          <Input
+          {/* <Input
             ref={barcodeInputRef}
             type="text"
             placeholder="Scan or enter barcode"
@@ -398,25 +440,10 @@ export default function POSSystem() {
             onChange={(e) => setBarcode(e.target.value)}
             onKeyPress={(e) => e.key === 'Enter' && handleScan(barcode)}
             className="flex-grow"
-          />
-          <Button
-            onClick={() => handleScan(barcode)}
-            disabled={!barcode.trim()}
-            className="w-full sm:w-auto"
-          >
-            <BarcodeIcon className="mr-2 h-4 w-4" />
-            Scan
-          </Button>
-
-          <Button
-            className="w-full sm:w-auto"
-            onClick={() => setIsCameraActive(!isCameraActive)}
-          >
-            {isCameraActive ? 'Stop Camera' : 'Start Camera'}
-          </Button>
+          /> */}
           <Popover open={isSearchOpen} onOpenChange={setIsSearchOpen}>
             <PopoverTrigger asChild>
-              <Button className="w-full sm:w-auto" variant="outline">
+              <Button className="w-full flex-grow sm:w-auto" variant="outline">
                 <SearchIcon className="mr-2 h-4 w-4" />
                 Search
               </Button>
@@ -426,6 +453,7 @@ export default function POSSystem() {
                 <CommandInput
                   placeholder="Search products..."
                   value={searchQuery}
+                  className="flex-grow rounded-none"
                   onValueChange={setSearchQuery}
                 />
                 <CommandList>
@@ -451,14 +479,30 @@ export default function POSSystem() {
               </Command>
             </PopoverContent>
           </Popover>
+          {/* <Button
+            onClick={() => handleScan(barcode)}
+            disabled={!barcode.trim()}
+            className="w-full sm:w-auto"
+          >
+            <BarcodeIcon className="mr-2 h-4 w-4" />
+            Scan
+          </Button> */}
+
+          <Button
+            className="w-full sm:w-auto"
+            onClick={() => setIsCameraActive(!isCameraActive)}
+          >
+            {isCameraActive ? 'Stop Camera' : 'Start Camera'}
+          </Button>
         </div>
         {isCameraActive && (
           <div className="mb-4">
             <BarcodeScanner
               onSuccess={(result) => {
                 if (result) {
-                  console.log(result);
-                  setBarcode(result);
+                  // console.log(result);
+                  handleScan(result);
+                  // setBarcode(result);
                 }
               }}
               onError={(error) => {
@@ -485,7 +529,7 @@ export default function POSSystem() {
               {scannedItems.map((item) => (
                 <TableRow key={item._id}>
                   <TableCell>{item.name}</TableCell>
-                  <TableCell>${item.price.toFixed(2)}</TableCell>
+                  <TableCell>${item.sellPrice.toFixed(2)}</TableCell>
                   <TableCell>
                     <div className="flex items-center space-x-2">
                       <Button
@@ -527,7 +571,7 @@ export default function POSSystem() {
                     </div>
                   </TableCell>
                   <TableCell>
-                    ${(item.price * item.scannedQuantity).toFixed(2)}
+                    ${(item.sellPrice * item.scannedQuantity).toFixed(2)}
                   </TableCell>
                   <TableCell>
                     <Button
@@ -642,6 +686,29 @@ export default function POSSystem() {
                 </p>
               )}
             </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="discount" className="text-right">
+                Discount
+              </Label>
+              <Input
+                id="discount"
+                type="number"
+                value={discount}
+                onChange={(e) => handleDiscountChange(e.target.value)}
+                className="col-span-2"
+              />
+              <select
+                value={discountType}
+                onChange={(e) =>
+                  setDiscountType(e.target.value as 'percentage' | 'fixed')
+                }
+                className="col-span-1"
+              >
+                <option value="percentage">%</option>
+                {/* <option value="fixed">$</option> */}
+              </select>
+            </div>
+
             <div className="flex items-center space-x-2">
               <Checkbox
                 id="cash"
@@ -663,7 +730,7 @@ export default function POSSystem() {
                     className="col-span-3 justify-start"
                     variant="outline"
                   >
-                    {amountPaid ? `$${amountPaid}` : 'Enter amount'}
+                    {amountPaid ? `${amountPaid}` : 'Enter amount'}
                   </Button>
                 </div>
                 {formErrors.amountPaid && (
@@ -674,12 +741,27 @@ export default function POSSystem() {
                 {change > 0 && (
                   <Alert>
                     <AlertTitle>Change Due</AlertTitle>
-                    <AlertDescription>${change.toFixed(2)}</AlertDescription>
+                    <AlertDescription>{change.toFixed(2)}</AlertDescription>
                   </Alert>
                 )}
               </>
             )}
+            <div className="flex justify-between font-bold">
+              <span>Total:</span>
+              <span>${totalAmount.toFixed(2)}</span>
+            </div>
+            <div className="flex justify-between font-bold text-green-600">
+              <span>Discount:</span>
+              <span>
+                ${(totalAmount - calculateTotalWithDiscount()).toFixed(2)}
+              </span>
+            </div>
+            <div className="flex justify-between text-xl font-bold">
+              <span>Final Total:</span>
+              <span>${calculateTotalWithDiscount().toFixed(2)}</span>
+            </div>
           </div>
+
           <DialogFooter>
             <Button
               onClick={handleCompleteCheckout}
