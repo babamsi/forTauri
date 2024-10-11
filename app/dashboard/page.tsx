@@ -360,7 +360,7 @@ export default function Page() {
                 </CardHeader>
                 <CardContent>
                   <div className="text-2xl font-bold">
-                    {evcAmout.toFixed(2)}
+                    $ {evcAmout.toFixed(2)}
                   </div>
                   <p className="text-xs text-muted-foreground">
                     {/* +180.1% from last month */}
@@ -388,7 +388,7 @@ export default function Page() {
                 </CardHeader>
                 <CardContent>
                   <div className="text-2xl font-bold">
-                    KES {cashAmount.toFixed(2)}
+                    $ {cashAmount.toFixed(2)}
                   </div>
                   <p className="text-xs text-muted-foreground">
                     {/* +19% from last month */}
@@ -404,7 +404,7 @@ export default function Page() {
                 </CardHeader>
                 <CardContent>
                   <div className="text-2xl font-bold">
-                    KES {totalAllExpense.toFixed(2)}
+                    $ {totalAllExpense.toFixed(2)}
                   </div>
                   <p className="text-xs text-muted-foreground">
                     {/* You can add a comparison to previous period here */}

@@ -20,6 +20,7 @@ interface RecentSale {
     email: string;
   };
   revenue: string;
+  status: string;
 }
 
 export function RecentSales({ recentOrders }: { recentOrders: RecentSale[] }) {
@@ -32,13 +33,20 @@ export function RecentSales({ recentOrders }: { recentOrders: RecentSale[] }) {
             <AvatarFallback>{order.user.name.charAt(0)}</AvatarFallback>
           </Avatar>
           <div className="ml-4 space-y-1">
-            <p className="text-sm font-medium leading-none">
+            <p
+              className={`text-sm font-medium leading-none ${
+                order.status === 'Refunded' ? 'text-red-500' : ''
+              }`}
+            >
               {order.user.name}
             </p>
             <p className="text-sm text-muted-foreground">{order.user.email}</p>
           </div>
           <div className="ml-auto font-medium">
-            ${parseFloat(order.revenue).toFixed(2)}
+            {
+              // @ts-ignore
+              parseFloat(order.totalAmount).toFixed(2)
+            }
           </div>
         </div>
       ))}

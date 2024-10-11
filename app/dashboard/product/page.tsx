@@ -293,6 +293,7 @@ export default function Component() {
     const productWithId = { ...newProduct, id: products.length + 1 };
     setProducts((prevProducts) => [...prevProducts, productWithId]);
     setIsAddProductDialogOpen(false);
+    console.log(newProduct);
     const data = {
       name: newProduct.name,
       description: newProduct.description,
@@ -303,7 +304,8 @@ export default function Component() {
       quantity: newProduct.quantity,
       price: Number(newProduct.price),
       isQuantityBased: newProduct.isQuantityBased,
-      units: newProduct.units
+      units: newProduct.units,
+      barcode: newProduct.barcode
     };
     try {
       const res = await createProduct({
