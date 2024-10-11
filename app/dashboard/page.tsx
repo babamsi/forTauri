@@ -8,10 +8,15 @@ import PageContainer from '@/components/layout/page-container';
 import { RecentSales } from '@/components/recent-sales';
 import { Button } from '@/components/ui/button';
 import { DateRange } from 'react-day-picker';
-import { useAddExpensesMutation, useGetOrdersQuery } from '@/store/authApi';
-import { useEffect, useState } from 'react';
+import {
+  useAddExpensesMutation,
+  useGetOrdersQuery,
+  useGetExpenseQuery,
+  useGetAllOrdersQuery
+} from '@/store/authApi';
+import { useEffect, useState, useMemo } from 'react';
 import { getAuthCookie } from '@/actions/auth.actions';
-import { ShoppingCart, PlusIcon } from 'lucide-react';
+import { ShoppingCart, PlusIcon, Blocks } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -31,13 +36,19 @@ import {
   CardTitle
 } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { toast } from '@/components/ui/use-toast';
+import { toast, Toaster } from 'react-hot-toast';
 
 interface Product {
   product: string;
   quantity: string;
   price: string;
   subtotal: string;
+}
+interface Expense {
+  _id: string;
+  amount: number;
+  description: string;
+  createdAt: string;
 }
 interface Order {
   _id: string;
@@ -51,8 +62,9 @@ interface Order {
     phone: string;
     email: string;
   };
-  revenue: string;
+  revenue: number;
   createdAt: string;
+  status: string;
 }
 export default function Page() {
   const [cookies, setcookies] = useState(null);
@@ -63,20 +75,37 @@ export default function Page() {
   const [isExpenseDialogOpen, setIsExpenseDialogOpen] = useState(false);
   const [expenseAmount, setExpenseAmount] = useState('');
   const [expenseReason, setExpenseReason] = useState('');
+  const [userRole, setUserRole] = useState<string | null>(null);
 
-  const { data: orders, error, isLoading } = useGetOrdersQuery(cookies);
+  const {
+    data: orders,
+    error,
+    isLoading
+  } = useGetOrdersQuery(cookies, {
+    skip: userRole !== 'stuff'
+  });
   const [addExpense, { error: addExpenseError }] = useAddExpensesMutation();
+  const { data: allOrders } = useGetAllOrdersQuery(cookies, {
+    skip: userRole !== 'admin'
+  });
+
+  const { data: expense } = useGetExpenseQuery(cookies, {
+    skip: userRole !== 'admin'
+  });
 
   useEffect(() => {
     getAuthCookie().then((k: any) => {
       setcookies(k); //setting the token so the server can verify and give us output
     });
+    const role = JSON.parse(localStorage.getItem('userStore') || '{}');
+    setUserRole(role?.role);
   }, []);
 
   let total = 0;
   let evcAmout = 0;
   let cashAmount = 0;
 
+  console.log(expense);
   const calculateMetrics = (orders: Order[]) => {
     if (!orders || !date?.from || !date?.to)
       return { totalSales: 0, totalOrders: 0, averageOrderValue: 0 };
@@ -88,14 +117,19 @@ export default function Page() {
       return orderDate >= date?.from && orderDate <= date?.to;
     });
     // console.log(filteredOrders);
-    // const totalSales = filteredOrders.reduce((sum, order) => sum + order.totalAmount);
+    const totalRevenue = filteredOrders.reduce(
+      (sum, order) => sum + order.revenue,
+      0
+    );
     const totalOrders = filteredOrders.length;
     // const averageOrderValue = totalOrders > 0 ? totalSales / totalOrders : 0;
 
-    return { filteredOrders };
+    return { filteredOrders, totalRevenue, totalOrders };
   };
 
-  const { filteredOrders } = calculateMetrics(orders || []);
+  const { filteredOrders, totalRevenue, totalOrders } = calculateMetrics(
+    orders || allOrders || []
+  );
 
   const sortedRecentOrders = orders
     ? [...orders]
@@ -106,46 +140,58 @@ export default function Page() {
         .slice(0, 5)
     : [];
 
-  // console.log(filteredOrders?.length);
-  // filteredOrders?.reduce(
-  //   (sum, order) => {
-  //   console.log(order.totalAmount + sum);
-  // })
+  const totalExpenses = (expense: Expense[]) => {
+    if (!expense) return 0;
+    // console.log(expense);
+    const fileteredExpense = expense.filter((expense: Expense) => {
+      const expenseDate = new Date(expense.createdAt);
+      // console.log(expenseDate, date?.from, date?.to);
+      // @ts-ignore
+      return expenseDate >= date?.from && expenseDate <= date?.to;
+    });
+    const totalAllExpense = fileteredExpense.reduce(
+      (sum: number, expense: Expense) => sum + expense.amount,
+      0
+    );
+    return { totalAllExpense };
+  };
+  // @ts-ignore
+  const { totalAllExpense } = totalExpenses(expense || []);
 
-  // setData(products)
+  // console.log(totalExpenses);
+
   filteredOrders?.forEach((s: Order) => (total += s.totalAmount));
   filteredOrders?.forEach((s: Order) => {
-    if (s.cashType == 'EVC') evcAmout += s.totalAmount;
+    if (s.cashType == 'MPESA') evcAmout += s.totalAmount;
     if (s.cashType == 'CASH') cashAmount += s.totalAmount;
   });
-  // products?.soldItems.forEach((s: SoldProducts) => {
-  //   if (s.cashType == 'EVC') evcAmout += s.price;
-  // });
-  // products?.soldItems.forEach((s: SoldProducts) => {
-  //   if (s.cashType == 'CASH') cashAmount += s.price;
-  // });
-  // const calculateAmountEvc = stuffProductStore(
-  //   (state) => state.calculateAmountByEVC
-  // );
-  // const getSoldProudcts = stuffProductStore(
-  //   (state) => state.calculateSoldProducts
-  // );
-  // const getRevenue = stuffProductStore((state) => state.calculateRevenue);
-  // const getAmountInCash = stuffProductStore(
-  //   (state) => state.calculateAmountByCash
-  // );
 
-  // console.log(total)
+  const chartData = useMemo(() => {
+    if (!filteredOrders) return { barData: [], areaData: [], pieData: [] };
 
-  // const soldProducts = stuffProductStore((state) => state.soldProducts);
-  // const productsRevenue = stuffProductStore((state) => state.revenue);
-  // const amountInEvc = stuffProductStore((state) => state.amountInEVC);
-  // const amountInCash = stuffProductStore((state) => state.amountInCash);
+    const dailyTotals = filteredOrders.reduce((acc, order) => {
+      const date = new Date(order.createdAt).toLocaleDateString();
+      // @ts-ignore
+      acc[date] = (acc[date] || 0) + order.totalAmount;
+      return acc;
+    }, {});
 
-  // getSoldProudcts(products);
-  // getRevenue(total);
-  // calculateAmountEvc(evcAmout);
-  // getAmountInCash(cashAmount);
+    const barData = Object.entries(dailyTotals).map(([name, total]) => ({
+      name,
+      total
+    }));
+
+    const areaData = [...barData].sort(
+      (a, b) => new Date(a.name).getTime() - new Date(b.name).getTime()
+    );
+
+    const pieData = [
+      { name: 'MPESA', value: evcAmout },
+      { name: 'CASH', value: cashAmount }
+    ];
+
+    return { barData, areaData, pieData };
+  }, [filteredOrders, evcAmout, cashAmount]);
 
   const handleExpenseSubmit = async (e: React.FormEvent) => {
     console.log(cookies);
@@ -161,21 +207,36 @@ export default function Page() {
     //   },
     //   cookies: cookies
     // }
+    try {
+      const res = await addExpense({
+        data: {
+          amount: expenseAmount,
+          description: expenseReason
+        },
+        cookies: cookies
+      });
+      if ('error' in res) {
+        // @ts-ignore
+        throw new Error(res.error);
+      }
 
-    const res = await addExpense({
-      data: {
-        amount: expenseAmount,
-        description: expenseReason
-      },
-      cookies: cookies
-    });
+      toast.success('Expense added successfully');
+      setExpenseAmount('');
+      setExpenseReason('');
+    } catch (error) {
+      toast.error(
+        // @ts-ignore
+        `Error processing expense: ${error.message || 'Unknown error'}`
+      );
+    }
 
-    console.log(res);
+    // console.log(res);
     // console.log('Expense submitted:', { amount: expenseAmount, reason: expenseReason });
   };
 
   return (
     <PageContainer scrollable={true}>
+      <Toaster />
       <div className="space-y-2">
         <div className="flex items-center justify-between space-y-2">
           <h2 className="text-2xl font-bold tracking-tight">
@@ -261,10 +322,26 @@ export default function Page() {
                   </p>
                 </CardContent>
               </Card>
+              {userRole === 'admin' && (
+                <Card>
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">
+                      Total Revenue
+                    </CardTitle>
+                    <ShoppingCart size={22} />
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold">{totalRevenue}</div>
+                    <p className="text-xs text-muted-foreground">
+                      {/* +20.1% from last month */}
+                    </p>
+                  </CardContent>
+                </Card>
+              )}
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                   <CardTitle className="text-sm font-medium">
-                    EVC amount
+                    MPESA amount
                   </CardTitle>
                   <svg
                     xmlns="http://www.w3.org/2000/svg"
@@ -283,7 +360,7 @@ export default function Page() {
                 </CardHeader>
                 <CardContent>
                   <div className="text-2xl font-bold">
-                    $ {evcAmout.toFixed(2)}
+                    {evcAmout.toFixed(2)}
                   </div>
                   <p className="text-xs text-muted-foreground">
                     {/* +180.1% from last month */}
@@ -311,7 +388,7 @@ export default function Page() {
                 </CardHeader>
                 <CardContent>
                   <div className="text-2xl font-bold">
-                    $ {cashAmount.toFixed(2)}
+                    KES {cashAmount.toFixed(2)}
                   </div>
                   <p className="text-xs text-muted-foreground">
                     {/* +19% from last month */}
@@ -321,32 +398,26 @@ export default function Page() {
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                   <CardTitle className="text-sm font-medium">
-                    Active Now
+                    Total Expenses
                   </CardTitle>
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth="2"
-                    className="h-4 w-4 text-muted-foreground"
-                  >
-                    <path d="M22 12h-4l-3 9L9 3l-3 9H2" />
-                  </svg>
+                  <Blocks size={22} />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold">+573</div>
+                  <div className="text-2xl font-bold">
+                    KES {totalAllExpense.toFixed(2)}
+                  </div>
                   <p className="text-xs text-muted-foreground">
-                    +201 since last hour
+                    {/* You can add a comparison to previous period here */}
                   </p>
                 </CardContent>
               </Card>
             </div>
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-7">
               <div className="col-span-4">
-                <BarGraph />
+                {
+                  // @ts-ignore
+                  <BarGraph data={chartData.barData} />
+                }
               </div>
               <Card className="col-span-4 md:col-span-3">
                 <CardHeader>
@@ -360,10 +431,16 @@ export default function Page() {
                 </CardContent>
               </Card>
               <div className="col-span-4">
-                <AreaGraph />
+                {
+                  // @ts-ignore
+                  <AreaGraph data={chartData.areaData} />
+                }
               </div>
               <div className="col-span-4 md:col-span-3">
-                <PieGraph />
+                {
+                  // @ts-ignore
+                  <PieGraph data={chartData.pieData} />
+                }
               </div>
             </div>
           </TabsContent>
