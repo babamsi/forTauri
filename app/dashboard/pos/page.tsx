@@ -501,6 +501,7 @@ export default function POSSystem() {
                   }
                   setLastScanTime(currentTime);
                   handleScan(result);
+                  setIsCameraActive(false);
                   // setBarcode(result);
                 }
               }}
