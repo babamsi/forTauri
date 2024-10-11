@@ -167,16 +167,19 @@ export default function Component() {
   const newCategories = ['Elect', 'Cloth', 'Drink'];
   // @ts-ignore
   const categories = useMemo(
+    // @ts-ignore
     () => [...new Set(products.map((product) => product.category))],
     [products]
   );
-  // @ts-ignore
+
   const subcategories = useMemo(
+    // @ts-ignore
     () => [...new Set(products.map((product) => product.subcategory))],
     [products]
   );
-  // @ts-ignore
+
   const vendors = useMemo(
+    // @ts-ignore
     () => [...new Set(products.map((product) => product.vendor))],
     [products]
   );

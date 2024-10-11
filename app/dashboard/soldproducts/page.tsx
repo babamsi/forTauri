@@ -105,8 +105,8 @@ export default function SoldProductsPage() {
     );
   }, [expense]);
 
-  // @ts-ignore
   const totalRevenue = filteredOrders.reduce(
+    // @ts-ignore
     (sum, order) => sum + parseFloat(order.totalAmount),
     0
   );
