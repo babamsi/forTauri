@@ -184,7 +184,7 @@ export default function POSSystem() {
 
   const handleScan = async (scannedBarcode: string) => {
     const currentTime = Date.now();
-    if (currentTime - lastScanTime < 1000) {
+    if (currentTime - lastScanTime < 1500) {
       // If less than 1 second has passed since the last scan, ignore this scan
       return;
     }
