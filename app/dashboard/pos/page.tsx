@@ -183,13 +183,6 @@ export default function POSSystem() {
   }, []);
 
   const handleScan = async (scannedBarcode: string) => {
-    const currentTime = Date.now();
-    if (currentTime - lastScanTime < 2000) {
-      // If less than 1 second has passed since the last scan, ignore this scan
-      return;
-    }
-    setLastScanTime(currentTime);
-
     if (!scannedBarcode.trim()) {
       toast.error('Please enter a barcode');
       return;
@@ -501,6 +494,12 @@ export default function POSSystem() {
               onSuccess={(result) => {
                 if (result) {
                   // console.log(result);
+                  const currentTime = Date.now();
+                  if (currentTime - lastScanTime < 2000) {
+                    // If less than 1 second has passed since the last scan, ignore this scan
+                    return;
+                  }
+                  setLastScanTime(currentTime);
                   handleScan(result);
                   // setBarcode(result);
                 }
