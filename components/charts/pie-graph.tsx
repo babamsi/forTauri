@@ -34,7 +34,7 @@ export function PieGraph({ data }: PieGraphProps) {
           ))}
         </Pie>
         <Tooltip
-          formatter={(value: number) => [`$${value.toFixed(2)}`, 'Total']}
+          formatter={(value: number) => [`${value.toFixed(2)}`, 'Total']}
         />
         <Legend />
       </PieChart>

@@ -30,10 +30,10 @@ export function AreaGraph({ data }: AreaGraphProps) {
           fontSize={12}
           tickLine={false}
           axisLine={false}
-          tickFormatter={(value) => `$${value}`}
+          tickFormatter={(value) => `${value}`}
         />
         <Tooltip
-          formatter={(value: number) => [`$${value.toFixed(2)}`, 'Total']}
+          formatter={(value: number) => [`${value.toFixed(2)}`, 'Total']}
           labelFormatter={(label) => `Date: ${label}`}
         />
         <Area
