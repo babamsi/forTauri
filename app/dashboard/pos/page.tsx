@@ -256,13 +256,20 @@ export default function POSSystem() {
     0
   );
 
-  const calculateTotalWithDiscount = () => {
-    if (discountType === 'percentage') {
-      return totalAmount * (1 - discount / 100);
-    } else {
-      return Math.max(0, totalAmount - discount);
-    }
+  const calculateTax = (amount: number) => {
+    return amount * 0.05; // 5% tax
   };
+
+  const taxAmount = calculateTax(totalAmount);
+  const totalWithTax = totalAmount + taxAmount;
+
+  // const calculateTotalWithDiscount = () => {
+  //   if (discountType === 'percentage') {
+  //     return totalAmount * (1 - discount / 100);
+  //   } else {
+  //     return Math.max(0, totalAmount - discount);
+  //   }
+  // };
 
   const handleDiscountChange = (value: string) => {
     const discountValue = parseFloat(value);
@@ -324,7 +331,7 @@ export default function POSSystem() {
         discount: {
           type: discountType,
           value: discount,
-          amount: totalAmount - calculateTotalWithDiscount()
+          amount: taxAmount
         }
       },
       cookies
@@ -337,12 +344,11 @@ export default function POSSystem() {
           toast.error('An error occurred during checkout');
           setScannedItems([]);
         } else {
-          const totalWithDiscount = calculateTotalWithDiscount();
           toast.success('Order placed successfully');
           toast.success(
-            `Total: $${totalAmount.toFixed(2)}, Discount: $${(
-              totalAmount - totalWithDiscount
-            ).toFixed(2)}, Final Total: $${totalWithDiscount.toFixed(
+            `Subtotal: $${totalAmount.toFixed(2)}, Tax: $${taxAmount.toFixed(
+              2
+            )}, Total: $${totalWithTax.toFixed(
               2
             )}, Paid: $${amountPaid}, Change: $${change.toFixed(2)}`
           );
@@ -598,9 +604,13 @@ export default function POSSystem() {
               <span>Subtotal:</span>
               <span>${totalAmount.toFixed(2)}</span>
             </div>
+            <div className="flex justify-between">
+              <span>Tax (5%):</span>
+              <span>${taxAmount.toFixed(2)}</span>
+            </div>
             <div className="flex justify-between font-bold">
               <span>Total:</span>
-              <span>${totalAmount.toFixed(2)}</span>
+              <span>${totalWithTax.toFixed(2)}</span>
             </div>
           </div>
         </CardContent>
@@ -686,28 +696,6 @@ export default function POSSystem() {
                 </p>
               )}
             </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="discount" className="text-right">
-                Discount
-              </Label>
-              <Input
-                id="discount"
-                type="number"
-                value={discount}
-                onChange={(e) => handleDiscountChange(e.target.value)}
-                className="col-span-2"
-              />
-              <select
-                value={discountType}
-                onChange={(e) =>
-                  setDiscountType(e.target.value as 'percentage' | 'fixed')
-                }
-                className="col-span-1"
-              >
-                <option value="percentage">%</option>
-                {/* <option value="fixed">$</option> */}
-              </select>
-            </div>
 
             <div className="flex items-center space-x-2">
               <Checkbox
@@ -750,15 +738,13 @@ export default function POSSystem() {
               <span>Total:</span>
               <span>${totalAmount.toFixed(2)}</span>
             </div>
-            <div className="flex justify-between font-bold text-green-600">
-              <span>Discount:</span>
-              <span>
-                ${(totalAmount - calculateTotalWithDiscount()).toFixed(2)}
-              </span>
+            <div className="flex justify-between font-bold text-blue-600">
+              <span>Tax (5%):</span>
+              <span>${taxAmount.toFixed(2)}</span>
             </div>
             <div className="flex justify-between text-xl font-bold">
               <span>Final Total:</span>
-              <span>${calculateTotalWithDiscount().toFixed(2)}</span>
+              <span>${totalWithTax.toFixed(2)}</span>
             </div>
           </div>
 
