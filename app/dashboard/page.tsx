@@ -114,7 +114,11 @@ export default function Page() {
       const orderDate = new Date(order.createdAt);
       // console.log(orderDate, date?.from, date?.to);
       // @ts-ignore
-      return orderDate >= date?.from && orderDate <= date?.to;
+      return (
+        orderDate >= date?.from &&
+        orderDate <= date?.to &&
+        order.status !== 'Refunded'
+      );
     });
     // console.log(filteredOrders);
     const totalRevenue = filteredOrders.reduce(

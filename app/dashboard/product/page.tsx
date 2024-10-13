@@ -71,6 +71,7 @@ import {
   Loader2,
   Barcode
 } from 'lucide-react';
+import { Heading } from '@/components/ui/heading';
 import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -129,6 +130,7 @@ export default function Component() {
   }, []);
 
   const [products, setProducts] = useState<Product[]>([]);
+  const [producttorestoc, setProductsToRestock] = useState<Product[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('');
   const [selectedSubcategory, setSelectedSubcategory] = useState('');
@@ -323,7 +325,9 @@ export default function Component() {
     // console.log(newProduct)
   };
 
-  // console.log(products)
+  const refreshPage = () => {
+    window.location.reload();
+  };
 
   const handleEditProduct = async (updatedProduct: Product) => {
     console.log(cookies);
@@ -346,7 +350,8 @@ export default function Component() {
       price: updatedProduct.price,
       isQuantityBased: updatedProduct.isQuantityBased,
       barcode: updatedProduct.barcode,
-      units: updatedProduct.units
+      units: updatedProduct.units,
+      action: 'updated'
     };
     const all = {
       id: updatedProduct._id,
@@ -362,8 +367,10 @@ export default function Component() {
       toast.success('Product updated successfully!');
 
       setEditingProduct(null);
+      refreshPage();
     } catch (error) {
       toast.error(`Error processing: || 'Unknown error'}`);
+      refreshPage();
     }
     // console.log(all.cookies)
     // const result = await updateProduct(all)
@@ -387,8 +394,10 @@ export default function Component() {
             throw new Error(error);
           }
           toast.success('Product Deleted');
+          refreshPage();
         } catch {
           toast.error('error to delete a product');
+          refreshPage();
         }
         // toast.success("Product moved to trash bin.")
       }
@@ -396,46 +405,58 @@ export default function Component() {
     });
   };
 
-  const handleRestoreProduct = useCallback(
-    (productId: string) => {
-      const productToRestore = deletedProducts.find(
-        (product) => product._id === productId
-      );
-      if (productToRestore) {
-        setProducts((prevProducts) => [...prevProducts, productToRestore]);
-        setDeletedProducts((prevDeleted) =>
-          prevDeleted.filter((product) => product._id !== productId)
-        );
-        toast.success('Product restored successfully!');
+  const handleRestock = async (productId: string, amount: number) => {
+    // console.log(products.map((s) => s._id === productId))
+    try {
+      const s = products.filter((j) => j._id === productId);
+      // console.log(s)
+      let data;
+      if (s[0].isQuantityBased) {
+        data = {
+          quantity: s[0].quantity + amount,
+          isQuantityBased: true,
+          action: 'Restock'
+        };
+      } else {
+        data = {
+          units: amount,
+          isQuantityBased: false,
+          action: 'Restock'
+        };
       }
-    },
-    [deletedProducts]
-  );
 
-  const handleRestock = useCallback((productId: string, amount: number) => {
-    setProducts((prevProducts) =>
-      prevProducts.map((product) =>
-        product._id === productId
-          ? {
-              ...product,
-              quantity: product.quantity + amount,
-              log: [
-                ...product.log,
-                {
-                  id: product.log.length + 1,
-                  action: 'Restock',
-                  amount: amount,
-                  date: new Date().toISOString()
-                }
-              ]
-            }
-          : product
-      )
-    );
+      const result = await updateProduct({
+        id: productId,
+        data: data,
+        cookies
+      });
+      if ('error' in result) {
+        // @ts-ignore
+        throw new Error(error);
+      }
+
+      setProducts((prevProducts) =>
+        prevProducts.map((product) =>
+          product._id === productId
+            ? {
+                ...product,
+                quantity: product.isQuantityBased
+                  ? product.quantity + amount
+                  : Number(product.units.split(' ')[0]) + amount
+              }
+            : product
+        )
+      );
+      toast.success('Product restocked successfully');
+    } catch (error) {
+      toast.error('Unable to restock');
+    }
+
     setIsRestockDialogOpen(false);
     setRestockingProduct(null);
     toast.success('Product restocked successfully!');
-  }, []);
+    // const k = products.map(s => s._id === productId))
+  };
 
   const SortIcon = ({ field }: { field: string }) => {
     if (sortConfig.key === field) {
@@ -460,7 +481,10 @@ export default function Component() {
     <div className="min-h-screen bg-background p-6 text-foreground">
       <div className="mx-auto max-w-7xl space-y-6">
         <div className="flex items-center justify-between">
-          <h1 className="text-2xl font-bold">Product Management</h1>
+          <Heading
+            title={`Products (${products.length})`}
+            description="Manage products"
+          />
           <div className="flex space-x-2">
             <Dialog
               open={isAddProductDialogOpen}
@@ -708,6 +732,16 @@ export default function Component() {
                           >
                             <List className="h-4 w-4" />
                           </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => {
+                              setRestockingProduct(product);
+                              setIsRestockDialogOpen(true);
+                            }}
+                          >
+                            <Package className="h-4 w-4" />
+                          </Button>
                         </div>
                       </TableCell>
                     </TableRow>
@@ -884,6 +918,16 @@ export default function Component() {
                     >
                       <List className="h-4 w-4" />
                     </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => {
+                        setRestockingProduct(product);
+                        setIsRestockDialogOpen(true);
+                      }}
+                    >
+                      <Package className="h-4 w-4" />
+                    </Button>
                   </div>
                 </div>
               ))}
@@ -974,6 +1018,39 @@ export default function Component() {
               ))}
             </TableBody>
           </Table>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={isRestockDialogOpen} onOpenChange={setIsRestockDialogOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Re-stock Product</DialogTitle>
+            <DialogDescription>
+              Enter the amount to re-stock for {restockingProduct?.name}
+            </DialogDescription>
+          </DialogHeader>
+          <RestockForm
+            onSubmit={(amount) => handleRestock(restockingProduct?._id, amount)}
+          />
+        </DialogContent>
+      </Dialog>
+      <Dialog
+        open={!!confirmAction}
+        onOpenChange={() => setConfirmAction(null)}
+      >
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Confirm Action</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to perform this action?
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setConfirmAction(null)}>
+              Cancel
+            </Button>
+            <Button onClick={() => confirmAction()}>Confirm</Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
 
