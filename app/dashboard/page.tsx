@@ -113,9 +113,11 @@ export default function Page() {
     const filteredOrders = orders.filter((order) => {
       const orderDate = new Date(order.createdAt);
       // console.log(orderDate, date?.from, date?.to);
-      // @ts-ignore
+
       return (
+        // @ts-ignore
         orderDate >= date?.from &&
+        // @ts-ignore
         orderDate <= date?.to &&
         order.status !== 'Refunded'
       );
