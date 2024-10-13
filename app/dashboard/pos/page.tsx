@@ -409,7 +409,7 @@ export default function POSSystem() {
       setAmountPaid(keypadValue);
       const paid = parseFloat(keypadValue);
       if (!isNaN(paid)) {
-        setChange(Math.max(0, paid - totalAmount));
+        setChange(Math.max(0, paid - totalWithTax));
       }
     }
     setIsKeypadOpen(false);
@@ -754,7 +754,7 @@ export default function POSSystem() {
               disabled={
                 isProcessingOrder ||
                 (isCashPayment &&
-                  (!amountPaid || parseFloat(amountPaid) < totalAmount))
+                  (!amountPaid || parseFloat(amountPaid) < totalWithTax))
               }
             >
               {isProcessingOrder ? (
