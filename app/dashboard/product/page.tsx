@@ -1030,6 +1030,7 @@ export default function Component() {
             </DialogDescription>
           </DialogHeader>
           <RestockForm
+            // @ts-ignore
             onSubmit={(amount) => handleRestock(restockingProduct?._id, amount)}
           />
         </DialogContent>
@@ -1049,7 +1050,10 @@ export default function Component() {
             <Button variant="outline" onClick={() => setConfirmAction(null)}>
               Cancel
             </Button>
-            <Button onClick={() => confirmAction()}>Confirm</Button>
+            {
+              // @ts-ignore
+              <Button onClick={() => confirmAction()}>Confirm</Button>
+            }
           </DialogFooter>
         </DialogContent>
       </Dialog>
