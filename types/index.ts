@@ -10,6 +10,22 @@ export interface NavItem {
   description?: string;
 }
 
+export interface Product {
+  _id: string;
+  name: string;
+  category: string;
+  price: number;
+  sellPrice: number;
+  description: string;
+  vendor: string;
+  addedBy: string;
+  quantity: number;
+  barcode: string;
+  units: string;
+  isQuantityBased: boolean;
+  log: any[];
+}
+
 export declare type SearchParamProps = {
   params: { [key: string]: string };
   searchParams: { [key: string]: string | string[] | undefined };

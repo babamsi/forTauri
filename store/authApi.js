@@ -3,7 +3,7 @@ import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
 export const authApi = createApi({
   reducerPath: 'authApi',
   baseQuery: fetchBaseQuery({
-    baseUrl: 'https://pfv4xcnqev.ap-south-1.awsapprunner.com/api',
+    baseUrl: 'http://localhost:5000/api',
     prepareHeaders: (headers) => {
       headers.set('Accept', 'application/json');
 
@@ -48,7 +48,7 @@ export const authApi = createApi({
       query: (cred) => ({
         url: '/orders',
         method: 'POST',
-        body: cred.data,
+        body: cred,
         headers: {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${cred.cookies}`
@@ -161,6 +161,16 @@ export const authApi = createApi({
           Authorization: `Bearer ${cred}`
         }
       })
+    }),
+    getAllCustomer: builder.query({
+      query: (cred) => ({
+        url: `/customers/`,
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${cred}`
+        }
+      })
     })
   })
 });
@@ -180,5 +190,6 @@ export const {
   useGetOrderByInvoiceQuery,
   useUpdateOrderMutation,
   useGetExpenseQuery,
-  useGetAllOrdersQuery
+  useGetAllOrdersQuery,
+  useGetAllCustomerQuery
 } = authApi;

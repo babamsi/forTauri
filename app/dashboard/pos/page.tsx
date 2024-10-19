@@ -1,10 +1,41 @@
 'use client';
 
-import { getAuthCookie } from '@/actions/auth.actions';
-import { useState, useRef, useEffect } from 'react';
-import { Input } from '@/components/ui/input';
+import React, {
+  useState,
+  useEffect,
+  useRef,
+  useCallback,
+  useMemo
+} from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { v4 as uuidv4 } from 'uuid';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription
+} from '@/components/ui/card';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue
+} from '@/components/ui/select';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger
+} from '@/components/ui/dialog';
 import {
   Table,
   TableBody,
@@ -13,47 +44,65 @@ import {
   TableHeader,
   TableRow
 } from '@/components/ui/table';
-import toast, { Toaster } from 'react-hot-toast';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter
-} from '@/components/ui/dialog';
-import { Label } from '@/components/ui/label';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Separator } from '@/components/ui/separator';
+import { Badge } from '@/components/ui/badge';
+import { Switch } from '@/components/ui/switch';
 import { Checkbox } from '@/components/ui/checkbox';
-import {
-  BarcodeIcon,
-  MinusIcon,
-  PlusIcon,
-  ShoppingCartIcon,
-  XIcon,
-  SearchIcon,
-  Loader2,
-  RefreshCcw
-} from 'lucide-react';
-import { BarcodeScanner } from '@thewirv/react-barcode-scanner';
-import {
-  useSelProductMutation,
-  useGetProductsQuery
-} from '../../../store/authApi';
-import {
-  Command,
-  CommandEmpty,
-  CommandGroup,
-  CommandInput,
-  CommandItem,
-  CommandList
-} from '@/components/ui/command';
 import {
   Popover,
   PopoverContent,
   PopoverTrigger
 } from '@/components/ui/popover';
-import PhoneInput from 'react-phone-number-input';
-import 'react-phone-number-input/style.css';
+import { Calendar } from '@/components/ui/calendar';
+import { toast, ToastContainer } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
+import {
+  useGetProductsQuery,
+  useSelProductMutation,
+  useUpdateOrderMutation,
+  useGetAllCustomerQuery,
+  useGetOrdersQuery
+} from '@/store/authApi';
+import { getAuthCookie } from '@/actions/auth.actions';
+import {
+  Search,
+  ShoppingCart,
+  Plus,
+  Minus,
+  Trash2,
+  Building2,
+  Smartphone,
+  DollarSign,
+  Barcode,
+  User,
+  UserPlus,
+  RefreshCcw,
+  Printer,
+  Mail,
+  Send,
+  Check,
+  X,
+  Loader2,
+  ChevronRight,
+  ChevronLeft,
+  FileText,
+  Eye,
+  Calendar as CalendarIcon,
+  ArrowUpDown,
+  MoreHorizontal,
+  Edit,
+  Trash,
+  Filter,
+  HelpCircle,
+  LogOut,
+  ChevronDown,
+  ChevronUp,
+  Menu,
+  Camera
+} from 'lucide-react';
+import { format } from 'date-fns';
+import { BarcodeScanner } from '@thewirv/react-barcode-scanner';
 
 interface Product {
   _id: string;
@@ -72,114 +121,331 @@ interface Product {
   barcode: string | null;
 }
 
-interface ScannedItem extends Product {
-  scannedQuantity: number;
-}
-
-interface CustomerDetails {
+interface Customer {
+  id: string;
   name: string;
   email: string;
   phone: string;
 }
 
-const fetchProductDetailsByName = async (
-  name: string,
-  productServer: Product[]
-): Promise<Product> => {
-  const product = productServer.find((p) => p.name === name);
-  if (product) {
-    return product;
-  } else {
-    throw new Error('Product not found');
+// Mock data for products, customers, and transactions
+const mockProducts = [
+  {
+    id: 'P001',
+    name: 'T-Shirt',
+    price: 19.99,
+    barcode: '123456789',
+    category: 'Clothing',
+    image: '/placeholder.svg?height=100&width=100',
+    stock: 50
+  },
+  {
+    id: 'P002',
+    name: 'Jeans',
+    price: 49.99,
+    barcode: '234567890',
+    category: 'Clothing',
+    image: '/placeholder.svg?height=100&width=100',
+    stock: 30
+  },
+  {
+    id: 'P003',
+    name: 'Sneakers',
+    price: 79.99,
+    barcode: '345678901',
+    category: 'Footwear',
+    image: '/placeholder.svg?height=100&width=100',
+    stock: 20
+  },
+  {
+    id: 'P004',
+    name: 'Backpack',
+    price: 39.99,
+    barcode: '456789012',
+    category: 'Accessories',
+    image: '/placeholder.svg?height=100&width=100',
+    stock: 15
+  },
+  {
+    id: 'P005',
+    name: 'Water Bottle',
+    price: 9.99,
+    barcode: '567890123',
+    category: 'Accessories',
+    image: '/placeholder.svg?height=100&width=100',
+    stock: 100
+  },
+  {
+    id: 'P006',
+    name: 'Hoodie',
+    price: 59.99,
+    barcode: '678901234',
+    category: 'Clothing',
+    image: '/placeholder.svg?height=100&width=100',
+    stock: 25
+  },
+  {
+    id: 'P007',
+    name: 'Socks',
+    price: 7.99,
+    barcode: '789012345',
+    category: 'Clothing',
+    image: '/placeholder.svg?height=100&width=100',
+    stock: 200
+  },
+  {
+    id: 'P008',
+    name: 'Hat',
+    price: 24.99,
+    barcode: '890123456',
+    category: 'Accessories',
+    image: '/placeholder.svg?height=100&width=100',
+    stock: 40
+  },
+  {
+    id: 'P009',
+    name: 'Sunglasses',
+    price: 29.99,
+    barcode: '901234567',
+    category: 'Accessories',
+    image: '/placeholder.svg?height=100&width=100',
+    stock: 35
+  },
+  {
+    id: 'P010',
+    name: 'Watch',
+    price: 99.99,
+    barcode: '012345678',
+    category: 'Accessories',
+    image: '/placeholder.svg?height=100&width=100',
+    stock: 10
   }
-};
+];
 
-const fetchProductByBarcode = async (
-  barcode: string,
-  productServer: Product[]
-): Promise<Product> => {
-  const product = productServer.find((p) => p.barcode === barcode);
-  if (product) {
-    return product;
-  } else {
-    throw new Error('Product not found');
+const mockCustomers = [
+  {
+    id: 'C001',
+    name: 'John Doe',
+    phone: '1234567890',
+    email: 'john@example.com',
+    loyaltyPoints: 100
+  },
+  {
+    id: 'C002',
+    name: 'Jane Smith',
+    phone: '2345678901',
+    email: 'jane@example.com',
+    loyaltyPoints: 50
+  },
+  {
+    id: 'C003',
+    name: 'Bob Johnson',
+    phone: '3456789012',
+    email: 'bob@example.com',
+    loyaltyPoints: 75
   }
-};
+];
 
-const NumericKeypad = ({
-  onInput,
-  onClear,
-  onSubmit
-}: {
-  onInput: (value: string) => void;
-  onClear: () => void;
-  onSubmit: () => void;
-}) => {
-  const buttons = ['7', '8', '9', '4', '5', '6', '1', '2', '3', '.', '0', '00'];
+const mockTransactions = [
+  {
+    id: 'T001',
+    customerId: 'C001',
+    date: '2023-07-01',
+    total: 129.97,
+    items: [
+      { id: 'P001', name: 'T-Shirt', price: 19.99, quantity: 2 },
+      { id: 'P002', name: 'Jeans', price: 49.99, quantity: 1 },
+      { id: 'P005', name: 'Water Bottle', price: 9.99, quantity: 4 }
+    ],
+    paymentMethod: 'Cash',
+    vat: 6.5,
+    discount: 0,
+    type: 'sale'
+  },
+  {
+    id: 'T002',
+    customerId: 'C002',
+    date: '2023-07-02',
+    total: 189.97,
+    items: [
+      { id: 'P003', name: 'Sneakers', price: 79.99, quantity: 1 },
+      { id: 'P006', name: 'Hoodie', price: 59.99, quantity: 1 },
+      { id: 'P008', name: 'Hat', price: 24.99, quantity: 2 }
+    ],
+    paymentMethod: 'EVC',
+    vat: 9.5,
+    discount: 5,
+    type: 'sale'
+  }
+];
 
-  return (
-    <div className="grid grid-cols-3 gap-2">
-      {buttons.map((btn) => (
-        <Button key={btn} onClick={() => onInput(btn)} className="h-12 text-lg">
-          {btn}
-        </Button>
-      ))}
-      <Button onClick={onClear} className="h-12 text-lg">
-        Clear
-      </Button>
-      <Button onClick={onSubmit} className="col-span-2 h-12 text-lg">
-        Enter
-      </Button>
-    </div>
-  );
-};
+const localBanks = [
+  { id: 'B001', name: 'Salaam Bank' },
+  { id: 'B002', name: 'Dahabshiil Bank' },
+  { id: 'B003', name: 'Amal Bank' },
+  { id: 'B004', name: 'Premier Bank' }
+];
 
-export default function POSSystem() {
-  const [scannedItems, setScannedItems] = useState<ScannedItem[]>([]);
-  const [barcode, setBarcode] = useState('');
-  const [isCameraActive, setIsCameraActive] = useState(false);
-  const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
-  const [customerDetails, setCustomerDetails] = useState<CustomerDetails>({
-    name: '',
-    email: '',
-    phone: ''
-  });
-
-  const [isCashPayment, setIsCashPayment] = useState(true);
-  const [isKeypadOpen, setIsKeypadOpen] = useState(false);
-  const [currentItemId, setCurrentItemId] = useState<string | null>(null);
-  const [keypadValue, setKeypadValue] = useState('');
-  const [amountPaid, setAmountPaid] = useState('');
-  const [change, setChange] = useState(0);
-  const [cookies, setcookies] = useState(null);
-  const barcodeInputRef = useRef<HTMLInputElement>(null);
-  const [isSearchOpen, setIsSearchOpen] = useState(false);
+export default function EnhancedPOSSystem() {
+  const [cart, setCart] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
-  const [formErrors, setFormErrors] = useState<{ [key: string]: string }>({});
-  const [isProcessingOrder, setIsProcessingOrder] = useState(false);
+  const [productsServer, setProductsServer] = useState([]);
+  const [filteredProducts, setFilteredProducts] = useState([]);
+  const [selectedProduct, setSelectedProduct] = useState(null);
+  const [isCheckoutDialogOpen, setIsCheckoutDialogOpen] = useState(false);
+  const [paymentMethod, setPaymentMethod] = useState('');
+  const [selectedBank, setSelectedBank] = useState('');
+  const [cashReceived, setCashReceived] = useState('');
+  const [isProcessingPayment, setIsProcessingPayment] = useState(false);
+  const [isSaleComplete, setIsSaleComplete] = useState(false);
+  const [receiptMethod, setReceiptMethod] = useState('');
+  const [currentCustomer, setCurrentCustomer] = useState(null);
+  const [isCustomerDialogOpen, setIsCustomerDialogOpen] = useState(false);
+  const [isReturnDialogOpen, setIsReturnDialogOpen] = useState(false);
+  const [returnInvoice, setReturnInvoice] = useState('');
+  const [returnItems, setReturnItems] = useState([]);
+  const [discountType, setDiscountType] = useState('percentage');
+  const [discountValue, setDiscountValue] = useState('0');
+  const [newCustomer, setNewCustomer] = useState({
+    name: '',
+    phone: '',
+    email: ''
+  });
+  const [isTransactionHistoryOpen, setIsTransactionHistoryOpen] =
+    useState(false);
+  const [selectedTransaction, setSelectedTransaction] = useState(null);
+  const [isTransactionDetailsOpen, setIsTransactionDetailsOpen] =
+    useState(false);
+  const [date, setDate] = useState(new Date());
+  const [sortConfig, setSortConfig] = useState({
+    key: null,
+    direction: 'ascending'
+  });
+  const [customerSearchQuery, setCustomerSearchQuery] = useState('');
+  const [isCameraOpen, setIsCameraOpen] = useState(false);
+  const [searchSuggestions, setSearchSuggestions] = useState([]);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const [transactionSearchQuery, setTransactionSearchQuery] = useState('');
+  const [transactionTypeFilter, setTransactionTypeFilter] = useState('all');
+  const [authCode, setAuthCode] = useState('');
+  const [isAuthCodeSent, setIsAuthCodeSent] = useState(false);
+  const [isProductCatalogVisible, setIsProductCatalogVisible] = useState(true);
+  const [selectedCategory, setSelectedCategory] = useState('All');
+  const [cookies, setcookies] = useState(null);
+  const [isCameraActive, setIsCameraActive] = useState(false);
   const [lastScanTime, setLastScanTime] = useState(0);
-  const [discount, setDiscount] = useState(0);
-  const [discountType, setDiscountType] = useState<'percentage' | 'fixed'>(
-    'percentage'
-  );
+
+  const VAT_RATE = 0.05; // 5% VAT rate
+
+  const searchInputRef = useRef(null);
+  const searchResultsRef = useRef(null);
 
   const {
     data: productServer,
     error,
     isFetching,
     isError
-  } = useGetProductsQuery(cookies);
-  // const { data: orderData, error: orderError, refetch } = useGetOrderByInvoiceQuery({ invoiceNumber, cookies }, { skip: !invoiceNumber });
+  } = useGetProductsQuery(cookies, {
+    skip: !cookies
+  });
+
+  const { data: customers, error: customersError } = useGetAllCustomerQuery(
+    cookies,
+    {
+      skip: !cookies
+    }
+  );
+  const { data: orders, refetch } = useGetOrdersQuery(cookies, {
+    skip: !cookies
+  });
   const [sell, { isLoading, isError: isSellError, isSuccess }] =
     useSelProductMutation();
+
+  // console.log(productServer)
+
+  const [transactions, setTransactions] = useState(orders);
+
+  const [filteredCustomers, setFilteredCustomers] = useState(customers);
+
+  const categories = useMemo(
+    // @ts-ignore
+    () => [...new Set(productServer?.map((product) => product.category))],
+    [productServer]
+  );
+
+  // const { data: orderData, error: orderError, refetch } = useGetOrderByInvoiceQuery({ invoiceNumber, cookies }, { skip: !invoiceNumber });
 
   useEffect(() => {
     getAuthCookie().then((k: any) => {
       setcookies(k);
     });
-    if (barcodeInputRef.current) {
-      barcodeInputRef.current.focus();
-    }
+    // if (barcodeInputRef.current) {
+    //   barcodeInputRef.current.focus();
+    // }
+  }, []);
+
+  useEffect(() => {
+    const delayDebounceFn = setTimeout(async () => {
+      if (searchQuery) {
+        const all = await productServer;
+        const lowercasedQuery = searchQuery.toLowerCase();
+        const filtered = await all.filter(
+          (product: Product) =>
+            (product.name.toLowerCase().includes(lowercasedQuery) ||
+              product._id.toLowerCase().includes(lowercasedQuery) ||
+              // @ts-ignore
+              product?.barcode.includes(lowercasedQuery)) &&
+            (selectedCategory === 'All' ||
+              product.category === selectedCategory)
+        );
+        setFilteredProducts(filtered);
+        setSearchSuggestions(
+          filtered.slice(0, 5).map((product: Product) => product)
+        );
+      } else {
+        setFilteredProducts(
+          productServer?.filter(
+            (product: Product) =>
+              selectedCategory === 'All' ||
+              product.category === selectedCategory
+          )
+        );
+        setSearchSuggestions([]);
+      }
+    }, 300);
+
+    return () => clearTimeout(delayDebounceFn);
+  }, [searchQuery, selectedCategory]);
+
+  useEffect(() => {
+    setTransactions(orders);
+    const filtered = customers?.filter(
+      (customer) =>
+        customer._id
+          .toLowerCase()
+          .includes(customerSearchQuery.toLowerCase()) ||
+        customer.phone.includes(customerSearchQuery)
+    );
+    setFilteredCustomers(filtered);
+  }, [customerSearchQuery]);
+
+  const addToCart = useCallback((product: Product) => {
+    setCart((prevCart) => {
+      const existingItem = prevCart.find(
+        (item: Product) => item._id === product._id
+      );
+      if (existingItem) {
+        return prevCart.map((item: Product) =>
+          item._id === product._id
+            ? { ...item, quantity: item.quantity + 1 }
+            : item
+        );
+      } else {
+        return [...prevCart, { ...product, quantity: 1 }];
+      }
+    });
+    setSelectedProduct(null);
+    toast.success(`${product.name} added to cart`);
   }, []);
 
   const handleScan = async (scannedBarcode: string) => {
@@ -187,618 +453,1396 @@ export default function POSSystem() {
       toast.error('Please enter a barcode');
       return;
     }
+    // setFormData((prev) => ({ ...prev, barcode: scannedBarcode }))
     const product = await fetchProductByBarcode(scannedBarcode, productServer);
-    if (product && product.quantity > 0) {
-      addProductToCart(product);
-      setBarcode('');
+    addToCart(product);
+  };
+
+  const fetchProductByBarcode = async (
+    barcode: string,
+    productServer: Product[]
+  ): Promise<Product> => {
+    const product = productServer.find((p) => p.barcode === barcode);
+    if (product) {
+      return product;
     } else {
-      toast.error(
-        `No product found with barcode: ${scannedBarcode} or Product is out of stock`
-      );
+      throw new Error('Product not found');
     }
   };
 
-  const addProductToCart = (product: Product) => {
-    setScannedItems((prevItems) => {
-      const existingItem = prevItems.find((item) => item._id === product._id);
-      if (existingItem) {
-        if (existingItem.scannedQuantity < product.quantity) {
-          return prevItems.map((item) =>
-            item._id === product._id
-              ? { ...item, scannedQuantity: item.scannedQuantity + 1 }
-              : item
-          );
-        } else {
-          toast.error(`Cannot add more ${product.name}. Stock limit reached.`);
-          return prevItems;
-        }
+  const removeFromCart = useCallback((productId: string) => {
+    setCart((cart) => cart.filter((item: Product) => item._id !== productId));
+  }, []);
+
+  const updateQuantity = useCallback(
+    (productId: string, newQuantity: Number) => {
+      if (newQuantity === 0) {
+        removeFromCart(productId);
       } else {
-        return [...prevItems, { ...product, scannedQuantity: 1 }];
+        // @ts-ignore
+        setCart((cart) =>
+          cart.map((item: Product) =>
+            item._id === productId ? { ...item, quantity: newQuantity } : item
+          )
+        );
       }
-    });
+    },
+    [removeFromCart]
+  );
+
+  const calculateSubtotal = useCallback(() => {
+    return cart.reduce(
+      (total, item: Product) => total + item.sellPrice * item.quantity,
+      0
+    );
+  }, [cart]);
+
+  const calculateDiscount = useCallback(() => {
+    const subtotal = calculateSubtotal();
+    if (discountType === 'percentage') {
+      return subtotal * (parseFloat(discountValue) / 100);
+    } else {
+      return parseFloat(discountValue) || 0;
+    }
+  }, [calculateSubtotal, discountType, discountValue]);
+
+  const calculateVAT = useCallback(() => {
+    return calculateSubtotal() * VAT_RATE;
+  }, [calculateSubtotal, calculateDiscount]);
+
+  const calculateTotal = useCallback(() => {
+    return calculateSubtotal() - calculateDiscount() + calculateVAT() || 0;
+  }, [calculateSubtotal, calculateDiscount, calculateVAT]);
+
+  const calculateChange = useCallback(() => {
+    const total = calculateTotal();
+    const received = parseFloat(cashReceived);
+    return received >= total ? (received - total).toFixed(2) : '0.00';
+  }, [calculateTotal, cashReceived]);
+
+  const handleCheckout = useCallback(() => {
+    setIsCheckoutDialogOpen(true);
+  }, []);
+
+  const processPayment = async () => {
+    setIsProcessingPayment(true);
+    // Simulate payment processing
+    const newTransaction = {
+      // id: `T${transactions.length + 1}`.padStart(4, '0'),
+      user: currentCustomer ? currentCustomer : null,
+      total: calculateTotal(),
+      products: cart.map((item: Product) => ({
+        id: item._id,
+        name: item.name,
+        price: item.price,
+        quantity: String(item.quantity)
+      })),
+      cashType: paymentMethod,
+      vat: calculateVAT(),
+      discount: calculateDiscount(),
+      cookies
+    };
+
+    try {
+      // console.log(newTransaction)
+      const result = await sell(newTransaction);
+      if ('error' in result) {
+        toast.error('An error occurred during checkout');
+        setIsProcessingPayment(false);
+        resetSale();
+        return;
+      }
+      toast.success('Order placed successfully');
+      console.log(result);
+
+      await refetch();
+
+      setIsProcessingPayment(false);
+      setIsSaleComplete(true);
+    } catch (error) {
+      toast.error('An unexpected error occurred during checkout');
+    }
+
+    // Update inventory
+
+    // Update customer loyalty points
+    // if (currentCustomer) {
+    // const customerIndex = customers.findIndex(c => c._id === currentCustomer._id)
+    // if (customerIndex !== -1) {
+    //   customers[customerIndex].loyaltyPoints +=   Math.floor(calculateTotal())
+    // }
+    // }
   };
 
-  const handleQuantityChange = (id: string, newQuantity: number) => {
-    setScannedItems((prevItems) =>
-      prevItems
-        .map((item) => {
-          if (item._id === id) {
-            if (item.isQuantityBased) {
-              if (newQuantity > item.quantity) {
-                toast.error(
-                  `Cannot add more ${item.name}. Stock limit reached.`
-                );
-                return item;
-              }
-              return { ...item, scannedQuantity: Math.max(0, newQuantity) };
-            } else {
-              if (newQuantity > Number(item.units.split(' ')[0])) {
-                toast.error(
-                  `Cannot add more ${item.name}. Stock limit reached.`
-                );
-                return item;
-              }
-              return { ...item, scannedQuantity: Math.max(0, newQuantity) };
-            }
-          }
-          return item;
-        })
-        .filter((item) => item.scannedQuantity > 0)
+  const resetSale = useCallback(() => {
+    setCart([]);
+    setPaymentMethod('');
+    setSelectedBank('');
+    setCashReceived('');
+    setIsSaleComplete(false);
+    setIsCheckoutDialogOpen(false);
+    setReceiptMethod('');
+    setCurrentCustomer(null);
+    setDiscountType('percentage');
+    setDiscountValue('0');
+    setNewCustomer({ name: '', phone: '', email: '' });
+  }, []);
+
+  const handleBarcodeSubmit = useCallback(
+    (e: any) => {
+      e.preventDefault();
+      const scannedProduct = productServer?.find(
+        (product: Product) => product.barcode === searchQuery
+      );
+      if (scannedProduct) {
+        addToCart(scannedProduct);
+        setSearchQuery('');
+      } else {
+        toast.error('Product not found');
+      }
+    },
+    [searchQuery, addToCart]
+  );
+
+  const handleCustomerSearch = useCallback((query: any) => {
+    const customer = customers.find(
+      (c) => c._id === query || c.phone === query
+    );
+    if (customer) {
+      setCurrentCustomer(customer);
+      setIsCustomerDialogOpen(false);
+      toast.success('Customer found and selected');
+    } else {
+      toast.error('Customer not found');
+    }
+  }, []);
+
+  const handleQuickRegister = useCallback(
+    (customerData: Customer) => {
+      // Demo authentication
+      // if (authCode !== '1234') {
+      //   toast.error('Invalid authentication code')
+      //   return
+      // }
+
+      const newCustomer = {
+        ...customerData,
+        loyaltyPoints: 0
+      };
+      // customers.push(newCustomer)
+      //@ts-ignore
+      setCurrentCustomer(newCustomer);
+      setIsCustomerDialogOpen(false);
+      toast.success('Customer registered successfully');
+      setAuthCode('');
+      setIsAuthCodeSent(false);
+    },
+    [authCode]
+  );
+
+  const handleReturnSearch = useCallback(() => {
+    const transaction = orders?.find(
+      (t: Product) => t.invoiceNumber === returnInvoice
+    );
+    if (transaction) {
+      // @ts-ignore
+      setReturnItems(
+        transaction.products.map((item) => ({ ...item, returnQuantity: 0 }))
+      );
+    } else {
+      toast.error('Invoice not found');
+    }
+  }, [returnInvoice, orders]);
+
+  // for refunding product api
+  const [updateOrder, { isLoading: isUpdating, isError: updateError }] =
+    useUpdateOrderMutation();
+
+  const handleReturnSubmit = async () => {
+    const itemsToReturn = returnItems.filter(
+      (item: Product) => item.returnQuantity > 0
+    );
+    if (itemsToReturn.length === 0) {
+      toast.error('No items selected for return');
+      return;
+    }
+
+    try {
+      const result = await updateOrder({
+        data: {
+          products: itemsToReturn,
+          invoiceNumber: returnInvoice
+        },
+        cookies
+      }).unwrap();
+
+      if ('error' in result) {
+        throw new Error(result.error);
+      }
+      const returnTotal = itemsToReturn.reduce(
+        (total, item) => total + item.price * Number(item.returnQuantity),
+        0
+      );
+      toast.success(
+        `Return processed. Refund amount: $${returnTotal.toFixed(2)}`
+      );
+      await refetch();
+    } catch (error) {
+      toast.error(
+        // @ts-ignore
+        `Error processing refund: ${error.message || 'Unknown error'}`
+      );
+    }
+    // Process return
+    // const newTransaction = {
+    //   customerId: currentCustomer ? currentCustomer._id : null,
+    //   date: new Date().toISOString().split('T')[0],
+    //   total: -returnTotal, // Negative value for refunds
+    //   items: itemsToReturn.map(item => ({
+    //     id: item._id,
+    //     name: item.name,
+    //     price: item.sellPrice,
+    //     quantity: -item.returnQuantity // Negative quantity for refunds
+    //   })),
+    //   paymentMethod: 'Refund',
+    //   vat: -returnTotal * VAT_RATE,
+    //   discount: 0,
+    //   type: 'refund',
+    // }
+    // setTransactions(prev => [...prev, newTransaction])
+
+    // Update inventory
+    // productServer?.forEach((product: Product) => {
+    //   const returnItem = itemsToReturn.find(item => item._id === product._id)
+    //   if (returnItem) {
+    //     product.quantity += returnItem.returnQuantity
+    //   }
+    // })
+    setReturnItems([]);
+    setReturnInvoice('');
+    setIsReturnDialogOpen(false);
+  };
+
+  const handlePayment = () => {
+    if (
+      paymentMethod === 'Cash' &&
+      parseFloat(cashReceived) < calculateTotal()
+    ) {
+      toast.error('Insufficient cash received');
+      return;
+    }
+    if (paymentMethod === 'Bank' && !selectedBank) {
+      toast.error('Please select a bank');
+      return;
+    }
+    processPayment();
+  };
+
+  const filteredTransactions = useMemo(() => {
+    return orders?.filter((transaction) => {
+      const matchesSearch =
+        transaction.invoiceNumber
+          .toLowerCase()
+          .includes(transactionSearchQuery.toLowerCase()) ||
+        (transaction.user.phone &&
+          transaction.user.phone
+            .toLowerCase()
+            .includes(transactionSearchQuery.toLowerCase()));
+      const matchesType =
+        transactionTypeFilter === 'all' ||
+        transaction.status === transactionTypeFilter;
+      return matchesSearch && matchesType;
+    });
+  }, [orders, transactionSearchQuery, transactionTypeFilter]);
+
+  const sortedTransactions =
+    filteredTransactions &&
+    [...filteredTransactions].sort((a, b) => {
+      if (sortConfig.key === null) return 0;
+      const aValue = a[sortConfig.key];
+      const bValue = b[sortConfig.key];
+      if (aValue < bValue) return sortConfig.direction === 'ascending' ? -1 : 1;
+      if (aValue > bValue) return sortConfig.direction === 'ascending' ? 1 : -1;
+      return 0;
+    });
+
+  const requestSort = (key) => {
+    let direction = 'ascending';
+    if (sortConfig.key === key && sortConfig.direction === 'ascending') {
+      direction = 'descending';
+    }
+    setSortConfig({ key, direction });
+  };
+
+  const handleCameraCapture = () => {
+    // Simulating barcode capture
+    const randomProduct =
+      productServer[Math.floor(Math.random() * productServer.length)];
+    addToCart(randomProduct);
+    setIsCameraOpen(false);
+    toast.success(`${randomProduct.name} added to cart`);
+  };
+
+  const handleSearchSuggestionClick = (product) => {
+    addToCart(product);
+    setSearchQuery('');
+  };
+
+  const handleLoadMore = () => {
+    setIsLoadingMore(true);
+    // Simulate loading more products
+    setTimeout(() => {
+      const moreProducts = productServer;
+      setFilteredProducts((prevProducts) => [...prevProducts, ...moreProducts]);
+      setIsLoadingMore(false);
+    }, 1000);
+  };
+
+  const highlightMatch = (text, query) => {
+    if (!query) return text;
+    const parts = text.split(new RegExp(`(${query})`, 'gi'));
+    return parts.map((part, index) =>
+      part.toLowerCase() === query.toLowerCase() ? (
+        <mark key={index}>{part}</mark>
+      ) : (
+        part
+      )
     );
   };
 
-  const handleRemoveItem = (id: string) => {
-    setScannedItems((prevItems) => prevItems.filter((item) => item._id !== id));
-  };
-
-  const totalAmount = scannedItems.reduce(
-    (sum, item) => sum + item.sellPrice * item.scannedQuantity,
-    0
-  );
-
-  const calculateTax = (amount: number) => {
-    return amount * 0.05; // 5% tax
-  };
-
-  const taxAmount = calculateTax(totalAmount);
-  const totalWithTax = totalAmount + taxAmount;
-
-  // const calculateTotalWithDiscount = () => {
-  //   if (discountType === 'percentage') {
-  //     return totalAmount * (1 - discount / 100);
-  //   } else {
-  //     return Math.max(0, totalAmount - discount);
-  //   }
-  // };
-
-  const handleDiscountChange = (value: string) => {
-    const discountValue = parseFloat(value);
-    if (!isNaN(discountValue)) {
-      if (discountType === 'percentage' && discountValue > 100) {
-        setDiscount(100);
-      } else {
-        setDiscount(discountValue);
-      }
-    } else {
-      setDiscount(0);
+  const maskCustomerInfo = (info, type) => {
+    if (type === 'name') {
+      const nameParts = info.split(' ');
+      return `*** ${nameParts[nameParts.length - 1]}`;
+    } else if (type === 'phone') {
+      return `******${info.slice(-4)}`;
+    } else if (type === 'email') {
+      const [username, domain] = info.split('@');
+      return `${username[0]}****@${domain}`;
     }
+    return info;
   };
 
-  const handleCheckout = () => {
-    setIsCheckoutOpen(true);
-    setAmountPaid('');
-    setChange(0);
-    setFormErrors({});
+  const handleSendAuthCode = () => {
+    // In a real application, this would send an authentication code to the user's phone
+    setIsAuthCodeSent(true);
+    toast.success('Authentication code sent to your phone');
   };
 
-  const validateForm = () => {
-    const errors: { [key: string]: string } = {};
-    if (!customerDetails.name.trim()) {
-      errors.name = 'Name is required';
-    }
-    if (!customerDetails.email.trim()) {
-      errors.email = 'Email is required';
-    } else if (!/\S+@\S+\.\S+/.test(customerDetails.email)) {
-      errors.email = 'Email is invalid';
-    }
-    if (!customerDetails.phone.trim()) {
-      errors.phone = 'Phone number is required';
-    }
-    if (
-      isCashPayment &&
-      (!amountPaid || parseFloat(amountPaid) < totalAmount)
-    ) {
-      errors.amountPaid = 'Amount paid must be at least the total amount';
-    }
-    setFormErrors(errors);
-    return Object.keys(errors).length === 0;
-  };
-
-  const handleCompleteCheckout = async () => {
-    if (!validateForm()) {
-      return;
-    }
-    setIsProcessingOrder(true);
-    const products = scannedItems.map((item) => ({
-      productId: item._id,
-      quantity: String(item.scannedQuantity)
-    }));
-    const datas = {
-      data: {
-        products,
-        cashType: isCashPayment ? 'CASH' : 'EVC',
-        customer: customerDetails,
-        discount: {
-          type: discountType,
-          value: discount,
-          amount: taxAmount
-        }
-      },
-      cookies
-    };
-    if (products.length > 0) {
-      try {
-        const result = await sell(datas);
-        // console.log(datas);
-        if ('error' in result) {
-          toast.error('An error occurred during checkout');
-          setScannedItems([]);
-        } else {
-          toast.success('Order placed successfully');
-          toast.success(
-            `Subtotal: $${totalAmount.toFixed(2)}, Tax: $${taxAmount.toFixed(
-              2
-            )}, Total: $${totalWithTax.toFixed(
-              2
-            )}, Paid: $${amountPaid}, Change: $${change.toFixed(2)}`
-          );
-          setScannedItems([]);
-          setCustomerDetails({ name: '', email: '', phone: '' });
-          setIsCheckoutOpen(false);
-          setAmountPaid('');
-          setChange(0);
-        }
-      } catch (error) {
-        toast.error('An unexpected error occurred during checkout');
-      } finally {
-        setIsProcessingOrder(false);
-      }
-    } else {
-      setIsProcessingOrder(false);
-      toast.error('No products in the cart');
-    }
-  };
-
-  const openKeypad = (id: string | null) => {
-    setCurrentItemId(id);
-    setKeypadValue('');
-    setIsKeypadOpen(true);
-  };
-
-  const handleKeypadInput = (value: string) => {
-    setKeypadValue((prev) => {
-      if (value === '.' && prev.includes('.')) return prev;
-      return prev + value;
-    });
-  };
-
-  const handleKeypadClear = () => {
-    setKeypadValue('');
-  };
-
-  const handleKeypadSubmit = () => {
-    if (currentItemId) {
-      const item = scannedItems.find((item) => item._id === currentItemId);
-      if (item) {
-        const newQuantity = parseFloat(keypadValue) || 0;
-        if (item.isQuantityBased) {
-          if (newQuantity > item.quantity) {
-            toast.error(`Cannot add more ${item.name}. Stock limit reached.`);
-          } else {
-            handleQuantityChange(currentItemId, newQuantity);
-          }
-        } else {
-          if (newQuantity > Number(item.units.split(' ')[0])) {
-            toast.error(`Cannot add more ${item.name}. Stock limit reached.`);
-          } else {
-            handleQuantityChange(currentItemId, newQuantity);
-          }
-        }
-      }
-    } else {
-      setAmountPaid(keypadValue);
-      const paid = parseFloat(keypadValue);
-      if (!isNaN(paid)) {
-        setChange(Math.max(0, paid - totalWithTax));
-      }
-    }
-    setIsKeypadOpen(false);
-  };
-
-  const handleSearch = (productName: string) => {
-    const product = productServer.find((p: Product) => p.name === productName);
-    if (product) {
-      addProductToCart(product);
-      setIsSearchOpen(false);
-      setSearchQuery('');
-    }
+  const isProductInCart = (productId) => {
+    return cart.some((item) => item._id === productId);
   };
 
   return (
-    <div className="flex flex-col lg:flex-row">
-      <Toaster />
-      {/* Left side - Product list */}
-      <div className="flex-1 overflow-auto p-4">
-        <h1 className="mb-4 text-xl font-bold md:text-2xl">POS System</h1>
-        <div className="mb-4 flex flex-col space-y-2 sm:flex-row sm:space-x-2 sm:space-y-0">
-          {/* <Input
-            ref={barcodeInputRef}
-            type="text"
-            placeholder="Scan or enter barcode"
-            value={barcode}
-            onChange={(e) => setBarcode(e.target.value)}
-            onKeyPress={(e) => e.key === 'Enter' && handleScan(barcode)}
-            className="flex-grow"
-          /> */}
-          <Popover open={isSearchOpen} onOpenChange={setIsSearchOpen}>
-            <PopoverTrigger asChild>
-              <Button className="w-full flex-grow sm:w-auto" variant="outline">
-                <SearchIcon className="mr-2 h-4 w-4" />
-                Search
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-[300px] p-0">
-              <Command>
-                <CommandInput
+    <div className="flex h-screen flex-col ">
+      <ToastContainer
+        position="top-right"
+        autoClose={3000}
+        hideProgressBar={false}
+        newestOnTop={false}
+        closeOnClick
+        rtl={false}
+        pauseOnFocusLoss
+        draggable
+        pauseOnHover
+      />
+
+      {/* Main content area */}
+      <main className="flex-1 overflow-y-auto overflow-x-hidden  p-4">
+        <div className="mx-auto max-w-7xl">
+          {/* Search bar and function buttons */}
+          <div className="mb-4 space-y-4">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div className="relative flex-grow">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 transform text-gray-400" />
+                <Input
+                  ref={searchInputRef}
+                  type="text"
                   placeholder="Search products..."
                   value={searchQuery}
-                  className="flex-grow rounded-none"
-                  onValueChange={setSearchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full py-2 pl-10 pr-4"
                 />
-                <CommandList>
-                  <CommandEmpty>No products found.</CommandEmpty>
-                  <CommandGroup>
-                    {productServer &&
-                      productServer
-                        .filter((product: Product) =>
-                          product.name
-                            .toLowerCase()
-                            .includes(searchQuery.toLowerCase())
-                        )
-                        .map((product: Product) => (
-                          <CommandItem
-                            key={product._id}
-                            onSelect={() => handleSearch(product.name)}
-                          >
-                            {product.name}
-                          </CommandItem>
-                        ))}
-                  </CommandGroup>
-                </CommandList>
-              </Command>
-            </PopoverContent>
-          </Popover>
-          {/* <Button
-            onClick={() => handleScan(barcode)}
-            disabled={!barcode.trim()}
-            className="w-full sm:w-auto"
-          >
-            <BarcodeIcon className="mr-2 h-4 w-4" />
-            Scan
-          </Button> */}
-
-          <Button
-            className="w-full sm:w-auto"
-            onClick={() => setIsCameraActive(!isCameraActive)}
-          >
-            {isCameraActive ? 'Stop Camera' : 'Start Camera'}
-          </Button>
-        </div>
-        {isCameraActive && (
-          <div className="mb-4">
-            <BarcodeScanner
-              onSuccess={(result) => {
-                if (result) {
-                  // console.log(result);
-                  const currentTime = Date.now();
-                  if (currentTime - lastScanTime < 2000) {
-                    // If less than 1 second has passed since the last scan, ignore this scan
-                    return;
-                  }
-                  setLastScanTime(currentTime);
-                  handleScan(result);
-                  setIsCameraActive(false);
-                  // setBarcode(result);
-                }
-              }}
-              onError={(error) => {
-                if (error) {
-                  console.error(error.message);
-                }
-              }}
-              containerStyle={{ width: '100%', height: '300px' }}
-            />
+                {searchQuery && (
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="absolute right-2 top-1/2 -translate-y-1/2 transform"
+                    onClick={() => setSearchQuery('')}
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                )}
+                {!isProductCatalogVisible && searchSuggestions.length > 0 && (
+                  <div className="absolute z-10 mt-1 w-full rounded-md bg-gray-300 shadow-lg">
+                    {searchSuggestions.map((product: Product) => (
+                      <div
+                        key={product._id}
+                        className="flex cursor-pointer items-center justify-between px-4 py-2"
+                        onClick={() => handleSearchSuggestionClick(product)}
+                      >
+                        <div>
+                          <div>{highlightMatch(product.name, searchQuery)}</div>
+                          <div className="text-sm text-gray-500">
+                            ${product.sellPrice.toFixed(2)}
+                          </div>
+                        </div>
+                        <Button size="sm" variant="ghost">
+                          <Plus className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setIsReturnDialogOpen(true)}
+                >
+                  <RefreshCcw className="h-4 w-4" />
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setIsTransactionHistoryOpen(true)}
+                >
+                  <FileText className="h-4 w-4" />
+                </Button>
+                <Button
+                  className="w-full sm:w-auto"
+                  onClick={() => setIsCameraActive(!isCameraActive)}
+                >
+                  <Camera className="h-4 w-4" />
+                </Button>
+                {isCameraActive && (
+                  <div className="mb-4">
+                    <BarcodeScanner
+                      onSuccess={(result) => {
+                        if (result) {
+                          // console.log(result);
+                          const currentTime = Date.now();
+                          if (currentTime - lastScanTime < 2000) {
+                            // If less than 1 second has passed since the last scan, ignore this scan
+                            return;
+                          }
+                          setLastScanTime(currentTime);
+                          handleScan(result);
+                          setIsCameraActive(false);
+                          // setBarcode(result);
+                        }
+                      }}
+                      onError={(error) => {
+                        if (error) {
+                          console.error(error.message);
+                        }
+                      }}
+                      containerStyle={{ width: '100%', height: '300px' }}
+                    />
+                  </div>
+                )}
+                {currentCustomer ? (
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button variant="outline" size="sm">
+                        <User className="mr-2 h-4 w-4" />
+                        {maskCustomerInfo(currentCustomer.name, 'name')}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-60">
+                      <div className="space-y-2">
+                        <p>
+                          <strong>ID:</strong> {currentCustomer._id}
+                        </p>
+                        <p>
+                          <strong>Phone:</strong>{' '}
+                          {maskCustomerInfo(currentCustomer.phone, 'phone')}
+                        </p>
+                        <p>
+                          <strong>Email:</strong>{' '}
+                          {maskCustomerInfo(currentCustomer.email, 'email')}
+                        </p>
+                        <p>
+                          <strong>Loyalty Points:</strong>{' '}
+                          {currentCustomer.loyaltyPoints}
+                        </p>
+                        <Button
+                          size="sm"
+                          onClick={() => setCurrentCustomer(null)}
+                        >
+                          Change Customer
+                        </Button>
+                      </div>
+                    </PopoverContent>
+                  </Popover>
+                ) : (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setIsCustomerDialogOpen(true)}
+                  >
+                    <UserPlus className="mr-2 h-4 w-4" />
+                    Add Customer
+                  </Button>
+                )}
+              </div>
+            </div>
           </div>
-        )}
-        <div className="overflow-x-auto">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Product</TableHead>
-                <TableHead>Price</TableHead>
-                <TableHead>Quantity</TableHead>
-                <TableHead>Total</TableHead>
-                <TableHead>Action</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {scannedItems.map((item) => (
-                <TableRow key={item._id}>
-                  <TableCell>{item.name}</TableCell>
-                  <TableCell>${item.sellPrice.toFixed(2)}</TableCell>
-                  <TableCell>
-                    <div className="flex items-center space-x-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() =>
-                          handleQuantityChange(
-                            item._id,
-                            item.scannedQuantity -
-                              (item.isQuantityBased ? 1 : 0.1)
-                          )
-                        }
-                      >
-                        <MinusIcon className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="outline"
-                        onClick={() => openKeypad(item._id)}
-                        className="w-16 text-center"
-                      >
-                        {item.isQuantityBased
-                          ? item.scannedQuantity
-                          : item.scannedQuantity.toFixed(2)}
-                        {item.isQuantityBased ? '' : ' kg'}
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() =>
-                          handleQuantityChange(
-                            item._id,
-                            item.scannedQuantity +
-                              (item.isQuantityBased ? 1 : 0.1)
-                          )
-                        }
-                      >
-                        <PlusIcon className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    ${(item.sellPrice * item.scannedQuantity).toFixed(2)}
-                  </TableCell>
-                  <TableCell>
+
+          {/* Product search results and cart */}
+          <div className="flex flex-col gap-4 md:flex-row">
+            {/* Product search results */}
+            <div className="w-full md:w-2/3">
+              <Card>
+                <CardHeader>
+                  <div className="flex items-center justify-between">
+                    <CardTitle>Product Catalog</CardTitle>
                     <Button
-                      variant="ghost"
+                      variant="outline"
                       size="sm"
-                      onClick={() => handleRemoveItem(item._id)}
+                      onClick={() =>
+                        setIsProductCatalogVisible(!isProductCatalogVisible)
+                      }
                     >
-                      <XIcon className="h-4 w-4 text-red-500" />
+                      {isProductCatalogVisible ? 'Hide' : 'Show'}
                     </Button>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </div>
-      </div>
+                  </div>
+                  {isProductCatalogVisible && (
+                    <div className="flex items-center space-x-2">
+                      <Select
+                        value={selectedCategory}
+                        onValueChange={setSelectedCategory}
+                      >
+                        <SelectTrigger className="w-[180px]">
+                          <SelectValue placeholder="Category" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {categories.map((category) => (
+                            <SelectItem key={category} value={category}>
+                              {category}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
+                </CardHeader>
+                {isProductCatalogVisible && (
+                  <CardContent>
+                    <ScrollArea
+                      className="h-[calc(100vh-300px)]"
+                      ref={searchResultsRef}
+                    >
+                      <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4">
+                        {filteredProducts?.map((product) => (
+                          <motion.div
+                            key={product._id}
+                            layout
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                          >
+                            <Button
+                              onClick={() => addToCart(product)}
+                              className="relative flex h-24 w-full flex-col items-center justify-center p-2 text-center"
+                              variant="outline"
+                            >
+                              <div className="text-sm font-medium">
+                                {highlightMatch(product.name, searchQuery)}
+                              </div>
+                              <div className="text-sm text-gray-500">
+                                ${product.sellPrice.toFixed(2)}
+                              </div>
+                              <div className="text-xs text-gray-400">
+                                Stock: {product.quantity}
+                              </div>
+                              {isProductInCart(product._id) && (
+                                <Badge
+                                  variant="secondary"
+                                  className="absolute right-1 top-1"
+                                >
+                                  In Cart
+                                </Badge>
+                              )}
+                            </Button>
+                          </motion.div>
+                        ))}
+                      </div>
+                      {isLoadingMore ? (
+                        <div className="flex items-center justify-center py-4">
+                          <Loader2 className="h-6 w-6 animate-spin" />
+                        </div>
+                      ) : (
+                        <Button
+                          className="mt-4 w-full"
+                          onClick={handleLoadMore}
+                        >
+                          Load More
+                        </Button>
+                      )}
+                    </ScrollArea>
+                  </CardContent>
+                )}
+              </Card>
+            </div>
 
-      {/* Right side - Total and Checkout */}
-      <Card className="p-4 lg:h-full lg:w-80">
-        <CardContent className="flex h-full flex-col justify-between">
-          <h2 className="mb-4 text-xl font-bold">Order Summary</h2>
-          <div className="space-y-2">
-            <div className="flex justify-between">
-              <span>Subtotal:</span>
-              <span>${totalAmount.toFixed(2)}</span>
-            </div>
-            <div className="flex justify-between">
-              <span>Tax (5%):</span>
-              <span>${taxAmount.toFixed(2)}</span>
-            </div>
-            <div className="flex justify-between font-bold">
-              <span>Total:</span>
-              <span>${totalWithTax.toFixed(2)}</span>
+            {/* Shopping cart */}
+            <div className="h-screen w-full md:w-1/3">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Shopping Cart</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <ScrollArea className="h-[calc(100vh-400px)]">
+                    <AnimatePresence>
+                      {cart.map((item) => (
+                        <motion.div
+                          key={item._id}
+                          initial={{ opacity: 0, y: 20 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          exit={{ opacity: 0, y: -20 }}
+                          className="mb-4 flex items-center justify-between"
+                        >
+                          <div className="flex items-center space-x-4">
+                            <div>
+                              <div className="font-medium">{item.name}</div>
+                              <div className="text-sm text-gray-500">
+                                ${item.sellPrice.toFixed(2)} each
+                              </div>
+                            </div>
+                          </div>
+                          <div className="flex items-center space-x-2">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() =>
+                                updateQuantity(item._id, item.quantity - 1)
+                              }
+                            >
+                              <Minus className="h-4 w-4" />
+                            </Button>
+                            <span>{item.quantity}</span>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() =>
+                                updateQuantity(item._id, item.quantity + 1)
+                              }
+                            >
+                              <Plus className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="destructive"
+                              onClick={() => removeFromCart(item._id)}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </motion.div>
+                      ))}
+                    </AnimatePresence>
+                  </ScrollArea>
+                  <div className="mt-4 space-y-2">
+                    <div className="flex justify-between">
+                      <span>Subtotal:</span>
+                      <span>${calculateSubtotal().toFixed(2)}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>VAT ({(VAT_RATE * 100).toFixed(0)}%):</span>
+                      <span>${calculateVAT().toFixed(2)}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>Discount:</span>
+                      <span>${calculateDiscount().toFixed(2) || 0}</span>
+                    </div>
+                    <div className="flex justify-between text-lg font-bold">
+                      <span>Total:</span>
+                      <span>${calculateTotal().toFixed(2)}</span>
+                    </div>
+                  </div>
+                  <div className="mt-4 space-y-2">
+                    <div className="flex space-x-2">
+                      <Select
+                        value={discountType}
+                        onValueChange={setDiscountType}
+                      >
+                        <SelectTrigger className="w-[180px]">
+                          <SelectValue placeholder="Discount Type" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="percentage">Percentage</SelectItem>
+                          {/* <SelectItem value="fixed">Fixed Amount</SelectItem> */}
+                        </SelectContent>
+                      </Select>
+                      <Input
+                        type="number"
+                        placeholder={
+                          discountType === 'percentage'
+                            ? 'Discount %'
+                            : 'Discount Amount'
+                        }
+                        value={discountValue}
+                        onChange={(e) => setDiscountValue(e.target.value)}
+                      />
+                    </div>
+                    <Button
+                      className="w-full"
+                      onClick={handleCheckout}
+                      disabled={cart.length === 0}
+                    >
+                      Proceed to Checkout
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
             </div>
           </div>
-        </CardContent>
-        <Button onClick={handleCheckout} disabled={scannedItems.length === 0}>
-          <ShoppingCartIcon className="mr-2 h-4 w-4" />
-          Checkout
-        </Button>
-      </Card>
+        </div>
+      </main>
 
       {/* Checkout Dialog */}
-      <Dialog open={isCheckoutOpen} onOpenChange={setIsCheckoutOpen}>
+      <Dialog
+        open={isCheckoutDialogOpen}
+        onOpenChange={setIsCheckoutDialogOpen}
+      >
         <DialogContent className="sm:max-w-[425px]">
-          <DialogHeader>
-            <DialogTitle>Complete Your Order</DialogTitle>
-          </DialogHeader>
-          <div className="grid gap-4 py-4">
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="name" className="text-right">
-                Name
-              </Label>
-              <Input
-                id="name"
-                value={customerDetails.name}
-                onChange={(e) =>
-                  setCustomerDetails({
-                    ...customerDetails,
-                    name: e.target.value
-                  })
-                }
-                className="col-span-3"
-              />
-              {formErrors.name && (
-                <p className="col-span-3 col-start-2 text-red-500">
-                  {formErrors.name}
+          {isProcessingPayment ? (
+            <div className="flex h-40 flex-col items-center justify-center">
+              <Loader2 className="h-8 w-8 animate-spin" />
+              <p className="mt-4">Processing payment...</p>
+            </div>
+          ) : isSaleComplete ? (
+            <div className="space-y-4">
+              <div className="text-center">
+                <Check className="mx-auto h-16 w-16 text-green-500" />
+                <p className="mt-2 text-lg font-semibold">
+                  Sale Completed Successfully
                 </p>
-              )}
-            </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="email" className="text-right">
-                Email
-              </Label>
-              <Input
-                id="email"
-                type="email"
-                value={customerDetails.email}
-                onChange={(e) =>
-                  setCustomerDetails({
-                    ...customerDetails,
-                    email: e.target.value
-                  })
-                }
-                className="col-span-3"
-              />
-              {formErrors.email && (
-                <p className="col-span-3 col-start-2 text-red-500">
-                  {formErrors.email}
+              </div>
+              <div className="space-y-2">
+                <p>
+                  <strong>Total:</strong> ${calculateTotal().toFixed(2)}
                 </p>
-              )}
-            </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="phone" className="text-right">
-                Phone
-              </Label>
-              {
-                // @ts-ignore
-                <PhoneInput
-                  international
-                  defaultCountry="KE"
-                  value={customerDetails.phone}
-                  onChange={(value) =>
-                    setCustomerDetails({
-                      ...customerDetails,
-                      phone: value || ''
-                    })
-                  }
-                  className="col-span-3"
-                />
-              }
-
-              {formErrors.phone && (
-                <p className="col-span-3 col-start-2 text-red-500">
-                  {formErrors.phone}
+                <p>
+                  <strong>Payment Method:</strong> {paymentMethod}
                 </p>
+                {paymentMethod === 'Cash' && (
+                  <>
+                    <p>
+                      <strong>Cash Received:</strong> ${cashReceived}
+                    </p>
+                    <p>
+                      <strong>Change:</strong> ${calculateChange()}
+                    </p>
+                  </>
+                )}
+              </div>
+              <div className="space-y-2">
+                <p className="font-semibold">Receipt Options:</p>
+                <Select value={receiptMethod} onValueChange={setReceiptMethod}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select receipt method" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="print">Print Receipt</SelectItem>
+                    <SelectItem value="email">Email Receipt</SelectItem>
+                    <SelectItem value="sms">SMS Receipt</SelectItem>
+                  </SelectContent>
+                </Select>
+                <Button
+                  className="w-full"
+                  onClick={() => {
+                    toast.success(`Receipt sent via ${receiptMethod}`);
+                    setIsCheckoutDialogOpen(false);
+                    resetSale();
+                  }}
+                >
+                  {receiptMethod === 'print' && (
+                    <Printer className="mr-2 h-4 w-4" />
+                  )}
+                  {receiptMethod === 'email' && (
+                    <Mail className="mr-2 h-4 w-4" />
+                  )}
+                  {receiptMethod === 'sms' && (
+                    <Smartphone className="mr-2 h-4 w-4" />
+                  )}
+                  Send Receipt
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              <DialogHeader>
+                <DialogTitle>Checkout</DialogTitle>
+                <DialogDescription>Complete your purchase</DialogDescription>
+              </DialogHeader>
+              {currentCustomer ? (
+                <div className="space-y-2  rounded-md p-4">
+                  <p>
+                    <strong>Name:</strong>{' '}
+                    {maskCustomerInfo(currentCustomer.name, 'name')}
+                  </p>
+                  <p>
+                    <strong>Phone:</strong>{' '}
+                    {maskCustomerInfo(currentCustomer.phone, 'phone')}
+                  </p>
+                  <p>
+                    <strong>Email:</strong>{' '}
+                    {maskCustomerInfo(currentCustomer.email, 'email')}
+                  </p>
+                </div>
+              ) : (
+                <Button
+                  variant="outline"
+                  onClick={() => setIsCustomerDialogOpen(true)}
+                >
+                  Add Customer (Optional)
+                </Button>
               )}
-            </div>
-
-            <div className="flex items-center space-x-2">
-              <Checkbox
-                id="cash"
-                checked={isCashPayment}
-                onCheckedChange={(checked) =>
-                  setIsCashPayment(checked as boolean)
-                }
-              />
-              <Label htmlFor="cash">Cash</Label>
-            </div>
-            {isCashPayment && (
-              <>
-                <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="amountPaid" className="text-right">
-                    Amount Paid
-                  </Label>
+              <div className="space-y-4">
+                <Label>Select Payment Method</Label>
+                <div className="grid grid-cols-3 gap-4">
                   <Button
-                    onClick={() => openKeypad(null)}
-                    className="col-span-3 justify-start"
-                    variant="outline"
+                    className="flex h-24 flex-col items-center justify-center"
+                    variant={paymentMethod === 'Cash' ? 'default' : 'outline'}
+                    onClick={() => setPaymentMethod('Cash')}
                   >
-                    {amountPaid ? `${amountPaid}` : 'Enter amount'}
+                    <DollarSign className="mb-2 h-8 w-8" />
+                    Cash
+                  </Button>
+                  <Button
+                    className="flex h-24 flex-col items-center justify-center"
+                    variant={paymentMethod === 'Bank' ? 'default' : 'outline'}
+                    onClick={() => setPaymentMethod('Bank')}
+                  >
+                    <Building2 className="mb-2 h-8 w-8" />
+                    Bank
+                  </Button>
+                  <Button
+                    className="flex h-24 flex-col items-center justify-center"
+                    variant={paymentMethod === 'Mobile' ? 'default' : 'outline'}
+                    onClick={() => setPaymentMethod('Mobile')}
+                  >
+                    <Smartphone className="mb-2 h-8 w-8" />
+                    Mobile
                   </Button>
                 </div>
-                {formErrors.amountPaid && (
-                  <p className="col-span-3 col-start-2 text-red-500">
-                    {formErrors.amountPaid}
-                  </p>
+                {paymentMethod === 'Cash' && (
+                  <div className="mt-4 space-y-2">
+                    <Label htmlFor="cashReceived">Cash Received:</Label>
+                    <Input
+                      id="cashReceived"
+                      type="number"
+                      value={cashReceived}
+                      onChange={(e) => setCashReceived(e.target.value)}
+                      placeholder="Enter amount"
+                    />
+                    <div className="text-lg font-semibold">
+                      Change: ${calculateChange()}
+                    </div>
+                  </div>
                 )}
-                {change > 0 && (
-                  <Alert>
-                    <AlertTitle>Change Due</AlertTitle>
-                    <AlertDescription>{change.toFixed(2)}</AlertDescription>
-                  </Alert>
+                {paymentMethod === 'Bank' && (
+                  <div className="mt-4 space-y-2">
+                    <Select
+                      value={selectedBank}
+                      onValueChange={setSelectedBank}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select Bank" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {localBanks.map((bank) => (
+                          <SelectItem key={bank.id} value={bank.id}>
+                            {bank.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    {currentCustomer && (
+                      <Input
+                        placeholder="Phone Number"
+                        value={maskCustomerInfo(currentCustomer.phone, 'phone')}
+                        disabled
+                      />
+                    )}
+                  </div>
                 )}
-              </>
-            )}
-            <div className="flex justify-between font-bold">
-              <span>Total:</span>
-              <span>${totalAmount.toFixed(2)}</span>
+                {paymentMethod === 'Mobile' && (
+                  <div className="mt-4 space-y-2">
+                    <Select>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select Mobile Payment" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="evc">EVC</SelectItem>
+                        <SelectItem value="zaad">Zaad</SelectItem>
+                        <SelectItem value="sahal">Sahal</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    {currentCustomer ? (
+                      <Input
+                        placeholder="Phone Number"
+                        value={maskCustomerInfo(currentCustomer.phone, 'phone')}
+                        disabled
+                      />
+                    ) : (
+                      <Input placeholder="Enter mobile number" />
+                    )}
+                  </div>
+                )}
+              </div>
+              <DialogFooter>
+                <Button
+                  variant="outline"
+                  onClick={() => setIsCheckoutDialogOpen(false)}
+                >
+                  Cancel
+                </Button>
+                <Button onClick={handlePayment} disabled={!paymentMethod}>
+                  Complete Payment
+                </Button>
+              </DialogFooter>
             </div>
-            <div className="flex justify-between font-bold text-blue-600">
-              <span>Tax (5%):</span>
-              <span>${taxAmount.toFixed(2)}</span>
-            </div>
-            <div className="flex justify-between text-xl font-bold">
-              <span>Final Total:</span>
-              <span>${totalWithTax.toFixed(2)}</span>
-            </div>
-          </div>
+          )}
+        </DialogContent>
+      </Dialog>
 
+      {/* Customer Dialog */}
+      <Dialog
+        open={isCustomerDialogOpen}
+        onOpenChange={setIsCustomerDialogOpen}
+      >
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Customer Management</DialogTitle>
+            <DialogDescription>
+              Search for an existing customer or register a new one.
+            </DialogDescription>
+          </DialogHeader>
+          <Tabs defaultValue="search" className="w-full">
+            <TabsList className="grid w-full grid-cols-2">
+              <TabsTrigger value="search">Search</TabsTrigger>
+              <TabsTrigger value="register">Quick Register</TabsTrigger>
+            </TabsList>
+            <TabsContent value="search">
+              <div className="mt-4 space-y-4">
+                <Input
+                  placeholder="Enter customer ID or phone number"
+                  value={customerSearchQuery}
+                  onChange={(e) => setCustomerSearchQuery(e.target.value)}
+                />
+                <Button
+                  onClick={() => handleCustomerSearch(customerSearchQuery)}
+                >
+                  Search
+                </Button>
+                <ScrollArea className="h-[200px]">
+                  {filteredCustomers?.map((customer) => (
+                    <Button
+                      key={customer._id}
+                      variant="ghost"
+                      className="w-full justify-start"
+                      onClick={() => {
+                        setCurrentCustomer(customer);
+                        setIsCustomerDialogOpen(false);
+                      }}
+                    >
+                      <User className="mr-2 h-4 w-4" />
+                      {customer.name} -{' '}
+                      {maskCustomerInfo(customer.phone, 'phone')}
+                    </Button>
+                  ))}
+                </ScrollArea>
+              </div>
+            </TabsContent>
+            <TabsContent value="register">
+              <div className="mt-4 space-y-4">
+                <Input
+                  placeholder="Name"
+                  value={newCustomer.name}
+                  onChange={(e) =>
+                    setNewCustomer({ ...newCustomer, name: e.target.value })
+                  }
+                />
+                <Input
+                  placeholder="Phone Number"
+                  value={newCustomer.phone}
+                  onChange={(e) =>
+                    setNewCustomer({ ...newCustomer, phone: e.target.value })
+                  }
+                />
+                <Input
+                  placeholder="Email (optional)"
+                  value={newCustomer.email}
+                  onChange={(e) =>
+                    setNewCustomer({ ...newCustomer, email: e.target.value })
+                  }
+                />
+                {/* {!isAuthCodeSent ? (
+                  <Button onClick={handleSendAuthCode}>Send Authentication Code</Button>
+                ) : (
+                  <>
+                    <Input
+                      placeholder="Enter 4-digit code"
+                      value={authCode}
+                      onChange={(e) => setAuthCode(e.target.value)}
+                      maxLength={4}
+                    />
+                   
+                  </>
+                )} */}
+                <Button onClick={() => handleQuickRegister(newCustomer)}>
+                  Register
+                </Button>
+              </div>
+            </TabsContent>
+          </Tabs>
+        </DialogContent>
+      </Dialog>
+
+      {/* Transaction Details Dialog */}
+      <Dialog
+        open={isTransactionDetailsOpen}
+        onOpenChange={setIsTransactionDetailsOpen}
+      >
+        <DialogContent className="sm:max-w-[600px]">
+          <DialogHeader>
+            <DialogTitle>Transaction Details</DialogTitle>
+            <DialogDescription>
+              View detailed information about the selected transaction.
+            </DialogDescription>
+          </DialogHeader>
+          {selectedTransaction && (
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label>Invoice Number</Label>
+                  <p className="font-medium">
+                    {selectedTransaction.invoiceNumber}
+                  </p>
+                </div>
+                <div>
+                  <Label>Date</Label>
+                  <p className="font-medium">
+                    {selectedTransaction.updatedAt.split('T')[0]}
+                  </p>
+                </div>
+                <div>
+                  <Label>Customer</Label>
+                  <p className="font-medium">
+                    {selectedTransaction.user.name || 'Guest'}
+                  </p>
+                </div>
+                <div>
+                  <Label>Payment Method</Label>
+                  <p className="font-medium">{selectedTransaction.cashType}</p>
+                </div>
+              </div>
+              <div>
+                <Label>Items</Label>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Product</TableHead>
+                      <TableHead>Quantity</TableHead>
+                      <TableHead>Price</TableHead>
+                      <TableHead>Total</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {selectedTransaction.products.map((item) => (
+                      <TableRow key={item.id}>
+                        <TableCell>{item.product}</TableCell>
+                        <TableCell>{item.quantity}</TableCell>
+                        <TableCell>${item.price.toFixed(2)}</TableCell>
+                        <TableCell>
+                          ${(item.price * item.quantity).toFixed(2)}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+              <div className="space-y-2">
+                <div className="flex justify-between">
+                  <span>Subtotal:</span>
+                  <span>
+                    $
+                    {(
+                      selectedTransaction.totalAmount -
+                      selectedTransaction.vat +
+                      selectedTransaction.discount
+                    ).toFixed(2)}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span>VAT:</span>
+                  <span>${selectedTransaction.vat.toFixed(2)}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Discount:</span>
+                  <span>${selectedTransaction.discount.toFixed(2)}</span>
+                </div>
+                <div className="flex justify-between font-bold">
+                  <span>Total:</span>
+                  <span
+                    className={
+                      selectedTransaction.status === 'Refunded'
+                        ? 'text-red-500'
+                        : ''
+                    }
+                  >
+                    {selectedTransaction.status === 'Refunded' ? '-' : ''}$
+                    {Math.abs(selectedTransaction.totalAmount).toFixed(2)}
+                  </span>
+                </div>
+              </div>
+            </div>
+          )}
           <DialogFooter>
-            <Button
-              onClick={handleCompleteCheckout}
-              disabled={
-                isProcessingOrder ||
-                (isCashPayment &&
-                  (!amountPaid || parseFloat(amountPaid) < totalWithTax))
-              }
-            >
-              {isProcessingOrder ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Processing...
-                </>
-              ) : (
-                'Complete Order'
-              )}
+            <Button onClick={() => setIsTransactionDetailsOpen(false)}>
+              Close
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      {/* Numeric Keypad Dialog */}
-      <Dialog open={isKeypadOpen} onOpenChange={setIsKeypadOpen}>
-        <DialogContent>
+      {/* Process Returns Dialog */}
+      <Dialog open={isReturnDialogOpen} onOpenChange={setIsReturnDialogOpen}>
+        <DialogContent className="sm:max-w-[600px]">
           <DialogHeader>
-            <DialogTitle>
-              {currentItemId ? 'Enter Quantity' : 'Enter Amount Paid'}
-            </DialogTitle>
+            <DialogTitle>Process Returns</DialogTitle>
+            <DialogDescription>
+              Search for a transaction and select items to return.
+            </DialogDescription>
           </DialogHeader>
-          <div className="py-4">
-            <Input
-              type="text"
-              value={keypadValue}
-              readOnly
-              className="mb-4 text-right text-2xl"
-            />
-
-            <NumericKeypad
-              onInput={handleKeypadInput}
-              onClear={handleKeypadClear}
-              onSubmit={handleKeypadSubmit}
-              // @ts-ignore
-              allowDecimal={
-                !currentItemId ||
-                (currentItemId &&
-                  !scannedItems.find((item) => item._id === currentItemId)
-                    ?.isQuantityBased)
-              }
-            />
+          <div className="space-y-4">
+            <div className="flex space-x-2">
+              <Input
+                placeholder="Enter Invoice Number"
+                value={returnInvoice}
+                onChange={(e) => setReturnInvoice(e.target.value)}
+              />
+              <Button onClick={handleReturnSearch}>Search</Button>
+            </div>
+            {returnItems.length > 0 && (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Product</TableHead>
+                    <TableHead>Price</TableHead>
+                    <TableHead>Quantity</TableHead>
+                    <TableHead>Return Quantity</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {returnItems.map((item) => (
+                    <TableRow key={item._id}>
+                      <TableCell>{item.product}</TableCell>
+                      <TableCell>${item.price.toFixed(2)}</TableCell>
+                      <TableCell>{item.quantity}</TableCell>
+                      <TableCell>
+                        <Input
+                          type="number"
+                          min="0"
+                          max={item.quantity}
+                          value={item.returnQuantity}
+                          onChange={(e) => {
+                            const newValue = parseInt(e.target.value);
+                            if (newValue <= item.quantity) {
+                              const newReturnItems = returnItems.map((i) =>
+                                i.productId === item.productId
+                                  ? { ...i, returnQuantity: newValue }
+                                  : i
+                              );
+                              setReturnItems(newReturnItems);
+                            }
+                          }}
+                          onKeyPress={(e) => {
+                            if (
+                              e.key === 'ArrowUp' &&
+                              item.returnQuantity >= item.quantity
+                            ) {
+                              e.preventDefault();
+                            }
+                          }}
+                        />
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            )}
+            {returnItems.length > 0 && (
+              <Button onClick={handleReturnSubmit}>Process Return</Button>
+            )}
           </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Transaction History Dialog */}
+      <Dialog
+        open={isTransactionHistoryOpen}
+        onOpenChange={setIsTransactionHistoryOpen}
+      >
+        <DialogContent className="flex h-[90vh] flex-col sm:max-w-[90vw] md:max-w-[800px]">
+          <DialogHeader>
+            <DialogTitle>Transaction History</DialogTitle>
+            <DialogDescription>
+              View and search past transactions.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex flex-grow flex-col space-y-4 overflow-hidden">
+            <div className="flex flex-col items-start justify-between gap-2 md:flex-row md:items-center">
+              <Input
+                placeholder="Search transactions..."
+                className="w-full md:w-64"
+                value={transactionSearchQuery}
+                onChange={(e) => setTransactionSearchQuery(e.target.value)}
+              />
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className="w-full justify-start text-left font-normal md:w-[240px]"
+                  >
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {date ? format(date, 'PPP') : <span>Pick a date</span>}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar
+                    mode="single"
+                    selected={date}
+                    onSelect={setDate}
+                    initialFocus
+                  />
+                </PopoverContent>
+              </Popover>
+            </div>
+            <Select
+              value={transactionTypeFilter}
+              onValueChange={setTransactionTypeFilter}
+            >
+              <SelectTrigger className="w-full md:w-[200px]">
+                <SelectValue placeholder="Filter by type" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Transactions</SelectItem>
+                <SelectItem value="sale">Sales</SelectItem>
+                <SelectItem value="Refunded">Refunds</SelectItem>
+              </SelectContent>
+            </Select>
+            <div className="flex-grow overflow-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-[100px]">
+                      <Button variant="ghost" onClick={() => requestSort('id')}>
+                        Invoice
+                        <ArrowUpDown className="ml-2 h-4 w-4" />
+                      </Button>
+                    </TableHead>
+                    <TableHead>
+                      <Button
+                        variant="ghost"
+                        onClick={() => requestSort('date')}
+                      >
+                        Date
+                        <ArrowUpDown className="ml-2 h-4 w-4" />
+                      </Button>
+                    </TableHead>
+                    <TableHead>Customer</TableHead>
+                    <TableHead className="text-right">
+                      <Button
+                        variant="ghost"
+                        onClick={() => requestSort('totalAmount')}
+                      >
+                        Total
+                        <ArrowUpDown className="ml-2 h-4 w-4" />
+                      </Button>
+                    </TableHead>
+                    {/* <TableHead>Type</TableHead> */}
+                    <TableHead>Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {sortedTransactions?.map((transaction) => (
+                    <TableRow key={transaction.id}>
+                      <TableCell className="font-medium">
+                        {transaction.invoiceNumber}
+                      </TableCell>
+                      <TableCell>
+                        {transaction.updatedAt.split('T')[0]}
+                      </TableCell>
+                      <TableCell>{transaction.user.name || 'Guest'}</TableCell>
+                      <TableCell
+                        className={`text-right ${
+                          transaction.status === 'Refunded'
+                            ? 'text-red-500'
+                            : ''
+                        }`}
+                      >
+                        {transaction.status === 'Refunded' ? '-' : ''}$
+                        {Math.abs(transaction.totalAmount).toFixed(2)}
+                      </TableCell>
+                      {/* <TableCell>
+                        <Badge variant={transaction.type === 'sale' ? 'default' : 'destructive'}>
+                          {transaction.type === 'sale' ? 'Sale' : 'Refund'}
+                        </Badge>
+                      </TableCell> */}
+                      <TableCell>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => {
+                            console.log(transaction);
+                            setSelectedTransaction(transaction);
+                            setIsTransactionDetailsOpen(true);
+                          }}
+                        >
+                          <Eye className="mr-2 h-4 w-4" />
+                          View
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Camera Dialog */}
+      <Dialog open={isCameraOpen} onOpenChange={setIsCameraOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Scan Barcode</DialogTitle>
+            <DialogDescription>
+              Use your device's camera to scan a product barcode.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex h-64 flex-col items-center justify-center  rounded-lg">
+            <Camera className="mb-4 h-16 w-16 text-gray-400" />
+            <p className="text-sm text-gray-500">
+              Camera preview would appear here
+            </p>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsCameraOpen(false)}>
+              Cancel
+            </Button>
+            <Button
+              className="w-full sm:w-auto"
+              onClick={() => setIsCameraActive(!isCameraActive)}
+            >
+              {isCameraActive ? 'Stop Camera' : 'Start Camera'}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>
