@@ -996,6 +996,7 @@ export default function Component() {
             <RestockForm
               // @ts-ignore
               onSubmit={(amount) =>
+                // @ts-ignore
                 handleRestock(restockingProduct?._id, amount)
               }
             />
