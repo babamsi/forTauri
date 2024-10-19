@@ -816,6 +816,7 @@ export default function EnhancedPOSSystem() {
       (
         // @ts-ignore
         part,
+        // @ts-ignore
         index
       ) =>
         part.toLowerCase() === query.toLowerCase() ? (
@@ -829,6 +830,7 @@ export default function EnhancedPOSSystem() {
   const maskCustomerInfo = (
     // @ts-ignore
     info,
+    // @ts-ignore
     type
   ) => {
     if (type === 'name') {
@@ -1696,14 +1698,16 @@ export default function EnhancedPOSSystem() {
                   <span>Subtotal:</span>
                   <span>
                     $
-                    {// @ts-ignore
-                    (
-                      selectedTransaction.totalAmount -
+                    {
                       // @ts-ignore
-                      selectedTransaction.vat +
-                      // @ts-ignore
-                      selectedTransaction.discount
-                    ).toFixed(2)}
+                      (
+                        selectedTransaction.totalAmount -
+                        // @ts-ignore
+                        selectedTransaction.vat +
+                        // @ts-ignore
+                        selectedTransaction.discount
+                      ).toFixed(2)
+                    }
                   </span>
                 </div>
                 <div className="flex justify-between">
