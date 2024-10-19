@@ -1196,6 +1196,7 @@ export default function EnhancedPOSSystem() {
                                 updateQuantity(
                                   // @ts-ignore
                                   item._id,
+                                  // @ts-ignore
                                   item.quantity - 1
                                 )
                               }
