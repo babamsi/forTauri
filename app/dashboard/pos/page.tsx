@@ -420,6 +420,7 @@ export default function EnhancedPOSSystem() {
   useEffect(() => {
     setTransactions(orders);
     const filtered = customers?.filter(
+      // @ts-ignore
       (customer) =>
         customer._id
           .toLowerCase()
@@ -430,6 +431,7 @@ export default function EnhancedPOSSystem() {
   }, [customerSearchQuery]);
 
   const addToCart = useCallback((product: Product) => {
+    // @ts-ignore
     setCart((prevCart) => {
       const existingItem = prevCart.find(
         (item: Product) => item._id === product._id
@@ -1697,7 +1699,9 @@ export default function EnhancedPOSSystem() {
                     {// @ts-ignore
                     (
                       selectedTransaction.totalAmount -
+                      // @ts-ignore
                       selectedTransaction.vat +
+                      // @ts-ignore
                       selectedTransaction.discount
                     ).toFixed(2)}
                   </span>
