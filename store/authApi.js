@@ -3,7 +3,7 @@ import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
 export const authApi = createApi({
   reducerPath: 'authApi',
   baseQuery: fetchBaseQuery({
-    baseUrl: 'http://localhost:5000/api',
+    baseUrl: 'https://pfv4xcnqev.ap-south-1.awsapprunner.com/api',
     prepareHeaders: (headers) => {
       headers.set('Accept', 'application/json');
 
