@@ -905,31 +905,7 @@ export default function EnhancedPOSSystem() {
                 >
                   {isCameraActive ? 'Stop Camera' : 'Start Camera'}
                 </Button>
-                {isCameraActive && (
-                  <div className="mb-4">
-                    <BarcodeScanner
-                      onSuccess={(result) => {
-                        if (result) {
-                          // console.log(result);
-                          const currentTime = Date.now();
-                          if (currentTime - lastScanTime < 2000) {
-                            // If less than 1 second has passed since the last scan, ignore this scan
-                            return;
-                          }
-                          setLastScanTime(currentTime);
-                          handleScan(result);
-                          setIsCameraActive(false);
-                          // setBarcode(result);
-                        }
-                      }}
-                      onError={(error) => {
-                        if (error) {
-                          console.error(error.message);
-                        }
-                      }}
-                    />
-                  </div>
-                )}
+
                 {currentCustomer ? (
                   <Popover>
                     <PopoverTrigger asChild>
@@ -1108,6 +1084,32 @@ export default function EnhancedPOSSystem() {
                 )}
               </Card>
             </div>
+
+            {isCameraActive && (
+              <div className="mb-4">
+                <BarcodeScanner
+                  onSuccess={(result) => {
+                    if (result) {
+                      // console.log(result);
+                      const currentTime = Date.now();
+                      if (currentTime - lastScanTime < 2000) {
+                        // If less than 1 second has passed since the last scan, ignore this scan
+                        return;
+                      }
+                      setLastScanTime(currentTime);
+                      handleScan(result);
+                      setIsCameraActive(false);
+                      // setBarcode(result);
+                    }
+                  }}
+                  onError={(error) => {
+                    if (error) {
+                      console.error(error.message);
+                    }
+                  }}
+                />
+              </div>
+            )}
 
             {/* Shopping cart */}
             <div className="h-screen w-full md:w-1/3">
