@@ -658,8 +658,8 @@ export default function EnhancedPOSSystem() {
   );
 
   const findProduct = (prod: Product) => {
-    // @ts-ignore
     const orig = productServer?.find(
+      // @ts-ignore
       (product) => product._id === prod.productId
     );
     return orig.price;
@@ -703,13 +703,15 @@ export default function EnhancedPOSSystem() {
       // @ts-ignore
       (item: Product) => item.returnQuantity > 0
     );
-    // @ts-ignore
+
     let total = itemsToReturn.reduce(
+      // @ts-ignore
       (total, item) => total + item.price * Number(item.returnQuantity),
       0
     );
-    // @ts-ignore
+
     const calculateEachDiscount = itemsToReturn.reduce(
+      // @ts-ignore
       (total, item) => total + item.eachDiscount * Number(item.returnQuantity),
       0
     );
@@ -730,11 +732,13 @@ export default function EnhancedPOSSystem() {
       toast.error('No items selected for return');
       return;
     }
-    // @ts-ignore
+
     const calculateRevenue = itemsToReturn.reduce(
       (total, item) =>
         total +
+        // @ts-ignore
         (item.price * item.returnQuantity -
+          // @ts-ignore
           item.originalPrice * item.returnQuantity),
       0
     );
@@ -743,8 +747,9 @@ export default function EnhancedPOSSystem() {
       (total, item) => total + item.price * Number(item.returnQuantity),
       0
     );
-    // @ts-ignore
+
     const returnDiscounts = itemsToReturn.reduce(
+      // @ts-ignore
       (total, item) => total + item.eachDiscount,
       0
     );
