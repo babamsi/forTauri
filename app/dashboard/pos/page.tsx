@@ -128,6 +128,23 @@ interface Customer {
   phone: string;
 }
 
+interface Order {
+  _id: string;
+  products: Product[];
+  totalAmount: number;
+  cashType: string;
+  soldBy: string;
+  invoiceNumber: string;
+  user: {
+    name: string;
+    phone: string;
+    email: string;
+  };
+  revenue: string;
+  createdAt: string;
+  status: string;
+}
+
 // Mock data for products, customers, and transactions
 
 const localBanks = [
@@ -170,7 +187,9 @@ export default function EnhancedPOSSystem() {
   });
   const [isTransactionHistoryOpen, setIsTransactionHistoryOpen] =
     useState(false);
-  const [selectedTransaction, setSelectedTransaction] = useState(null);
+  const [selectedTransaction, setSelectedTransaction] = useState<Order | null>(
+    null
+  );
   const [isTransactionDetailsOpen, setIsTransactionDetailsOpen] =
     useState(false);
   const [date, setDate] = useState(new Date());
@@ -1625,19 +1644,22 @@ export default function EnhancedPOSSystem() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {
+                    {selectedTransaction.products.map((item) => (
                       // @ts-ignore
-                      selectedTransaction.products.map((item) => (
-                        <TableRow key={item.id}>
-                          <TableCell>{item.product}</TableCell>
-                          <TableCell>{item.quantity}</TableCell>
-                          <TableCell>${item.price.toFixed(2)}</TableCell>
-                          <TableCell>
-                            ${(item.price * item.quantity).toFixed(2)}
-                          </TableCell>
-                        </TableRow>
-                      ))
-                    }
+                      <TableRow key={item.id}>
+                        <TableCell>
+                          {
+                            // @ts-ignore
+                            item.product
+                          }
+                        </TableCell>
+                        <TableCell>{item.quantity}</TableCell>
+                        <TableCell>${item.price.toFixed(2)}</TableCell>
+                        <TableCell>
+                          ${(item.price * item.quantity).toFixed(2)}
+                        </TableCell>
+                      </TableRow>
+                    ))}
                   </TableBody>
                 </Table>
               </div>
