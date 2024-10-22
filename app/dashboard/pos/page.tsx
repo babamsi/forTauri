@@ -898,14 +898,9 @@ export default function EnhancedPOSSystem() {
                 >
                   <FileText className="h-4 w-4" />
                 </Button>
-                <Button
-                  className="w-full sm:w-auto"
-                  onClick={() => setIsCameraActive(true)}
-                >
-                  <Camera className="h-4 w-4" />
-                </Button>
-                {isCameraActive && (
-                  <div className="mb-4">
+
+                {isCameraActive ? (
+                  <div className="aspect-square">
                     <BarcodeScanner
                       onSuccess={(result) => {
                         if (result) {
@@ -929,6 +924,13 @@ export default function EnhancedPOSSystem() {
                       containerStyle={{ width: '100%', height: '300px' }}
                     />
                   </div>
+                ) : (
+                  <Button
+                    className="w-full sm:w-auto"
+                    onClick={() => setIsCameraActive(true)}
+                  >
+                    <Camera className="h-4 w-4" />
+                  </Button>
                 )}
                 {currentCustomer ? (
                   <Popover>
