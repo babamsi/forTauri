@@ -75,7 +75,7 @@ import { Heading } from '@/components/ui/heading';
 import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import { motion, AnimatePresence } from 'framer-motion';
-import { getAuthCookie } from '@/actions/auth.actions';
+import { getAuthCookie, getUserInfo } from '@/actions/auth.actions';
 import {
   useGetProductsQuery,
   useUpdateProductMutation,
@@ -84,6 +84,7 @@ import {
 } from '@/store/authApi';
 
 import { BarcodeScanner } from '@thewirv/react-barcode-scanner';
+import { deleteAuthCookie } from '@/actions/auth.actions';
 
 interface Product {
   _id: string;
@@ -108,6 +109,7 @@ export default function Component() {
     error,
     isLoading,
     isFetching,
+    refetch,
     isError
   } = useGetProductsQuery(cookies, {
     skip: !cookies
@@ -124,8 +126,12 @@ export default function Component() {
     getAuthCookie().then((cookie: string | null) => {
       setCookies(cookie);
     });
-    const savedValue = window.localStorage.getItem('userStore');
-    setUser(JSON.parse(savedValue || '{}'));
+    // const savedValue = window.localStorage.getItem('userStore');
+    // setUser(JSON.parse(savedValue || '{}'));
+    getUserInfo().then((userInfo) => {
+      // console.log(userInfo)
+      setUser(userInfo);
+    });
   }, []);
 
   const [products, setProducts] = useState<Product[]>([]);
@@ -315,14 +321,34 @@ export default function Component() {
   };
 
   const handleEditProduct = async (updatedProduct: Product) => {
-    // console.log(cookies);
+    const originalProduct = products.find(
+      (product) => product._id === updatedProduct._id
+    );
 
+    const changedKeys = Object.keys(updatedProduct).filter((key) => {
+      //@ts-ignore
+      return updatedProduct[key] !== originalProduct[key];
+    });
+
+    console.log('Changed keys:', changedKeys);
+
+    const logs = changedKeys.map((key) => {
+      return {
+        //@ts-ignore
+        action: `${key} changed from ${originalProduct[key]} to ${updatedProduct[key]}`,
+        // @ts-ignore
+        updatedBy: user.username
+      };
+    });
+
+    console.log(logs);
     setProducts((prevProducts) =>
       prevProducts.map((product) =>
         product._id === updatedProduct._id ? updatedProduct : product
       )
     );
     setIsEditProductDialogOpen(false);
+
     const data = {
       name: updatedProduct.name,
       description: updatedProduct.description,
@@ -334,7 +360,7 @@ export default function Component() {
       isQuantityBased: updatedProduct.isQuantityBased,
       barcode: updatedProduct.barcode,
       units: updatedProduct.units,
-      action: 'updated'
+      action: logs
     };
     const all = {
       id: updatedProduct._id,
@@ -348,7 +374,6 @@ export default function Component() {
         throw new Error(error);
       }
       toast.success('Product updated successfully!');
-
       setEditingProduct(null);
       refreshPage();
     } catch (error) {
@@ -388,13 +413,13 @@ export default function Component() {
         data = {
           quantity: s[0].quantity + amount,
           isQuantityBased: true,
-          action: 'Restock'
+          action: `Restock from ${s[0].quantity} to ${s[0].quantity + amount}`
         };
       } else {
         data = {
           units: amount,
           isQuantityBased: false,
-          action: 'Restock'
+          action: `Restock from ${s[0].units} to ${amount}`
         };
       }
 
@@ -421,6 +446,7 @@ export default function Component() {
         )
       );
       toast.success('Product restocked successfully');
+      refetch();
     } catch (error) {
       toast.error('Unable to restock');
     }
@@ -446,6 +472,11 @@ export default function Component() {
   }
 
   if (isError) {
+    // console.log(error)
+    // @ts-ignore
+    if (error.data.message === 'Token expired') {
+      deleteAuthCookie();
+    }
     return <div>Error: {error.toString()}</div>;
   }
 

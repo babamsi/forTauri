@@ -54,6 +54,7 @@ export default function UserAuthForm() {
     // });
 
     // console.log(k);
+    setLoading(true);
     try {
       const result = await login({ data }).unwrap();
       // console.log(result)
@@ -62,13 +63,18 @@ export default function UserAuthForm() {
         // notify()
         toast.success('Successfully logged in!');
         console.log(result.refresh_token, result.access_token);
-        await createAuthCookie(result.refresh_token, result.access_token);
+
         const loggedInfo = {
           name: result.name,
           username: result.username,
           id: result._id,
           role: result.role
         };
+        await createAuthCookie(
+          result.refresh_token,
+          result.access_token,
+          loggedInfo
+        );
         localStorage.setItem('userStore', JSON.stringify(loggedInfo));
         // const updateInfo = useStuffInfoStore((state) => state.setUserInfo)
         // updateInfo(loggedInfo)
@@ -77,6 +83,7 @@ export default function UserAuthForm() {
     } catch (error) {
       console.error('Failed to login:', error);
       toast.error('Failed to login!');
+      setLoading(false);
     }
   };
   const router = useRouter();

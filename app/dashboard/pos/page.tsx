@@ -64,7 +64,7 @@ import {
   useGetAllCustomerQuery,
   useGetOrdersQuery
 } from '@/store/authApi';
-import { getAuthCookie } from '@/actions/auth.actions';
+import { deleteAuthCookie, getAuthCookie } from '@/actions/auth.actions';
 import {
   Search,
   ShoppingCart,
@@ -304,6 +304,12 @@ export default function EnhancedPOSSystem() {
   const [isReturnDialogOpen, setIsReturnDialogOpen] = useState(false);
   const [returnInvoice, setReturnInvoice] = useState('');
   const [returnItems, setReturnItems] = useState([]);
+  const [returnUser, setReturnUser] = useState({});
+  const [returnDate, setReturnDate] = useState('');
+  const [returnPaymentType, setReturnPaymentType] = useState('');
+  const [returnTotalAmount, setReturnTotalAmount] = useState(0);
+  const [returnDiscount, setReturnDiscount] = useState('');
+  const [afterReturnAmount, setAfterReturnAmount] = useState(0);
   const [discountType, setDiscountType] = useState('percentage');
   const [discountValue, setDiscountValue] = useState('0');
   const [newCustomer, setNewCustomer] = useState({
@@ -334,6 +340,7 @@ export default function EnhancedPOSSystem() {
   const [cookies, setcookies] = useState(null);
   const [isCameraActive, setIsCameraActive] = useState(false);
   const [lastScanTime, setLastScanTime] = useState(0);
+  const [isProcessingRefund, setIsProcessingRefund] = useState(false);
 
   const VAT_RATE = 0.05; // 5% VAT rate
 
@@ -342,12 +349,18 @@ export default function EnhancedPOSSystem() {
 
   const {
     data: productServer,
-    error,
+    error: prudctsError,
     isFetching,
     isError
   } = useGetProductsQuery(cookies, {
     skip: !cookies
   });
+
+  //@ts-ignore
+  if (prudctsError?.data.message === 'Token expired') {
+    deleteAuthCookie();
+    return;
+  }
 
   const { data: customers, error: customersError } = useGetAllCustomerQuery(
     cookies,
@@ -509,7 +522,7 @@ export default function EnhancedPOSSystem() {
   }, [calculateSubtotal, discountType, discountValue]);
 
   const calculateVAT = useCallback(() => {
-    return calculateSubtotal() * VAT_RATE;
+    return (calculateSubtotal() - calculateDiscount()) * VAT_RATE;
   }, [calculateSubtotal, calculateDiscount]);
 
   const calculateTotal = useCallback(() => {
@@ -528,6 +541,7 @@ export default function EnhancedPOSSystem() {
 
   const processPayment = async () => {
     setIsProcessingPayment(true);
+
     // Simulate payment processing
     const newTransaction = {
       // id: `T${transactions.length + 1}`.padStart(4, '0'),
@@ -643,16 +657,38 @@ export default function EnhancedPOSSystem() {
     [authCode]
   );
 
+  const findProduct = (prod: Product) => {
+    // @ts-ignore
+    const orig = productServer?.find(
+      (product) => product._id === prod.productId
+    );
+    return orig.price;
+  };
+
   const handleReturnSearch = useCallback(() => {
     const transaction = orders?.find(
       // @ts-ignore
       (t: Product) => t.invoiceNumber === returnInvoice
     );
+
     if (transaction) {
+      // console.log(transaction)
       setReturnItems(
         // @ts-ignore
-        transaction.products.map((item) => ({ ...item, returnQuantity: 0 }))
+        transaction.products.map((item) => ({
+          ...item,
+          returnQuantity: 0,
+          status: transaction.status,
+          eachDiscount: transaction.eachDiscount,
+          originalPrice: findProduct(item),
+          revenue: transaction.revenue
+        }))
       );
+      setReturnUser(transaction.user);
+      setReturnDate(transaction.createdAt);
+      setReturnDiscount(transaction.discount);
+      setReturnPaymentType(transaction.cashType);
+      setReturnTotalAmount(transaction.totalAmount);
     } else {
       toast.error('Invoice not found');
     }
@@ -662,7 +698,30 @@ export default function EnhancedPOSSystem() {
   const [updateOrder, { isLoading: isUpdating, isError: updateError }] =
     useUpdateOrderMutation();
 
+  const calculateAfterReturnAmount = useMemo(() => {
+    const itemsToReturn = returnItems.filter(
+      // @ts-ignore
+      (item: Product) => item.returnQuantity > 0
+    );
+    // @ts-ignore
+    let total = itemsToReturn.reduce(
+      (total, item) => total + item.price * Number(item.returnQuantity),
+      0
+    );
+    // @ts-ignore
+    const calculateEachDiscount = itemsToReturn.reduce(
+      (total, item) => total + item.eachDiscount * Number(item.returnQuantity),
+      0
+    );
+    console.log(calculateEachDiscount);
+    // let total = itemsToReturn.reduce((total, item) => total + Number(item.returnQuantity) *  )
+    total -= calculateEachDiscount;
+    total += total * 0.05;
+    setAfterReturnAmount(total);
+  }, [returnItems]);
+
   const handleReturnSubmit = async () => {
+    setIsProcessingRefund(true);
     const itemsToReturn = returnItems.filter(
       // @ts-ignore
       (item: Product) => item.returnQuantity > 0
@@ -671,12 +730,39 @@ export default function EnhancedPOSSystem() {
       toast.error('No items selected for return');
       return;
     }
+    // @ts-ignore
+    const calculateRevenue = itemsToReturn.reduce(
+      (total, item) =>
+        total +
+        (item.price * item.returnQuantity -
+          item.originalPrice * item.returnQuantity),
+      0
+    );
+    const returnTotal = itemsToReturn.reduce(
+      // @ts-ignore
+      (total, item) => total + item.price * Number(item.returnQuantity),
+      0
+    );
+    // @ts-ignore
+    const returnDiscounts = itemsToReturn.reduce(
+      (total, item) => total + item.eachDiscount,
+      0
+    );
 
+    let total = Number(returnTotal.toFixed(2));
+    total += total * 0.05;
+    total -= returnDiscounts;
+
+    // console.log(calculateRevenue - returnDiscounts)
+
+    setAfterReturnAmount(total);
     try {
       const result = await updateOrder({
         data: {
           products: itemsToReturn,
-          invoiceNumber: returnInvoice
+          invoiceNumber: returnInvoice,
+          amount: afterReturnAmount,
+          rev: calculateRevenue - returnDiscounts
         },
         cookies
       }).unwrap();
@@ -684,20 +770,21 @@ export default function EnhancedPOSSystem() {
       if ('error' in result) {
         throw new Error(result.error);
       }
-      const returnTotal = itemsToReturn.reduce(
-        // @ts-ignore
-        (total, item) => total + item.price * Number(item.returnQuantity),
-        0
-      );
-      toast.success(
-        `Return processed. Refund amount: $${returnTotal.toFixed(2)}`
-      );
+
+      console.log(total);
+
+      toast.success(`Return processed. Refund amount: $${afterReturnAmount}`);
       await refetch();
     } catch (error) {
       toast.error(
         // @ts-ignore
         `Error processing refund: ${error.message || 'Unknown error'}`
       );
+    } finally {
+      setIsProcessingRefund(false);
+      setReturnItems([]);
+      setReturnInvoice('');
+      setIsReturnDialogOpen(false);
     }
     // Process return
     // const newTransaction = {
@@ -724,9 +811,6 @@ export default function EnhancedPOSSystem() {
     //     product.quantity += returnItem.returnQuantity
     //   }
     // })
-    setReturnItems([]);
-    setReturnInvoice('');
-    setIsReturnDialogOpen(false);
   };
 
   const handlePayment = () => {
@@ -781,6 +865,16 @@ export default function EnhancedPOSSystem() {
     }
     setSortConfig({ key, direction });
   };
+
+  const isRefundButtonDisabled = useMemo(() => {
+    return (
+      !returnItems ||
+      returnItems.every(
+        // @ts-ignore
+        (product) => product.status === 'Refunded'
+      )
+    );
+  }, [returnItems, orders]);
 
   const handleCameraCapture = () => {
     // Simulating barcode capture
@@ -1779,94 +1873,142 @@ export default function EnhancedPOSSystem() {
               />
               <Button onClick={handleReturnSearch}>Search</Button>
             </div>
+
             {returnItems.length > 0 && (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Product</TableHead>
-                    <TableHead>Price</TableHead>
-                    <TableHead>Quantity</TableHead>
-                    <TableHead>Return Quantity</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {returnItems.map((item) => (
-                    <TableRow
-                      key={
-                        // @ts-ignore
-                        item._id
-                      }
-                    >
-                      <TableCell>
-                        {
+              <>
+                <div className="grid gap-2 text-sm sm:text-base">
+                  <div>
+                    <strong>Customer:</strong>{' '}
+                    {
+                      // @ts-ignore
+                      returnUser.name
+                    }
+                  </div>
+                  <div>
+                    <strong>Phone:</strong>{' '}
+                    {
+                      // @ts-ignore
+                      returnUser.phone
+                    }
+                  </div>
+                  <div>
+                    <strong>Email:</strong>{' '}
+                    {
+                      //@ts-ignore
+                      returnUser.email
+                    }
+                  </div>
+                  <div>
+                    <strong>Date:</strong>{' '}
+                    {new Date(returnDate).toLocaleString()}
+                  </div>
+                  <div>
+                    <strong>Payment Method:</strong> {returnPaymentType}
+                  </div>
+                  <div>
+                    <strong>Total Amount:</strong> $
+                    {returnTotalAmount.toFixed(2)}
+                  </div>
+                  <div>
+                    <strong>Discount:</strong> {returnDiscount}$
+                  </div>
+                  <div>Amount to be returned {afterReturnAmount}</div>
+                </div>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Product</TableHead>
+                      <TableHead>Price</TableHead>
+                      <TableHead>Quantity</TableHead>
+                      <TableHead>Return Quantity</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {returnItems.map((item) => (
+                      <TableRow
+                        key={
                           // @ts-ignore
-                          item.product
+                          item._id
                         }
-                      </TableCell>
-                      <TableCell>
-                        $
-                        {
-                          // @ts-ignore
-                          item.price.toFixed(2)
-                        }
-                      </TableCell>
-                      <TableCell>
-                        {
-                          // @ts-ignore
-                          item.quantity
-                        }
-                      </TableCell>
-                      <TableCell>
-                        <Input
-                          type="number"
-                          min="0"
-                          max={
+                      >
+                        <TableCell>
+                          {
+                            // @ts-ignore
+                            item.product
+                          }
+                        </TableCell>
+                        <TableCell>
+                          $
+                          {
+                            // @ts-ignore
+                            item.price.toFixed(2)
+                          }
+                        </TableCell>
+                        <TableCell>
+                          {
                             // @ts-ignore
                             item.quantity
                           }
-                          value={
-                            // @ts-ignore
-                            item.returnQuantity
-                          }
-                          onChange={(e) => {
-                            const newValue = parseInt(e.target.value);
-                            if (
+                        </TableCell>
+                        <TableCell>
+                          <Input
+                            type="number"
+                            min="0"
+                            max={
                               // @ts-ignore
-                              newValue <= item.quantity
-                            ) {
-                              const newReturnItems = returnItems.map((i) =>
+                              item.quantity
+                            }
+                            value={
+                              // @ts-ignore
+                              item.returnQuantity
+                            }
+                            onChange={(e) => {
+                              const newValue = parseInt(e.target.value);
+                              if (
                                 // @ts-ignore
-                                i.productId === item.productId
-                                  ? {
-                                      // @ts-ignore
-                                      ...i,
-                                      returnQuantity: newValue
-                                    }
-                                  : i
-                              );
-                              // @ts-ignore
-                              setReturnItems(newReturnItems);
-                            }
-                          }}
-                          onKeyPress={(e) => {
-                            if (
-                              // @ts-ignore
-                              e.key === 'ArrowUp' &&
-                              // @ts-ignore
-                              item.returnQuantity >= item.quantity
-                            ) {
-                              e.preventDefault();
-                            }
-                          }}
-                        />
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+                                newValue <= item.quantity
+                              ) {
+                                const newReturnItems = returnItems.map((i) =>
+                                  // @ts-ignore
+                                  i.productId === item.productId
+                                    ? {
+                                        // @ts-ignore
+                                        ...i,
+                                        returnQuantity: newValue
+                                      }
+                                    : i
+                                );
+                                // @ts-ignore
+                                setReturnItems(newReturnItems);
+                                calculateAfterReturnAmount;
+                              }
+                            }}
+                            onKeyPress={(e) => {
+                              if (
+                                // @ts-ignore
+                                e.key === 'ArrowUp' &&
+                                // @ts-ignore
+                                item.returnQuantity >= item.quantity
+                              ) {
+                                e.preventDefault();
+                              }
+                            }}
+                          />
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </>
             )}
             {returnItems.length > 0 && (
-              <Button onClick={handleReturnSubmit}>Process Return</Button>
+              <Button
+                disabled={isProcessingRefund || isRefundButtonDisabled}
+                onClick={handleReturnSubmit}
+              >
+                {' '}
+                {isRefundButtonDisabled ? 'Already Refunded' : 'Process Return'}
+              </Button>
             )}
           </div>
         </DialogContent>

@@ -120,7 +120,6 @@ export const authApi = createApi({
     }),
     getOrderByInvoice: builder.query({
       query: (cred) => {
-        console.log(cred);
         return {
           url: `/orders/invoice/${cred.invoiceNumber}`,
           method: 'GET',

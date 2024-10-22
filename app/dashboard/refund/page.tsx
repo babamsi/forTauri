@@ -5,7 +5,7 @@ import {
   useGetOrderByInvoiceQuery,
   useUpdateOrderMutation
 } from '@/store/authApi';
-import { getAuthCookie } from '@/actions/auth.actions';
+import { deleteAuthCookie, getAuthCookie } from '@/actions/auth.actions';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -34,6 +34,7 @@ import {
 } from '@/components/ui/table';
 import { toast, Toaster } from 'react-hot-toast';
 import { Loader2, RefreshCcw, Minus, Plus } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 
 interface Product {
   _id: string;
@@ -74,6 +75,8 @@ export default function RefundPage() {
   const [cookies, setCookies] = useState(null);
   const [isProcessingRefund, setIsProcessingRefund] = useState(false);
   const [refundProducts, setRefundProducts] = useState<RefundProduct[]>([]);
+
+  const router = useRouter();
 
   const {
     data: orderData,
@@ -225,6 +228,11 @@ export default function RefundPage() {
 
   if (!cookies) {
     return <Loader2 className="mr-2 h-4 w-4 animate-spin" />;
+  }
+  // @ts-ignore
+  if (orderError?.data.message === 'Token expired') {
+    deleteAuthCookie();
+    router.push('/');
   }
 
   return (
