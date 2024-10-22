@@ -900,7 +900,7 @@ export default function EnhancedPOSSystem() {
                 </Button>
                 <Button
                   className="w-full sm:w-auto"
-                  onClick={() => setIsCameraActive(!isCameraActive)}
+                  onClick={() => setIsCameraActive(true)}
                 >
                   <Camera className="h-4 w-4" />
                 </Button>
