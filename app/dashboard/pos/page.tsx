@@ -2013,7 +2013,7 @@ export default function EnhancedPOSSystem() {
           <DialogHeader>
             <DialogTitle>Scan Barcode</DialogTitle>
             <DialogDescription>
-              Use your device's camera to scan a product barcode.
+              Use your device camera to scan a product barcode.
             </DialogDescription>
           </DialogHeader>
           <div className="flex h-64 flex-col items-center justify-center  rounded-lg">
