@@ -59,10 +59,10 @@ import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import {
   useGetProductsQuery,
-  useSelProductMutation,
-  useUpdateOrderMutation,
+  useGetOrdersQuery,
   useGetAllCustomerQuery,
-  useGetOrdersQuery
+  useSelProductMutation,
+  useUpdateOrderMutation
 } from '@/store/authApi';
 import { deleteAuthCookie, getAuthCookie } from '@/actions/auth.actions';
 import {
@@ -129,155 +129,6 @@ interface Customer {
 }
 
 // Mock data for products, customers, and transactions
-const mockProducts = [
-  {
-    id: 'P001',
-    name: 'T-Shirt',
-    price: 19.99,
-    barcode: '123456789',
-    category: 'Clothing',
-    image: '/placeholder.svg?height=100&width=100',
-    stock: 50
-  },
-  {
-    id: 'P002',
-    name: 'Jeans',
-    price: 49.99,
-    barcode: '234567890',
-    category: 'Clothing',
-    image: '/placeholder.svg?height=100&width=100',
-    stock: 30
-  },
-  {
-    id: 'P003',
-    name: 'Sneakers',
-    price: 79.99,
-    barcode: '345678901',
-    category: 'Footwear',
-    image: '/placeholder.svg?height=100&width=100',
-    stock: 20
-  },
-  {
-    id: 'P004',
-    name: 'Backpack',
-    price: 39.99,
-    barcode: '456789012',
-    category: 'Accessories',
-    image: '/placeholder.svg?height=100&width=100',
-    stock: 15
-  },
-  {
-    id: 'P005',
-    name: 'Water Bottle',
-    price: 9.99,
-    barcode: '567890123',
-    category: 'Accessories',
-    image: '/placeholder.svg?height=100&width=100',
-    stock: 100
-  },
-  {
-    id: 'P006',
-    name: 'Hoodie',
-    price: 59.99,
-    barcode: '678901234',
-    category: 'Clothing',
-    image: '/placeholder.svg?height=100&width=100',
-    stock: 25
-  },
-  {
-    id: 'P007',
-    name: 'Socks',
-    price: 7.99,
-    barcode: '789012345',
-    category: 'Clothing',
-    image: '/placeholder.svg?height=100&width=100',
-    stock: 200
-  },
-  {
-    id: 'P008',
-    name: 'Hat',
-    price: 24.99,
-    barcode: '890123456',
-    category: 'Accessories',
-    image: '/placeholder.svg?height=100&width=100',
-    stock: 40
-  },
-  {
-    id: 'P009',
-    name: 'Sunglasses',
-    price: 29.99,
-    barcode: '901234567',
-    category: 'Accessories',
-    image: '/placeholder.svg?height=100&width=100',
-    stock: 35
-  },
-  {
-    id: 'P010',
-    name: 'Watch',
-    price: 99.99,
-    barcode: '012345678',
-    category: 'Accessories',
-    image: '/placeholder.svg?height=100&width=100',
-    stock: 10
-  }
-];
-
-const mockCustomers = [
-  {
-    id: 'C001',
-    name: 'John Doe',
-    phone: '1234567890',
-    email: 'john@example.com',
-    loyaltyPoints: 100
-  },
-  {
-    id: 'C002',
-    name: 'Jane Smith',
-    phone: '2345678901',
-    email: 'jane@example.com',
-    loyaltyPoints: 50
-  },
-  {
-    id: 'C003',
-    name: 'Bob Johnson',
-    phone: '3456789012',
-    email: 'bob@example.com',
-    loyaltyPoints: 75
-  }
-];
-
-const mockTransactions = [
-  {
-    id: 'T001',
-    customerId: 'C001',
-    date: '2023-07-01',
-    total: 129.97,
-    items: [
-      { id: 'P001', name: 'T-Shirt', price: 19.99, quantity: 2 },
-      { id: 'P002', name: 'Jeans', price: 49.99, quantity: 1 },
-      { id: 'P005', name: 'Water Bottle', price: 9.99, quantity: 4 }
-    ],
-    paymentMethod: 'Cash',
-    vat: 6.5,
-    discount: 0,
-    type: 'sale'
-  },
-  {
-    id: 'T002',
-    customerId: 'C002',
-    date: '2023-07-02',
-    total: 189.97,
-    items: [
-      { id: 'P003', name: 'Sneakers', price: 79.99, quantity: 1 },
-      { id: 'P006', name: 'Hoodie', price: 59.99, quantity: 1 },
-      { id: 'P008', name: 'Hat', price: 24.99, quantity: 2 }
-    ],
-    paymentMethod: 'EVC',
-    vat: 9.5,
-    discount: 5,
-    type: 'sale'
-  }
-];
 
 const localBanks = [
   { id: 'B001', name: 'Salaam Bank' },
@@ -289,9 +140,9 @@ const localBanks = [
 export default function EnhancedPOSSystem() {
   const [cart, setCart] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
-  const [productsServer, setProductsServer] = useState([]);
+  // const [productsServer, setProductsServer] = useState([]);
   const [filteredProducts, setFilteredProducts] = useState([]);
-  const [selectedProduct, setSelectedProduct] = useState(null);
+  // const [selectedProduct, setSelectedProduct] = useState(null);
   const [isCheckoutDialogOpen, setIsCheckoutDialogOpen] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState('');
   const [selectedBank, setSelectedBank] = useState('');
@@ -341,6 +192,8 @@ export default function EnhancedPOSSystem() {
   const [isCameraActive, setIsCameraActive] = useState(false);
   const [lastScanTime, setLastScanTime] = useState(0);
   const [isProcessingRefund, setIsProcessingRefund] = useState(false);
+  const [transactions, setTransactions] = useState([]);
+  const [filteredCustomers, setFilteredCustomers] = useState([]);
 
   const VAT_RATE = 0.05; // 5% VAT rate
 
@@ -349,44 +202,19 @@ export default function EnhancedPOSSystem() {
 
   const {
     data: productServer,
-    error: prudctsError,
+    error: productsError,
     isFetching,
     isError
-  } = useGetProductsQuery(cookies, {
-    skip: !cookies
-  });
-
-  //@ts-ignore
-  if (prudctsError?.data.message === 'Token expired') {
-    deleteAuthCookie();
-    return;
-  }
-
-  const { data: customers, error: customersError } = useGetAllCustomerQuery(
-    cookies,
-    {
-      skip: !cookies
-    }
-  );
+  } = useGetProductsQuery(cookies, { skip: !cookies });
+  const { data: customers, error: customersError } =
+    useGetAllCustomerQuery(cookies);
   const { data: orders, refetch } = useGetOrdersQuery(cookies, {
     skip: !cookies
   });
   const [sell, { isLoading, isError: isSellError, isSuccess }] =
     useSelProductMutation();
-
-  // console.log(productServer)
-
-  const [transactions, setTransactions] = useState(orders);
-
-  const [filteredCustomers, setFilteredCustomers] = useState(customers);
-
-  const categories = useMemo(
-    // @ts-ignore
-    () => [...new Set(productServer?.map((product) => product.category))],
-    [productServer]
-  );
-
-  // const { data: orderData, error: orderError, refetch } = useGetOrderByInvoiceQuery({ invoiceNumber, cookies }, { skip: !invoiceNumber });
+  const [updateOrder, { isLoading: isUpdating, isError: updateError }] =
+    useUpdateOrderMutation();
 
   useEffect(() => {
     getAuthCookie().then((k: any) => {
@@ -396,6 +224,23 @@ export default function EnhancedPOSSystem() {
     //   barcodeInputRef.current.focus();
     // }
   }, []);
+
+  useEffect(() => {
+    //@ts-ignore
+    if (productsError?.data?.message === 'Token expired') {
+      deleteAuthCookie();
+    }
+  }, [productsError]);
+
+  // console.log(productServer)
+
+  const categories = useMemo(
+    // @ts-ignore
+    () => [...new Set(productServer?.map((product) => product.category))],
+    [productServer]
+  );
+
+  // const { data: orderData, error: orderError, refetch } = useGetOrderByInvoiceQuery({ invoiceNumber, cookies }, { skip: !invoiceNumber });
 
   useEffect(() => {
     const delayDebounceFn = setTimeout(async () => {
@@ -459,7 +304,7 @@ export default function EnhancedPOSSystem() {
         return [...prevCart, { ...product, quantity: 1 }];
       }
     });
-    setSelectedProduct(null);
+    // setSelectedProduct(null);
     toast.success(`${product.name} added to cart`);
   }, []);
 
@@ -621,7 +466,7 @@ export default function EnhancedPOSSystem() {
   );
 
   const handleCustomerSearch = useCallback((query: any) => {
-    const customer = customers.find(
+    const customer = customers?.find(
       // @ts-ignore
       (c) => c._id === query || c.phone === query
     );
@@ -693,10 +538,6 @@ export default function EnhancedPOSSystem() {
       toast.error('Invoice not found');
     }
   }, [returnInvoice, orders]);
-
-  // for refunding product api
-  const [updateOrder, { isLoading: isUpdating, isError: updateError }] =
-    useUpdateOrderMutation();
 
   const calculateAfterReturnAmount = useMemo(() => {
     const itemsToReturn = returnItems.filter(
@@ -1644,9 +1485,9 @@ export default function EnhancedPOSSystem() {
                   Search
                 </Button>
                 <ScrollArea className="h-[200px]">
-                  {// @ts-ignore
-                  filteredCustomers?.map((customer) => (
+                  {filteredCustomers?.map((customer) => (
                     <Button
+                      // @ts-ignore
                       key={customer._id}
                       variant="ghost"
                       className="w-full justify-start"
@@ -1656,8 +1497,15 @@ export default function EnhancedPOSSystem() {
                       }}
                     >
                       <User className="mr-2 h-4 w-4" />
-                      {customer.name} -{' '}
-                      {maskCustomerInfo(customer.phone, 'phone')}
+                      {
+                        // @ts-ignore
+                        customer.name
+                      }{' '}
+                      -{' '}
+                      {
+                        // @ts-ignore
+                        maskCustomerInfo(customer.phone, 'phone')
+                      }
                     </Button>
                   ))}
                 </ScrollArea>
