@@ -74,7 +74,6 @@ import {
   Building2,
   Smartphone,
   DollarSign,
-  Barcode,
   User,
   UserPlus,
   RefreshCcw,
@@ -102,7 +101,6 @@ import {
   Camera
 } from 'lucide-react';
 import { format } from 'date-fns';
-import { BarcodeScanner } from '@thewirv/react-barcode-scanner';
 
 interface Product {
   _id: string;
@@ -329,28 +327,6 @@ export default function EnhancedPOSSystem() {
     // setSelectedProduct(null);
     toast.success(`${product.name} added to cart`);
   }, []);
-
-  const handleScan = async (scannedBarcode: string) => {
-    if (!scannedBarcode.trim()) {
-      toast.error('Please enter a barcode');
-      return;
-    }
-    // setFormData((prev) => ({ ...prev, barcode: scannedBarcode }))
-    const product = await fetchProductByBarcode(scannedBarcode, productServer);
-    addToCart(product);
-  };
-
-  const fetchProductByBarcode = async (
-    barcode: string,
-    productServer: Product[]
-  ): Promise<Product> => {
-    const product = productServer.find((p) => p.barcode === barcode);
-    if (product) {
-      return product;
-    } else {
-      throw new Error('Product not found');
-    }
-  };
 
   const removeFromCart = useCallback((productId: string) => {
     setCart((cart) => cart.filter((item: Product) => item._id !== productId));
@@ -851,15 +827,6 @@ export default function EnhancedPOSSystem() {
     );
   }, [returnItems, orders]);
 
-  const handleCameraCapture = () => {
-    // Simulating barcode capture
-    const randomProduct =
-      productServer[Math.floor(Math.random() * productServer.length)];
-    addToCart(randomProduct);
-    setIsCameraOpen(false);
-    toast.success(`${randomProduct.name} added to cart`);
-  };
-
   // @ts-ignore
   const handleSearchSuggestionClick = (product) => {
     addToCart(product);
@@ -913,12 +880,6 @@ export default function EnhancedPOSSystem() {
       return `${username[0]}****@${domain}`;
     }
     return info;
-  };
-
-  const handleSendAuthCode = () => {
-    // In a real application, this would send an authentication code to the user's phone
-    setIsAuthCodeSent(true);
-    toast.success('Authentication code sent to your phone');
   };
 
   const isProductInCart = (
@@ -1013,13 +974,6 @@ export default function EnhancedPOSSystem() {
                   onClick={() => setIsTransactionHistoryOpen(true)}
                 >
                   <FileText className="h-4 w-4" />
-                </Button>
-
-                <Button
-                  className="w-full sm:w-auto"
-                  onClick={() => setIsCameraActive(!isCameraActive)}
-                >
-                  {isCameraActive ? 'Stop Camera' : 'Start Camera'}
                 </Button>
 
                 {currentCustomer ? (
@@ -1205,32 +1159,6 @@ export default function EnhancedPOSSystem() {
                 )}
               </Card>
             </div>
-
-            {isCameraActive && (
-              <div className="mb-4">
-                <BarcodeScanner
-                  onSuccess={(result) => {
-                    if (result) {
-                      // console.log(result);
-                      const currentTime = Date.now();
-                      if (currentTime - lastScanTime < 2000) {
-                        // If less than 1 second has passed since the last scan, ignore this scan
-                        return;
-                      }
-                      setLastScanTime(currentTime);
-                      handleScan(result);
-                      setIsCameraActive(false);
-                      // setBarcode(result);
-                    }
-                  }}
-                  onError={(error) => {
-                    if (error) {
-                      console.error(error.message);
-                    }
-                  }}
-                />
-              </div>
-            )}
 
             {/* Shopping cart */}
             <div className="h-screen w-full md:w-1/3">
@@ -2149,35 +2077,6 @@ export default function EnhancedPOSSystem() {
               </Table>
             </div>
           </div>
-        </DialogContent>
-      </Dialog>
-
-      {/* Camera Dialog */}
-      <Dialog open={isCameraOpen} onOpenChange={setIsCameraOpen}>
-        <DialogContent className="sm:max-w-[425px]">
-          <DialogHeader>
-            <DialogTitle>Scan Barcode</DialogTitle>
-            <DialogDescription>
-              Use your device camera to scan a product barcode.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="flex h-64 flex-col items-center justify-center  rounded-lg">
-            <Camera className="mb-4 h-16 w-16 text-gray-400" />
-            <p className="text-sm text-gray-500">
-              Camera preview would appear here
-            </p>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsCameraOpen(false)}>
-              Cancel
-            </Button>
-            <Button
-              className="w-full sm:w-auto"
-              onClick={() => setIsCameraActive(!isCameraActive)}
-            >
-              {isCameraActive ? 'Stop Camera' : 'Start Camera'}
-            </Button>
-          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>

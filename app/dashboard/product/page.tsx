@@ -1141,15 +1141,27 @@ function ProductForm({
       isQuantityBased: true
     }
   );
-  const [isCameraActive, setIsCameraActive] = useState(false);
-  const [lastScanTime, setLastScanTime] = useState(0);
+  // const [isCameraActive, setIsCameraActive] = useState(false);
+  // const [lastScanTime, setLastScanTime] = useState(0);
+  const [isBarcodeReaderActive, setIsBarcodeReaderActive] = useState(false);
+
   const handleChange = (
     e: React.ChangeEvent<
       HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
     >
   ) => {
+    if (e.target.name === 'barcode') {
+      setIsBarcodeReaderActive(true);
+    }
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
+  };
+  //@ts-ignore
+  const handleKeyDown = (event) => {
+    if (event.key === 'Enter' && isBarcodeReaderActive) {
+      event.preventDefault();
+      setIsBarcodeReaderActive(false);
+    }
   };
 
   const handleScan = async (scannedBarcode: string) => {
@@ -1251,61 +1263,32 @@ function ProductForm({
           </Select>
         </div>
         {formData.isQuantityBased && (
-          <div>
-            {' '}
-            <Label htmlFor="quantity">Quantity</Label>
-            <Input
-              id="quantity"
-              name="quantity"
-              type="number"
-              value={formData.quantity}
-              onChange={handleChange}
-              required
-            />
-          </div>
+          <>
+            <div>
+              {' '}
+              <Label htmlFor="quantity">Quantity</Label>
+              <Input
+                id="quantity"
+                name="quantity"
+                type="number"
+                value={formData.quantity}
+                onChange={handleChange}
+                required
+              />
+            </div>
+            <div>
+              <Label htmlFor="barcode">Barcode</Label>
+              <Input
+                id="barcode"
+                name="barcode"
+                value={formData.barcode}
+                onChange={handleChange}
+                onKeyDown={handleKeyDown}
+              />
+            </div>
+          </>
         )}
 
-        <div>
-          <Label htmlFor="barcode">Barcode</Label>
-          <Input
-            id="barcode"
-            name="barcode"
-            value={formData.barcode}
-            onChange={handleChange}
-          />
-          <Button
-            className="w-full sm:w-auto"
-            onClick={() => setIsCameraActive(!isCameraActive)}
-          >
-            {isCameraActive ? 'Stop Camera' : 'Start Camera'}
-          </Button>
-        </div>
-        {isCameraActive && (
-          <div className="mb-4">
-            <BarcodeScanner
-              onSuccess={(result) => {
-                if (result) {
-                  // console.log(result);
-                  const currentTime = Date.now();
-                  if (currentTime - lastScanTime < 2000) {
-                    // If less than 1 second has passed since the last scan, ignore this scan
-                    return;
-                  }
-                  setLastScanTime(currentTime);
-                  handleScan(result);
-                  setIsCameraActive(false);
-                  // setBarcode(result);
-                }
-              }}
-              onError={(error) => {
-                if (error) {
-                  console.error(error.message);
-                }
-              }}
-              containerStyle={{ width: '100%', height: '300px' }}
-            />
-          </div>
-        )}
         <div>
           <Label htmlFor="units">Units</Label>
           <Input
