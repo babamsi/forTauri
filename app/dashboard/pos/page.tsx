@@ -355,8 +355,9 @@ export default function EnhancedPOSSystem() {
   const removeFromCart = useCallback((productId: string) => {
     setCart((cart) => cart.filter((item: Product) => item._id !== productId));
   }, []);
-  //@ts-ignore
+
   const handleBarcodeSubmit = useCallback(
+    //@ts-ignore
     (e) => {
       e.preventDefault();
       const barcodeToSearch = inputFocused
