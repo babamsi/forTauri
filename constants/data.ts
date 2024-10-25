@@ -172,12 +172,12 @@ export const navItems: NavItem[] = [
     icon: 'pos',
     label: 'POS'
   },
-  {
-    title: 'Refund',
-    href: '/dashboard/refund',
-    icon: 'refund',
-    label: 'Refund'
-  },
+  // {
+  //   title: 'Refund',
+  //   href: '/dashboard/refund',
+  //   icon: 'refund',
+  //   label: 'Refund'
+  // },
   {
     title: 'Sold Products',
     href: '/dashboard/soldproducts',

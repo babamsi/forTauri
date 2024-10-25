@@ -213,6 +213,9 @@ export default function EnhancedPOSSystem() {
   const [isProcessingRefund, setIsProcessingRefund] = useState(false);
   const [transactions, setTransactions] = useState([]);
   const [filteredCustomers, setFilteredCustomers] = useState([]);
+  const [accumulatedKeystrokes, setAccumulatedKeystrokes] = useState('');
+  const [lastKeystrokeTime, setLastKeystrokeTime] = useState(0);
+  const [inputFocused, setInputFocused] = useState(false);
 
   const VAT_RATE = 0.05; // 5% VAT rate
 
@@ -352,6 +355,128 @@ export default function EnhancedPOSSystem() {
   const removeFromCart = useCallback((productId: string) => {
     setCart((cart) => cart.filter((item: Product) => item._id !== productId));
   }, []);
+  //@ts-ignore
+  const handleBarcodeSubmit = useCallback(
+    (e) => {
+      e.preventDefault();
+      const barcodeToSearch = inputFocused
+        ? searchQuery
+        : accumulatedKeystrokes;
+      const scannedProduct = productServer?.find(
+        //@ts-ignore
+        (product) => product.barcode === barcodeToSearch
+      );
+      if (scannedProduct) {
+        addToCart(scannedProduct);
+        setSearchQuery('');
+        setAccumulatedKeystrokes('');
+      } else {
+        toast.error('Product not found');
+      }
+    },
+    [searchQuery, accumulatedKeystrokes, addToCart, inputFocused, productServer]
+  );
+
+  useEffect(() => {
+    // @ts-ignore
+    const handleKeyDown = (e) => {
+      if (!inputFocused && e.key.length === 1) {
+        setAccumulatedKeystrokes((prev) => prev + e.key);
+        setLastKeystrokeTime(Date.now());
+      }
+    };
+    //@ts-ignore
+    const handleKeyPress = (e) => {
+      if (!inputFocused && e.key === 'Enter') {
+        handleBarcodeSubmit(e);
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    document.addEventListener('keypress', handleKeyPress);
+
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown);
+      document.removeEventListener('keypress', handleKeyPress);
+    };
+  }, [inputFocused, handleBarcodeSubmit]);
+
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      if (Date.now() - lastKeystrokeTime > 100 && !inputFocused) {
+        setSearchQuery(accumulatedKeystrokes);
+        setAccumulatedKeystrokes('');
+      }
+    }, 100);
+
+    return () => clearTimeout(timeoutId);
+  }, [accumulatedKeystrokes, lastKeystrokeTime, inputFocused]);
+
+  // useEffect(() => {
+  //   const handleKeyDown = (e) => {
+  //     if (inputFocused) {
+  //       setAccumulatedKeystrokes('');
+  //     }
+
+  //     if (e.key.length === 1) {
+  //       setAccumulatedKeystrokes(accumulatedKeystrokes + e.key);
+  //       setLastKeystrokeTime(Date.now());
+  //     }
+
+  //     if (e.key === 'Enter' && !inputFocused) {
+  //       setSearchQuery(accumulatedKeystrokes);
+  //       setAccumulatedKeystrokes('');
+  //     }
+  //   };
+
+  //   document.addEventListener('keydown', handleKeyDown);
+
+  //   return () => {
+  //     document.removeEventListener('keydown', handleKeyDown);
+  //   };
+  // }, [accumulatedKeystrokes, inputFocused, searchQuery]);
+
+  // useEffect(() => {
+  //   const handleInputFocus = (e) => {
+  //     setInputFocused(e.target === searchInputRef.current);
+  //     if (e.target === searchInputRef.current) {
+  //       setAccumulatedKeystrokes('');
+  //     }
+  //   };
+
+  //   document.addEventListener('focusin', handleInputFocus);
+  //   document.addEventListener('focusout', handleInputFocus);
+
+  //   return () => {
+  //     document.removeEventListener('focusin', handleInputFocus);
+  //     document.removeEventListener('focusout', handleInputFocus);
+  //   };
+  // }, [searchInputRef]);
+
+  // useEffect(() => {
+  //   const timeoutId = setTimeout(() => {
+  //     if (Date.now() - lastKeystrokeTime > 500 && !inputFocused) {
+  //       setSearchQuery(accumulatedKeystrokes);
+  //       setAccumulatedKeystrokes('');
+  //     }
+  //   }, 500);
+
+  //   return () => clearTimeout(timeoutId);
+  // }, [accumulatedKeystrokes, lastKeystrokeTime, inputFocused]);
+
+  // useEffect(() => {
+  //   if (searchQuery && !inputFocused && searchQuery !== '') {
+  //     const scannedProduct = productServer?.find(
+  //       (product: Product) => product.barcode === searchQuery
+  //     );
+  //     if (scannedProduct) {
+  //       addToCart(scannedProduct);
+  //       setSearchQuery('');
+  //     } else {
+  //       toast.error('Product not found');
+  //     }
+  //   }
+  // }, [searchQuery, addToCart, inputFocused]);
 
   const updateQuantity = useCallback(
     (productId: string, newQuantity: Number) => {
@@ -467,22 +592,6 @@ export default function EnhancedPOSSystem() {
     setDiscountValue('0');
     setNewCustomer({ name: '', phone: '', email: '' });
   }, []);
-
-  const handleBarcodeSubmit = useCallback(
-    (e: any) => {
-      e.preventDefault();
-      const scannedProduct = productServer?.find(
-        (product: Product) => product.barcode === searchQuery
-      );
-      if (scannedProduct) {
-        addToCart(scannedProduct);
-        setSearchQuery('');
-      } else {
-        toast.error('Product not found');
-      }
-    },
-    [searchQuery, addToCart]
-  );
 
   const handleCustomerSearch = useCallback((query: any) => {
     const customer = customers?.find(
@@ -761,6 +870,7 @@ export default function EnhancedPOSSystem() {
     // Simulate loading more products
     setTimeout(() => {
       const moreProducts = productServer;
+      // console.log(filteredProducts)
       // @ts-ignore
       setFilteredProducts((prevProducts) => [...prevProducts, ...moreProducts]);
       setIsLoadingMore(false);
@@ -849,6 +959,8 @@ export default function EnhancedPOSSystem() {
                   placeholder="Search products..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
+                  onFocus={() => setInputFocused(true)}
+                  onBlur={() => setInputFocused(false)}
                   className="w-full py-2 pl-10 pr-4"
                 />
                 {searchQuery && (
@@ -856,7 +968,10 @@ export default function EnhancedPOSSystem() {
                     size="sm"
                     variant="ghost"
                     className="absolute right-2 top-1/2 -translate-y-1/2 transform"
-                    onClick={() => setSearchQuery('')}
+                    onClick={() => {
+                      setSearchQuery('');
+                      setAccumulatedKeystrokes('');
+                    }}
                   >
                     <X className="h-4 w-4" />
                   </Button>
@@ -993,11 +1108,15 @@ export default function EnhancedPOSSystem() {
                       <Select
                         value={selectedCategory}
                         onValueChange={setSelectedCategory}
+                        defaultValue="All"
                       >
                         <SelectTrigger className="w-[180px]">
                           <SelectValue placeholder="Category" />
                         </SelectTrigger>
                         <SelectContent>
+                          <SelectItem value="All" defaultValue="All">
+                            All
+                          </SelectItem>
                           {categories.map((category) => (
                             <SelectItem key={category} value={category}>
                               {category}
@@ -1075,6 +1194,7 @@ export default function EnhancedPOSSystem() {
                         <Button
                           className="mt-4 w-full"
                           onClick={handleLoadMore}
+                          disabled={!filteredProducts}
                         >
                           Load More
                         </Button>
