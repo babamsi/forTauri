@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -54,6 +54,7 @@ import {
   PopoverContent,
   PopoverTrigger
 } from '@/components/ui/popover';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import {
   Search,
   Filter,
@@ -69,7 +70,9 @@ import {
   LayoutList,
   AlignJustify,
   Loader2,
-  Barcode
+  Barcode,
+  MoreHorizontal,
+  X
 } from 'lucide-react';
 import { Heading } from '@/components/ui/heading';
 import { toast, ToastContainer } from 'react-toastify';
@@ -85,6 +88,8 @@ import {
 
 import { BarcodeScanner } from '@thewirv/react-barcode-scanner';
 import { deleteAuthCookie } from '@/actions/auth.actions';
+import dynamic from 'next/dynamic';
+import { useMediaQuery } from 'react-responsive';
 
 interface Product {
   _id: string;
@@ -99,7 +104,40 @@ interface Product {
   barcode: string;
   units: string;
   isQuantityBased: boolean;
-  log: any[];
+  logs: any[];
+  reorderPoint: number;
+}
+
+function BottomSheet({
+  // @ts-ignore
+  isOpen,
+  onClose,
+  title,
+  children
+}) {
+  return (
+    <AnimatePresence>
+      {isOpen && (
+        <motion.div
+          initial={{ y: '100%' }}
+          animate={{ y: 0 }}
+          exit={{ y: '100%' }}
+          transition={{ type: 'spring', damping: 30, stiffness: 300 }}
+          className="fixed inset-x-0 bottom-0 z-50 rounded-t-xl border-t bg-background shadow-lg"
+        >
+          <div className="p-4">
+            <div className="mb-4 flex items-center justify-between">
+              <h2 className="text-lg font-semibold">{title}</h2>
+              <Button variant="ghost" size="sm" onClick={onClose}>
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+            {children}
+          </div>
+        </motion.div>
+      )}
+    </AnimatePresence>
+  );
 }
 
 export default function Component() {
@@ -163,6 +201,12 @@ export default function Component() {
   const [isBarcodeDialogOpen, setIsBarcodeDialogOpen] = useState(false);
   const [isBarcodeScanning, setIsBarcodeScanning] = useState(false);
   const [lastScanTime, setLastScanTime] = useState(0);
+  const [isFilterOpen, setIsFilterOpen] = useState(false);
+  const [inputFocused, setInputFocused] = useState(false);
+  const [accumulatedKeystrokes, setAccumulatedKeystrokes] = useState('');
+  const [lastKeystrokeTime, setLastKeystrokeTime] = useState(0);
+  const searchInputRef = useRef(null);
+  const [anyInputFocused, setAnyInputFocused] = useState(false);
 
   useEffect(() => {
     if (productsServer) {
@@ -170,7 +214,6 @@ export default function Component() {
     }
   }, [productsServer]);
 
-  const newCategories = ['Elect', 'Cloth', 'Drink'];
   // @ts-ignore
   const categories = useMemo(
     // @ts-ignore
@@ -178,33 +221,68 @@ export default function Component() {
     [products]
   );
 
+  const newCategories = [
+    'Cosmatics',
+    'Stationary',
+    'Snacks',
+    'Breakfast',
+    'Sauces',
+    'Dry food',
+    'Drinks',
+    'Cleaning tools',
+    'Electronics',
+    'Vegetables',
+    'Meats',
+    'Others'
+  ];
+
   const vendors = useMemo(
     // @ts-ignore
     () => [...new Set(products.map((product) => product.vendor))],
     [products]
   );
 
-  const handleBarcodeScanned = (data: string) => {
-    const currentTime = Date.now();
-    if (currentTime - lastScanTime < 1000) {
-      // If less than 1 second has passed since the last scan, ignore this scan
-      return;
-    }
-    setLastScanTime(currentTime);
-    if (data) {
-      setSearchQuery(data);
-      setIsBarcodeDialogOpen(false);
-      setIsBarcodeScanning(false);
-      // You might want to trigger the search here
-      // For example, by calling a search function or updating a state that triggers a search effect
-    }
-  };
+  const isMobile = useMediaQuery({ maxWidth: 767 });
 
-  const handleBarcodeError = (err: any) => {
-    // console.error(err);
-    toast.error('Error scanning barcode. Please try again.');
-    setIsBarcodeScanning(false);
-  };
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (!inputFocused && !anyInputFocused && e.key.length === 1) {
+        setSearchQuery((prev) => prev + e.key);
+      }
+    };
+
+    const handleFocusIn = (e: FocusEvent) => {
+      setAnyInputFocused(
+        e.target instanceof HTMLInputElement ||
+          e.target instanceof HTMLTextAreaElement
+      );
+      if (e.target === searchInputRef.current) {
+        setInputFocused(true);
+      }
+    };
+
+    const handleFocusOut = (e: FocusEvent) => {
+      if (
+        e.target instanceof HTMLInputElement ||
+        e.target instanceof HTMLTextAreaElement
+      ) {
+        setAnyInputFocused(false);
+      }
+      if (e.target === searchInputRef.current) {
+        setInputFocused(false);
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    document.addEventListener('focusin', handleFocusIn);
+    document.addEventListener('focusout', handleFocusOut);
+
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown);
+      document.removeEventListener('focusin', handleFocusIn);
+      document.removeEventListener('focusout', handleFocusOut);
+    };
+  }, [inputFocused, anyInputFocused]);
 
   const filteredProducts = useMemo(() => {
     return products.filter((product) => {
@@ -298,9 +376,11 @@ export default function Component() {
       quantity: newProduct.quantity,
       price: Number(newProduct.price),
       isQuantityBased: newProduct.isQuantityBased,
+      reorderPoint: newProduct.reorderPoint,
       units: newProduct.units,
       barcode: newProduct.barcode
     };
+    console.log(data);
     try {
       const res = await createProduct({
         data,
@@ -311,13 +391,11 @@ export default function Component() {
         throw new Error(res.error);
       }
       toast.success('Product added successfully!');
+      refetch();
     } catch (error) {
       toast.error('Failed to add product. Please try again.');
+      refetch();
     }
-  };
-
-  const refreshPage = () => {
-    window.location.reload();
   };
 
   const handleEditProduct = async (updatedProduct: Product) => {
@@ -360,6 +438,7 @@ export default function Component() {
       isQuantityBased: updatedProduct.isQuantityBased,
       barcode: updatedProduct.barcode,
       units: updatedProduct.units,
+      reorderPoint: updatedProduct.reorderPoint,
       action: logs
     };
     const all = {
@@ -375,10 +454,10 @@ export default function Component() {
       }
       toast.success('Product updated successfully!');
       setEditingProduct(null);
-      refreshPage();
+      refetch();
     } catch (error) {
       toast.error(`Error processing: || 'Unknown error'}`);
-      refreshPage();
+      refetch();
     }
   };
 
@@ -395,10 +474,10 @@ export default function Component() {
             throw new Error(error);
           }
           toast.success('Product Deleted');
-          refreshPage();
+          refetch();
         } catch {
           toast.error('error to delete a product');
-          refreshPage();
+          refetch();
         }
       }
       setConfirmAction(null);
@@ -413,13 +492,27 @@ export default function Component() {
         data = {
           quantity: s[0].quantity + amount,
           isQuantityBased: true,
-          action: `Restock from ${s[0].quantity} to ${s[0].quantity + amount}`
+          action: [
+            {
+              action: `Restock from ${s[0].quantity} to ${
+                s[0].quantity + amount
+              }`,
+              // @ts-ignore
+              updatedBy: user.username
+            }
+          ]
         };
       } else {
         data = {
           units: amount,
           isQuantityBased: false,
-          action: `Restock from ${s[0].units} to ${amount}`
+          action: [
+            {
+              action: `Restock from ${s[0].units} to ${amount}`,
+              // @ts-ignore
+              updatedBy: user.username
+            }
+          ]
         };
       }
 
@@ -474,33 +567,38 @@ export default function Component() {
   if (isError) {
     // console.log(error)
     // @ts-ignore
-    if (error.data.message === 'Token expired') {
+    if (error?.data?.message === 'Token expired') {
       deleteAuthCookie();
     }
     return <div>Error: {error.toString()}</div>;
   }
 
   return (
-    <div className="h-screen overflow-auto">
-      <div className="min-h-screen bg-background p-6 text-foreground">
-        <div className="mx-auto max-w-7xl space-y-6">
-          <div className="flex items-center justify-between">
-            <Heading
-              title={`Products (${products.length})`}
-              description="Manage products"
-            />
-            <div className="flex space-x-2">
+    <div className="min-h-screen p-4 sm:p-6">
+      <div className="mx-auto max-w-7xl space-y-4 sm:space-y-6">
+        <div className="flex flex-col items-start justify-between space-y-4 sm:flex-row sm:items-center sm:space-y-0">
+          <h1 className="text-2xl font-bold">Product Management</h1>
+          <div className="flex w-full flex-col space-y-2 sm:w-auto sm:flex-row sm:space-x-2 sm:space-y-0">
+            {isMobile ? (
+              <Button
+                className="w-full sm:w-auto"
+                onClick={() => setIsAddProductDialogOpen(true)}
+              >
+                <Plus className="mr-2 h-4 w-4" />
+                Add Product
+              </Button>
+            ) : (
               <Dialog
                 open={isAddProductDialogOpen}
                 onOpenChange={setIsAddProductDialogOpen}
               >
                 <DialogTrigger asChild>
-                  <Button>
+                  <Button className="w-full sm:w-auto">
                     <Plus className="mr-2 h-4 w-4" />
                     Add Product
                   </Button>
                 </DialogTrigger>
-                <DialogContent className="max-w-4xl">
+                <DialogContent className="sm:max-w-[425px]">
                   <DialogHeader>
                     <DialogTitle>Add New Product</DialogTitle>
                     <DialogDescription>
@@ -508,36 +606,98 @@ export default function Component() {
                     </DialogDescription>
                   </DialogHeader>
                   <ProductForm
-                    // @ts-ignore
                     onSubmit={handleAddProduct}
                     categories={newCategories}
-                    vendors={['haye']}
+                    vendors={vendors}
                   />
                 </DialogContent>
               </Dialog>
-            </div>
-          </div>
+            )}
 
-          <div className="rounded-lg bg-card p-4 text-card-foreground shadow">
-            <div className="flex flex-col items-start justify-between space-y-4 md:flex-row md:items-center md:space-x-4 md:space-y-0">
-              <div className="flex w-full flex-col items-start space-y-2 sm:flex-row sm:items-center sm:space-x-2 sm:space-y-0 md:w-auto">
-                <div className="relative w-full sm:w-64">
-                  <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    placeholder="Search products, vendors, added by"
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="pl-8"
-                  />
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="absolute right-0 top-0 h-full"
-                    onClick={() => setIsBarcodeDialogOpen(true)}
-                  >
-                    <Barcode className="h-4 w-4" />
-                  </Button>
-                </div>
+            <BottomSheet
+              isOpen={isMobile && isAddProductDialogOpen}
+              onClose={() => setIsAddProductDialogOpen(false)}
+              title="Add New Product"
+            >
+              <ProductForm
+                onSubmit={handleAddProduct}
+                categories={newCategories}
+                vendors={vendors}
+              />
+            </BottomSheet>
+
+            <BottomSheet
+              isOpen={isMobile && isEditProductDialogOpen}
+              onClose={() => setIsEditProductDialogOpen(false)}
+              title="Add New Product"
+            >
+              <ProductForm
+                onSubmit={handleEditProduct}
+                categories={categories}
+                vendors={vendors}
+              />
+            </BottomSheet>
+          </div>
+        </div>
+
+        <div className="rounded-lg p-4 shadow">
+          <div className="flex flex-col space-y-4">
+            <div className="flex flex-col items-center space-y-2 sm:flex-row sm:space-x-2 sm:space-y-0">
+              <div className="relative w-full sm:w-64">
+                <Search className="absolute left-2 top-2.5 h-4 w-4 text-gray-400" />
+                <Input
+                  ref={searchInputRef}
+                  placeholder="Search products, suppliers, buyers"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-8 pr-10"
+                />
+              </div>
+              {isMobile ? (
+                <Button
+                  variant="outline"
+                  className="w-full sm:w-auto"
+                  onClick={() => setIsFilterOpen(true)}
+                >
+                  <Filter className="mr-2 h-4 w-4" />
+                  Filters
+                </Button>
+              ) : (
+                <Dialog open={isFilterOpen} onOpenChange={setIsFilterOpen}>
+                  <DialogTrigger asChild>
+                    <Button variant="outline" className="w-full sm:w-auto">
+                      <Filter className="mr-2 h-4 w-4" />
+                      Filters
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="sm:max-w-[425px]">
+                    <DialogHeader>
+                      <DialogTitle>Filters</DialogTitle>
+                      <DialogDescription>
+                        Apply filters to refine your product list.
+                      </DialogDescription>
+                    </DialogHeader>
+                    <FilterOptions
+                      categories={categories}
+                      vendors={vendors}
+                      selectedCategory={selectedCategory}
+                      setSelectedCategory={setSelectedCategory}
+                      selectedVendor={selectedVendor}
+                      setSelectedVendor={setSelectedVendor}
+                      showLowStock={showLowStock}
+                      setShowLowStock={setShowLowStock}
+                      priceRange={priceRange}
+                      setPriceRange={setPriceRange}
+                    />
+                  </DialogContent>
+                </Dialog>
+              )}
+
+              <BottomSheet
+                isOpen={isMobile && isFilterOpen}
+                onClose={() => setIsFilterOpen(false)}
+                title="Filters"
+              >
                 <FilterOptions
                   categories={categories}
                   vendors={vendors}
@@ -550,445 +710,340 @@ export default function Component() {
                   priceRange={priceRange}
                   setPriceRange={setPriceRange}
                 />
-                <Button variant="outline" onClick={resetFilters}>
-                  <RefreshCw className="mr-2 h-4 w-4" />
-                  Reset Filters
-                </Button>
-              </div>
-              <div className="flex w-full items-center space-x-2 md:w-auto">
-                <Select value={currentView} onValueChange={setCurrentView}>
-                  <SelectTrigger className="w-[180px]">
-                    <SelectValue placeholder="Select view" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="list">
-                      <div className="flex items-center">
-                        <LayoutList className="mr-2 h-4 w-4" />
-                        List View
-                      </div>
-                    </SelectItem>
-                    <SelectItem value="grid">
-                      <div className="flex items-center">
-                        <Grid className="mr-2 h-4 w-4" />
-                        Grid View
-                      </div>
-                    </SelectItem>
-                    <SelectItem value="compact">
-                      <div className="flex items-center">
-                        <AlignJustify className="mr-2 h-4 w-4" />
-                        Compact View
-                      </div>
-                    </SelectItem>
-                  </SelectContent>
-                </Select>
-                <Select
-                  value={itemsPerPage.toString()}
-                  onValueChange={(value) => setItemsPerPage(Number(value))}
-                >
-                  <SelectTrigger className="w-[100px]">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="5">5 / page</SelectItem>
-                    <SelectItem value="10">10 / page</SelectItem>
-                    <SelectItem value="20">20 / page</SelectItem>
-                    <SelectItem value="50">50 / page</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+              </BottomSheet>
+              <Button
+                variant="outline"
+                className="w-full sm:w-auto"
+                onClick={resetFilters}
+              >
+                <RefreshCw className="mr-2 h-4 w-4" />
+                Reset Filters
+              </Button>
+            </div>
+            <div className="flex flex-col items-center justify-between space-y-2 sm:flex-row sm:space-y-0">
+              <Select value={currentView} onValueChange={setCurrentView}>
+                <SelectTrigger className="w-full sm:w-[180px]">
+                  <SelectValue placeholder="Select view" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="list">
+                    <div className="flex items-center">
+                      <LayoutList className="mr-2 h-4 w-4" />
+                      List View
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="grid">
+                    <div className="flex items-center">
+                      <Grid className="mr-2 h-4 w-4" />
+                      Grid View
+                    </div>
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+              <Select
+                value={itemsPerPage.toString()}
+                onValueChange={(value) => setItemsPerPage(Number(value))}
+              >
+                <SelectTrigger className="w-full sm:w-[100px]">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="5">5 / page</SelectItem>
+                  <SelectItem value="10">10 / page</SelectItem>
+                  <SelectItem value="20">20 / page</SelectItem>
+                  <SelectItem value="50">50 / page</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
           </div>
+        </div>
 
-          <AnimatePresence mode="wait">
-            {currentView === 'list' && (
-              <motion.div
-                key="list"
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -20 }}
-                transition={{ duration: 0.2 }}
-                className="overflow-hidden rounded-lg bg-card text-card-foreground shadow-md"
-              >
-                <div className="max-h-[600px] overflow-auto">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead className="sticky top-0 w-[100px] bg-background">
-                          Image
-                        </TableHead>
-                        <TableHead
-                          className="sticky top-0 cursor-pointer bg-background"
-                          onClick={() => handleSort('name')}
-                        >
-                          Name <SortIcon field="name" />
-                        </TableHead>
-                        <TableHead
-                          className="sticky top-0 cursor-pointer bg-background"
-                          onClick={() => handleSort('category')}
-                        >
-                          Category <SortIcon field="category" />
-                        </TableHead>
-
-                        <TableHead
-                          className="sticky top-0 cursor-pointer bg-background"
-                          onClick={() => handleSort('quantity')}
-                        >
-                          Quantity <SortIcon field="quantity" />
-                        </TableHead>
-                        <TableHead
-                          className="sticky top-0 cursor-pointer bg-background"
-                          onClick={() => handleSort('sellPrice')}
-                        >
-                          Sell Price <SortIcon field="sellPrice" />
-                        </TableHead>
-                        <TableHead
-                          className="sticky top-0 cursor-pointer bg-background"
-                          onClick={() => handleSort('vendor')}
-                        >
-                          Vendor <SortIcon field="vendor" />
-                        </TableHead>
-                        <TableHead
-                          className="sticky top-0 cursor-pointer bg-background"
-                          onClick={() => handleSort('addedBy')}
-                        >
-                          Added By <SortIcon field="addedBy" />
-                        </TableHead>
-                        <TableHead className="sticky top-0 bg-background">
-                          Actions
-                        </TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {paginatedProducts.map((product) => (
-                        <TableRow key={product._id}>
-                          <TableCell>
-                            <Avatar className="h-10 w-10">
-                              <AvatarImage
-                                src={`/placeholder.svg?text=${product.name}`}
-                                alt={product.name}
-                              />
-                              <AvatarFallback>
-                                {product.name.slice(0, 2)}
-                              </AvatarFallback>
-                            </Avatar>
-                          </TableCell>
-                          <TableCell className="font-medium">
-                            {product.name}
-                          </TableCell>
-                          <TableCell>{product.category}</TableCell>
-
-                          <TableCell>
-                            <Badge
-                              variant={
-                                product.quantity <= 10
-                                  ? 'destructive'
-                                  : 'secondary'
-                              }
-                            >
-                              {product.isQuantityBased
-                                ? product.quantity
-                                : product.units}
-                            </Badge>
-                          </TableCell>
-                          <TableCell>${product.sellPrice}</TableCell>
-                          <TableCell>{product.vendor}</TableCell>
-                          <TableCell>{product.addedBy}</TableCell>
-                          <TableCell>
-                            <div className="flex space-x-2">
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => {
-                                  setEditingProduct(product);
-                                  setIsEditProductDialogOpen(true);
-                                }}
-                              >
-                                <Edit className="h-4 w-4" />
-                              </Button>
-                              <Button
-                                disabled={
-                                  // @ts-ignore
-                                  user?.role === 'stuff'
-                                }
-                                variant="outline"
-                                size="sm"
-                                onClick={() => handleDeleteProduct(product._id)}
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => {
-                                  setSelectedProductLog(product);
-                                  setIsProductLogDialogOpen(true);
-                                }}
-                              >
-                                <List className="h-4 w-4" />
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => {
-                                  setRestockingProduct(product);
-                                  setIsRestockDialogOpen(true);
-                                }}
-                              >
-                                <Package className="h-4 w-4" />
-                              </Button>
-                            </div>
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </div>
-              </motion.div>
-            )}
-            {currentView === 'grid' && (
-              <motion.div
-                key="grid"
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -20 }}
-                transition={{ duration: 0.2 }}
-                className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
-              >
-                {paginatedProducts.map((product) => (
-                  <Card key={product._id} className="flex h-full flex-col">
-                    <CardHeader>
-                      <div className="relative mb-2 aspect-square w-full">
-                        <Avatar className="h-full w-full">
-                          <AvatarImage
-                            src={`/placeholder.svg?text=${product.name}`}
-                            alt={product.name}
-                          />
-                          <AvatarFallback>
-                            {product.name.slice(0, 2)}
-                          </AvatarFallback>
-                        </Avatar>
-                      </div>
-                      <CardTitle>{product.name}</CardTitle>
-                      <CardDescription>{product.category} -</CardDescription>
-                    </CardHeader>
-                    <CardContent className="flex-grow">
-                      <div className="space-y-2">
-                        <div className="flex justify-between">
-                          <span>Quantity:</span>
+        <AnimatePresence mode="wait">
+          {currentView === 'list' && (
+            <motion.div
+              key="list"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              transition={{ duration: 0.2 }}
+              className="overflow-hidden rounded-lg shadow-md"
+            >
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="font-medium">Product</TableHead>
+                      <TableHead className="hidden font-medium sm:table-cell">
+                        Category
+                      </TableHead>
+                      <TableHead className="text-right font-medium">
+                        Stock
+                      </TableHead>
+                      <TableHead className="hidden text-right font-medium sm:table-cell">
+                        Price
+                      </TableHead>
+                      <TableHead className="hidden font-medium md:table-cell">
+                        Supplier
+                      </TableHead>
+                      <TableHead>Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {paginatedProducts.map((product) => (
+                      <TableRow
+                        key={product._id}
+                        className="transition-colors hover:bg-muted/50"
+                      >
+                        <TableCell className="font-medium">
+                          {product.name}
+                          <p className="text-sm text-muted-foreground sm:hidden">
+                            {product.category}
+                          </p>
+                        </TableCell>
+                        <TableCell className="hidden sm:table-cell">
+                          {product.category}
+                        </TableCell>
+                        <TableCell className="text-right">
                           <Badge
                             variant={
-                              product.quantity <= 10
+                              product.quantity <= product.reorderPoint
                                 ? 'destructive'
                                 : 'secondary'
                             }
+                            className="w-12 justify-center"
                           >
-                            {product.isQuantityBased
-                              ? product.quantity
-                              : `${product.units}`}
+                            {product.quantity}
                           </Badge>
-                        </div>
-                        <div className="flex justify-between">
-                          <span>Sell Price:</span>
-                          <span className="font-semibold">
-                            ${product.sellPrice.toFixed(2)}
-                          </span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span>Vendor:</span>
-                          <span>{product.vendor}</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span>Added By:</span>
-                          <span>{product.addedBy}</span>
-                        </div>
-                      </div>
-                    </CardContent>
-                    <CardFooter className="flex justify-between">
-                      <Button
-                        variant="outline"
-                        onClick={() => {
-                          setEditingProduct(product);
-                          setIsEditProductDialogOpen(true);
-                        }}
-                      >
-                        <Edit className="mr-2 h-4 w-4" />
-                        Edit
-                      </Button>
-                      <Button
-                        disabled={
-                          // @ts-ignore
-                          user?.role === 'stuff'
-                        }
-                        variant="outline"
-                        onClick={() => handleDeleteProduct(product._id)}
-                      >
-                        <Trash2 className="mr-2 h-4 w-4" />
-                        Delete
-                      </Button>
-                    </CardFooter>
-                  </Card>
-                ))}
-              </motion.div>
-            )}
-            {currentView === 'compact' && (
-              <motion.div
-                key="compact"
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -20 }}
-                transition={{ duration: 0.2 }}
-                className="space-y-2"
-              >
-                {paginatedProducts.map((product) => (
-                  <div
-                    key={product._id}
-                    className="flex items-center justify-between rounded-lg bg-card p-4 text-card-foreground shadow"
-                  >
-                    <div className="flex items-center space-x-4">
-                      <Avatar className="h-10 w-10">
-                        <AvatarImage
-                          src={`/placeholder.svg?text=${product.name}`}
-                          alt={product.name}
-                        />
-                        <AvatarFallback>
-                          {product.name.slice(0, 2)}
-                        </AvatarFallback>
-                      </Avatar>
-                      <div>
-                        <h3 className="font-semibold">{product.name}</h3>
-                        <p className="text-sm text-muted-foreground">
-                          {product.category} -
-                        </p>
-                      </div>
-                    </div>
-                    <div className="flex items-center space-x-4">
+                        </TableCell>
+                        <TableCell className="hidden text-right sm:table-cell">
+                          ${product.price}
+                        </TableCell>
+                        <TableCell className="hidden md:table-cell">
+                          {product.vendor}
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex justify-end">
+                            <Popover>
+                              <PopoverTrigger asChild>
+                                <Button variant="ghost" className="h-8 w-8 p-0">
+                                  <MoreHorizontal className="h-4 w-4" />
+                                  <span className="sr-only">Open menu</span>
+                                </Button>
+                              </PopoverTrigger>
+                              <PopoverContent align="end" className="w-[160px]">
+                                <div className="grid gap-1">
+                                  <Button
+                                    variant="ghost"
+                                    className="justify-start"
+                                    onClick={() => {
+                                      setEditingProduct(product);
+                                      setIsEditProductDialogOpen(true);
+                                    }}
+                                  >
+                                    <Edit className="mr-2 h-4 w-4" />
+                                    Edit
+                                  </Button>
+                                  <Button
+                                    disabled={
+                                      // @ts-ignore
+                                      user?.role != 'Admin'
+                                    }
+                                    variant="ghost"
+                                    className="justify-start"
+                                    onClick={() =>
+                                      handleDeleteProduct(product._id)
+                                    }
+                                  >
+                                    <Trash2 className="mr-2 h-4 w-4" />
+                                    Delete
+                                  </Button>
+                                  <Button
+                                    variant="ghost"
+                                    className="justify-start"
+                                    onClick={() => {
+                                      setSelectedProductLog(product);
+                                      setIsProductLogDialogOpen(true);
+                                    }}
+                                  >
+                                    <List className="mr-2 h-4 w-4" />
+                                    View Log
+                                  </Button>
+                                  <Button
+                                    variant="ghost"
+                                    className="justify-start"
+                                    onClick={() => {
+                                      setRestockingProduct(product);
+                                      setIsRestockDialogOpen(true);
+                                    }}
+                                  >
+                                    <Package className="mr-2 h-4 w-4" />
+                                    Restock
+                                  </Button>
+                                </div>
+                              </PopoverContent>
+                            </Popover>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            </motion.div>
+          )}
+          {currentView === 'grid' && (
+            <motion.div
+              key="grid"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              transition={{ duration: 0.2 }}
+              className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
+            >
+              {paginatedProducts.map((product) => (
+                <Card
+                  key={product._id}
+                  className="flex h-full flex-col overflow-hidden transition-shadow hover:shadow-lg"
+                >
+                  <CardHeader className="bg-primary/5 p-4">
+                    <CardTitle className="truncate text-lg">
+                      {product.name}
+                    </CardTitle>
+                    <CardDescription className="truncate text-sm">
+                      {product.category}
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="grid flex-grow grid-cols-2 gap-2 p-4 text-sm">
+                    <div className="space-y-1">
+                      <p className="font-semibold">Stock</p>
                       <Badge
                         variant={
-                          product.quantity <= 10 ? 'destructive' : 'secondary'
+                          product.quantity <= product.reorderPoint
+                            ? 'destructive'
+                            : 'default'
                         }
                       >
-                        Qty:{' '}
-                        {product.isQuantityBased
-                          ? product.quantity
-                          : product.units}
+                        {product.quantity}
                       </Badge>
-                      <span className="font-semibold">
-                        ${product.sellPrice.toFixed(2)}
-                      </span>
-                      <span className="text-sm text-muted-foreground">
-                        {product.vendor}
-                      </span>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => {
-                          setEditingProduct(product);
-                          setIsEditProductDialogOpen(true);
-                        }}
-                      >
-                        <Edit className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        disabled={
-                          // @ts-ignore
-                          user?.role === 'stuff'
-                        }
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleDeleteProduct(product._id)}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => {
-                          setSelectedProductLog(product);
-                          setIsProductLogDialogOpen(true);
-                        }}
-                      >
-                        <List className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => {
-                          setRestockingProduct(product);
-                          setIsRestockDialogOpen(true);
-                        }}
-                      >
-                        <Package className="h-4 w-4" />
-                      </Button>
                     </div>
-                  </div>
-                ))}
-              </motion.div>
-            )}
-          </AnimatePresence>
-          <div className="mt-4 flex justify-center">
-            <Pagination>
-              <PaginationContent>
-                <PaginationItem>
-                  <PaginationPrevious
-                    onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
-                  />
-                </PaginationItem>
-                {Array.from({ length: totalPages }, (_, i) => i + 1).map(
-                  (page) => (
-                    <PaginationItem key={page}>
-                      <PaginationLink
-                        onClick={() => setCurrentPage(page)}
-                        isActive={currentPage === page}
-                      >
-                        {page}
-                      </PaginationLink>
-                    </PaginationItem>
-                  )
-                )}
-                <PaginationItem>
-                  <PaginationNext
-                    onClick={() =>
-                      setCurrentPage(Math.min(totalPages, currentPage + 1))
-                    }
-                  />
-                </PaginationItem>
-              </PaginationContent>
-            </Pagination>
-          </div>
+                    <div className="space-y-1">
+                      <p className="font-semibold">Price</p>
+                      <p>${product.price.toFixed(2)}</p>
+                    </div>
+                    <div className="space-y-1">
+                      <p className="font-semibold">Supplier</p>
+                      <p className="truncate">{product.vendor}</p>
+                    </div>
+                    <div className="space-y-1">
+                      <p className="font-semibold">Buyer</p>
+                      {/* <p className="truncate">{product.buyer}</p> */}
+                    </div>
+                  </CardContent>
+                  <CardFooter className="flex items-center justify-between bg-secondary/10 p-4">
+                    {/* <span className="text-xs text-muted-foreground">SKU: {product.sku}</span> */}
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button variant="ghost" size="icon">
+                          <MoreHorizontal className="h-4 w-4" />
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-40">
+                        <div className="flex flex-col space-y-1">
+                          <Button
+                            variant="ghost"
+                            className="justify-start"
+                            onClick={() => setEditingProduct(product)}
+                          >
+                            <Edit className="mr-2 h-4 w-4" />
+                            Edit
+                          </Button>
+
+                          <Button
+                            disabled={
+                              // @ts-ignore
+                              user.role !== 'Admin'
+                            }
+                            variant="ghost"
+                            className="justify-start"
+                            onClick={() => handleDeleteProduct(product._id)}
+                          >
+                            <Trash2 className="mr-2 h-4 w-4" />
+                            Delete
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            className="justify-start"
+                            onClick={() => {
+                              setSelectedProductLog(product);
+                              setIsProductLogDialogOpen(true);
+                            }}
+                          >
+                            <List className="mr-2 h-4 w-4" />
+                            View Log
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            className="justify-start"
+                            onClick={() => {
+                              setRestockingProduct(product);
+                              setIsRestockDialogOpen(true);
+                            }}
+                          >
+                            <Package className="mr-2 h-4 w-4" />
+                            Restock
+                          </Button>
+                        </div>
+                      </PopoverContent>
+                    </Popover>
+                  </CardFooter>
+                </Card>
+              ))}
+            </motion.div>
+          )}
+        </AnimatePresence>
+        <div className="mt-4 flex justify-center">
+          <Pagination>
+            <PaginationContent>
+              <PaginationItem>
+                <PaginationPrevious
+                  onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
+                />
+              </PaginationItem>
+              {Array.from({ length: totalPages }, (_, i) => i + 1).map(
+                (page) => (
+                  <PaginationItem key={page}>
+                    <PaginationLink
+                      onClick={() => setCurrentPage(page)}
+                      isActive={currentPage === page}
+                    >
+                      {page}
+                    </PaginationLink>
+                  </PaginationItem>
+                )
+              )}
+              <PaginationItem>
+                <PaginationNext
+                  onClick={() =>
+                    setCurrentPage(Math.min(totalPages, currentPage + 1))
+                  }
+                />
+              </PaginationItem>
+            </PaginationContent>
+          </Pagination>
         </div>
-        <Dialog
-          open={isEditProductDialogOpen}
-          onOpenChange={setIsEditProductDialogOpen}
-        >
-          <DialogContent className="max-w-4xl">
-            <DialogHeader>
-              <DialogTitle>Edit Product</DialogTitle>
-              <DialogDescription>
-                Update the details for this product.
-              </DialogDescription>
-            </DialogHeader>
-            {editingProduct && (
-              <ProductForm
-                // @ts-ignore
-                onSubmit={handleEditProduct}
-                initialData={editingProduct}
-                categories={categories}
-                vendors={vendors}
-              />
-            )}
-          </DialogContent>
-        </Dialog>
-        <Dialog
-          open={isProductLogDialogOpen}
-          onOpenChange={setIsProductLogDialogOpen}
-        >
-          <DialogContent className="max-w-4xl">
-            <DialogHeader>
-              <DialogTitle>Product Log: {selectedProductLog?.name}</DialogTitle>
-              <DialogDescription>
-                Activity log for this product.
-              </DialogDescription>
-            </DialogHeader>
+      </div>
+      <Dialog
+        open={isProductLogDialogOpen}
+        onOpenChange={setIsProductLogDialogOpen}
+      >
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Product Log: {selectedProductLog?.name}</DialogTitle>
+            <DialogDescription>
+              Activity log for this product.
+            </DialogDescription>
+          </DialogHeader>
+          <ScrollArea className="h-[300px]">
             <Table>
               <TableHeader>
                 <TableRow>
@@ -998,9 +1053,8 @@ export default function Component() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {// @ts-ignore
-                selectedProductLog?.logs.map((entry) => (
-                  <TableRow key={entry._id}>
+                {selectedProductLog?.logs.map((entry) => (
+                  <TableRow key={entry.id}>
                     <TableCell>
                       {new Date(entry.date).toLocaleString()}
                     </TableCell>
@@ -1010,107 +1064,75 @@ export default function Component() {
                 ))}
               </TableBody>
             </Table>
-          </DialogContent>
-        </Dialog>
+          </ScrollArea>
+        </DialogContent>
+      </Dialog>
 
-        <Dialog
-          open={isRestockDialogOpen}
-          onOpenChange={setIsRestockDialogOpen}
-        >
-          <DialogContent className="sm:max-w-[425px]">
-            <DialogHeader>
-              <DialogTitle>Re-stock Product</DialogTitle>
-              <DialogDescription>
-                Enter the amount to re-stock for {restockingProduct?.name}
-              </DialogDescription>
-            </DialogHeader>
-            <RestockForm
+      <Dialog
+        open={isEditProductDialogOpen}
+        onOpenChange={setIsEditProductDialogOpen}
+      >
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Edit Product</DialogTitle>
+            <DialogDescription>
+              Update the details for this product.
+            </DialogDescription>
+          </DialogHeader>
+          {editingProduct && (
+            <ProductForm
               // @ts-ignore
+              onSubmit={handleEditProduct}
+              initialData={editingProduct}
+              categories={categories}
+              vendors={vendors}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={isRestockDialogOpen} onOpenChange={setIsRestockDialogOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Re-stock Product</DialogTitle>
+            <DialogDescription>
+              Enter the amount to re-stock for {restockingProduct?.name}
+            </DialogDescription>
+          </DialogHeader>
+          {
+            // @ts-ignore
+            <RestockForm
               onSubmit={(amount) =>
-                // @ts-ignore
                 handleRestock(restockingProduct?._id, amount)
               }
             />
-          </DialogContent>
-        </Dialog>
-        <Dialog
-          open={!!confirmAction}
-          onOpenChange={() => setConfirmAction(null)}
-        >
-          <DialogContent className="sm:max-w-[425px]">
-            <DialogHeader>
-              <DialogTitle>Confirm Action</DialogTitle>
-              <DialogDescription>
-                Are you sure you want to perform this action?
-              </DialogDescription>
-            </DialogHeader>
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setConfirmAction(null)}>
-                Cancel
-              </Button>
-              {
-                // @ts-ignore
-                <Button onClick={() => confirmAction()}>Confirm</Button>
-              }
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
+          }
+        </DialogContent>
+      </Dialog>
 
-        <Dialog
-          open={isBarcodeDialogOpen}
-          onOpenChange={setIsBarcodeDialogOpen}
-        >
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Scan Barcode</DialogTitle>
-              <DialogDescription>
-                Position the barcode within the camera view to scan.
-              </DialogDescription>
-            </DialogHeader>
-            {isBarcodeScanning ? (
-              <div className="aspect-square">
-                <BarcodeScanner
-                  // delay={300}
-                  onError={handleBarcodeError}
-                  onSuccess={(result) => {
-                    if (result) {
-                      handleBarcodeScanned(result);
-                    }
-                  }}
-                  containerStyle={{ width: '100%' }}
-                />
-              </div>
-            ) : (
-              <Button onClick={() => setIsBarcodeScanning(true)}>
-                Start Scanning
-              </Button>
-            )}
-          </DialogContent>
-        </Dialog>
-
-        <Dialog
-          open={!!confirmAction}
-          onOpenChange={() => setConfirmAction(null)}
-        >
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Confirm Action</DialogTitle>
-              <DialogDescription>
-                Are you sure you want to perform this action?
-              </DialogDescription>
-            </DialogHeader>
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setConfirmAction(null)}>
-                Cancel
-              </Button>
-              <Button onClick={() => confirmAction && confirmAction()}>
-                Confirm
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-        <ToastContainer position="bottom-right" theme="dark" />
-      </div>
+      <Dialog open={isFilterOpen} onOpenChange={setIsFilterOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Filters</DialogTitle>
+            <DialogDescription>
+              Apply filters to refine your product list.
+            </DialogDescription>
+          </DialogHeader>
+          <FilterOptions
+            categories={categories}
+            vendors={vendors}
+            selectedCategory={selectedCategory}
+            setSelectedCategory={setSelectedCategory}
+            selectedVendor={selectedVendor}
+            setSelectedVendor={setSelectedVendor}
+            showLowStock={showLowStock}
+            setShowLowStock={setShowLowStock}
+            priceRange={priceRange}
+            setPriceRange={setPriceRange}
+          />
+        </DialogContent>
+      </Dialog>
+      <ToastContainer position="bottom-right" />
     </div>
   );
 }
@@ -1127,6 +1149,7 @@ function ProductForm({
   vendors: string[];
 }) {
   const [formData, setFormData] = useState<Omit<Product, '_id' | 'log'>>(
+    // @ts-ignore
     initialData || {
       name: '',
       category: '',
@@ -1138,12 +1161,14 @@ function ProductForm({
       quantity: 0,
       barcode: '',
       units: '',
+      reorderPoint: 0,
       isQuantityBased: true
     }
   );
   // const [isCameraActive, setIsCameraActive] = useState(false);
   // const [lastScanTime, setLastScanTime] = useState(0);
   const [isBarcodeReaderActive, setIsBarcodeReaderActive] = useState(false);
+  const [newVendor, setNewVendor] = useState('');
 
   const handleChange = (
     e: React.ChangeEvent<
@@ -1153,6 +1178,11 @@ function ProductForm({
     if (e.target.name === 'barcode') {
       setIsBarcodeReaderActive(true);
     }
+    // if (e.target.name === 'new-vendor') {
+    //   console.log("haha")
+    //   setFormData((prev) => ({ ...prev, vendor: newVendor }));
+    // }
+
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
@@ -1174,6 +1204,7 @@ function ProductForm({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+
     // @ts-ignore
     onSubmit(formData);
   };
@@ -1216,6 +1247,17 @@ function ProductForm({
         </div>
 
         <div>
+          <label htmlFor="reorderPoint">Reorder Point</label>
+          <Input
+            id="reorderPoint"
+            name="reorderPoint"
+            type="number"
+            value={formData.reorderPoint}
+            onChange={handleChange}
+          />
+        </div>
+
+        <div>
           <Label htmlFor="price">Price</Label>
           <Input
             id="price"
@@ -1241,26 +1283,14 @@ function ProductForm({
         </div>
         <div>
           <Label htmlFor="vendor">Vendor</Label>
-          <Select
+
+          <Input
+            id="vendor"
             name="vendor"
             value={formData.vendor}
-            onValueChange={(value) =>
-              handleChange({
-                target: { name: 'vendor', value }
-              } as React.ChangeEvent<HTMLSelectElement>)
-            }
-          >
-            <SelectTrigger>
-              <SelectValue placeholder="Select vendor" />
-            </SelectTrigger>
-            <SelectContent>
-              {vendors.map((vendor) => (
-                <SelectItem key={vendor} value={vendor}>
-                  {vendor}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+            onChange={handleChange}
+            placeholder="Enter new vendor name"
+          />
         </div>
         {formData.isQuantityBased && (
           <>
@@ -1290,7 +1320,7 @@ function ProductForm({
         )}
 
         <div>
-          <Label htmlFor="units">Units</Label>
+          <Label htmlFor="units">Differenciate</Label>
           <Input
             id="units"
             name="units"
@@ -1300,7 +1330,7 @@ function ProductForm({
           />
         </div>
         <div>
-          <Label htmlFor="isQuantityBased">Is Quantity Based</Label>
+          <Label htmlFor="isQuantityBased">Is Pieaces</Label>
           <Switch
             id="isQuantityBased"
             name="isQuantityBased"
@@ -1421,9 +1451,11 @@ function FilterOptions({
 
 function RestockForm({ onSubmit }: { onSubmit: (amount: number) => void }) {
   const [amount, setAmount] = useState(0);
+  const [restockButtonDiabled, setRestockButtonDisalbed] = useState(false);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    setRestockButtonDisalbed(true);
     onSubmit(amount);
   };
 
@@ -1440,7 +1472,9 @@ function RestockForm({ onSubmit }: { onSubmit: (amount: number) => void }) {
           required
         />
       </div>
-      <Button type="submit">Confirm Restock</Button>
+      <Button disabled={restockButtonDiabled} type="submit">
+        Confirm Restock
+      </Button>
     </form>
   );
 }

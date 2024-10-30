@@ -214,16 +214,20 @@ export default function EnhancedPOSSystem() {
   const [accumulatedKeystrokes, setAccumulatedKeystrokes] = useState('');
   const [lastKeystrokeTime, setLastKeystrokeTime] = useState(0);
   const [inputFocused, setInputFocused] = useState(false);
+  const [page, setPage] = useState(1);
+  const ITEMS_PER_PAGE = 20;
 
   const VAT_RATE = 0.05; // 5% VAT rate
 
   const searchInputRef = useRef(null);
   const searchResultsRef = useRef(null);
+  const discountInputRef = useRef<HTMLInputElement>(null);
 
   const {
     data: productServer,
     error: productsError,
     isFetching,
+    refetch: refetchProducts,
     isError
   } = useGetProductsQuery(cookies, { skip: !cookies });
   const { data: customers, error: customersError } =
@@ -240,9 +244,6 @@ export default function EnhancedPOSSystem() {
     getAuthCookie().then((k: any) => {
       setcookies(k);
     });
-    // if (barcodeInputRef.current) {
-    //   barcodeInputRef.current.focus();
-    // }
   }, []);
 
   useEffect(() => {
@@ -260,40 +261,19 @@ export default function EnhancedPOSSystem() {
     [productServer]
   );
 
-  // const { data: orderData, error: orderError, refetch } = useGetOrderByInvoiceQuery({ invoiceNumber, cookies }, { skip: !invoiceNumber });
-
   useEffect(() => {
-    const delayDebounceFn = setTimeout(async () => {
-      if (searchQuery) {
-        const all = await productServer;
-        const lowercasedQuery = searchQuery.toLowerCase();
-        const filtered = await all.filter(
-          (product: Product) =>
-            (product.name.toLowerCase().includes(lowercasedQuery) ||
-              product._id.toLowerCase().includes(lowercasedQuery) ||
-              // @ts-ignore
-              product?.barcode.includes(lowercasedQuery)) &&
-            (selectedCategory === 'All' ||
-              product.category === selectedCategory)
-        );
-        setFilteredProducts(filtered);
-        setSearchSuggestions(
-          filtered.slice(0, 5).map((product: Product) => product)
-        );
-      } else {
-        setFilteredProducts(
-          productServer?.filter(
-            (product: Product) =>
-              selectedCategory === 'All' ||
-              product.category === selectedCategory
-          )
-        );
-        setSearchSuggestions([]);
-      }
-    }, 300);
-
-    return () => clearTimeout(delayDebounceFn);
-  }, [searchQuery, selectedCategory]);
+    if (productServer) {
+      const filtered = productServer.filter(
+        (product: Product) =>
+          (product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            product._id.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            product.barcode?.includes(searchQuery)) &&
+          (selectedCategory === 'All' || product.category === selectedCategory)
+      );
+      setFilteredProducts(filtered);
+      setPage(1); // Reset page when filters change
+    }
+  }, [productServer, searchQuery, selectedCategory]);
 
   useEffect(() => {
     setTransactions(orders);
@@ -308,28 +288,41 @@ export default function EnhancedPOSSystem() {
     setFilteredCustomers(filtered);
   }, [customerSearchQuery]);
 
+  const paginatedProducts = useMemo(() => {
+    const startIndex = 0;
+    const endIndex = page * ITEMS_PER_PAGE;
+    return filteredProducts.slice(startIndex, endIndex);
+  }, [filteredProducts, page]);
+
   const addToCart = useCallback((product: Product) => {
-    // @ts-ignore
     setCart((prevCart) => {
-      const existingItem = prevCart.find(
-        (item: Product) => item._id === product._id
-      );
+      const existingItem = prevCart.find((item) => item._id === product._id);
+
       if (existingItem) {
-        return prevCart.map((item: Product) =>
+        if (existingItem.quantity >= product.quantity) {
+          toast.error(`Cannot add more ${product.name}. Stock limit reached.`);
+          return prevCart;
+        }
+        return prevCart.map((item) =>
           item._id === product._id
-            ? { ...item, quantity: item.quantity + 1 }
+            ? {
+                ...item,
+                quantity: Math.min(item.quantity + 1, product.quantity)
+              }
             : item
         );
       } else {
+        if (product.quantity === 0) {
+          toast.error(`${product.name} is out of stock.`);
+          return prevCart;
+        }
         return [...prevCart, { ...product, quantity: 1 }];
       }
     });
-    // setSelectedProduct(null);
-    toast.success(`${product.name} added to cart`);
   }, []);
 
   const removeFromCart = useCallback((productId: string) => {
-    setCart((cart) => cart.filter((item: Product) => item._id !== productId));
+    setCart((prevCart) => prevCart.filter((item) => item._id !== productId));
   }, []);
 
   const handleBarcodeSubmit = useCallback(
@@ -355,17 +348,16 @@ export default function EnhancedPOSSystem() {
   );
 
   useEffect(() => {
-    // @ts-ignore
-    const handleKeyDown = (e) => {
+    const handleKeyDown = (e: KeyboardEvent) => {
       if (!inputFocused && e.key.length === 1) {
         setAccumulatedKeystrokes((prev) => prev + e.key);
         setLastKeystrokeTime(Date.now());
       }
     };
-    //@ts-ignore
-    const handleKeyPress = (e) => {
+
+    const handleKeyPress = (e: KeyboardEvent) => {
       if (!inputFocused && e.key === 'Enter') {
-        handleBarcodeSubmit(e);
+        handleBarcodeSubmit(e as unknown as React.FormEvent<HTMLFormElement>);
       }
     };
 
@@ -389,7 +381,6 @@ export default function EnhancedPOSSystem() {
     return () => clearTimeout(timeoutId);
   }, [accumulatedKeystrokes, lastKeystrokeTime, inputFocused]);
 
-  // useEffect(() => {
   //   const handleKeyDown = (e) => {
   //     if (inputFocused) {
   //       setAccumulatedKeystrokes('');
@@ -456,19 +447,27 @@ export default function EnhancedPOSSystem() {
   // }, [searchQuery, addToCart, inputFocused]);
 
   const updateQuantity = useCallback(
-    (productId: string, newQuantity: Number) => {
-      if (newQuantity === 0) {
-        removeFromCart(productId);
-      } else {
-        // @ts-ignore
-        setCart((cart) =>
-          cart.map((item: Product) =>
-            item._id === productId ? { ...item, quantity: newQuantity } : item
-          )
-        );
-      }
+    (productId: string, newQuantity: number) => {
+      setCart((prevCart) => {
+        const updatedCart = prevCart.map((item) => {
+          if (item._id === productId) {
+            const product = productServer.find((p) => p._id === productId);
+            if (!product) {
+              toast.error('Product not found in inventory.');
+              return item;
+            }
+            if (newQuantity > product.quantity) {
+              toast.error(`Cannot add more ${item.name}. Stock limit reached.`);
+              return item;
+            }
+            return { ...item, quantity: newQuantity };
+          }
+          return item;
+        });
+        return updatedCart.filter((item) => item.quantity > 0);
+      });
     },
-    [removeFromCart]
+    [productServer]
   );
 
   const calculateSubtotal = useCallback(() => {
@@ -479,13 +478,10 @@ export default function EnhancedPOSSystem() {
   }, [cart]);
 
   const calculateDiscount = useCallback(() => {
-    const subtotal = calculateSubtotal();
-    if (discountType === 'percentage') {
-      return subtotal * (parseFloat(discountValue) / 100);
-    } else {
-      return parseFloat(discountValue) || 0;
-    }
-  }, [calculateSubtotal, discountType, discountValue]);
+    // const subtotal = calculateSubtotal();
+
+    return parseFloat(discountValue) || 0;
+  }, [discountValue]);
 
   const calculateVAT = useCallback(() => {
     return (calculateSubtotal() - calculateDiscount()) * VAT_RATE;
@@ -498,7 +494,8 @@ export default function EnhancedPOSSystem() {
   const calculateChange = useCallback(() => {
     const total = calculateTotal();
     const received = parseFloat(cashReceived);
-    return received >= total ? (received - total).toFixed(2) : '0.00';
+    // console.log(received >= total && (received - total).toFixed(2));
+    return received >= total && (received - total).toFixed(2);
   }, [calculateTotal, cashReceived]);
 
   const handleCheckout = useCallback(() => {
@@ -536,7 +533,7 @@ export default function EnhancedPOSSystem() {
       }
       toast.success('Order placed successfully');
       console.log(result);
-
+      await refetchProducts();
       await refetch();
 
       setIsProcessingPayment(false);
@@ -726,6 +723,7 @@ export default function EnhancedPOSSystem() {
 
       toast.success(`Return processed. Refund amount: $${afterReturnAmount}`);
       await refetch();
+      await refetchProducts();
     } catch (error) {
       toast.error(
         // @ts-ignore
@@ -833,17 +831,10 @@ export default function EnhancedPOSSystem() {
     setSearchQuery('');
   };
 
-  const handleLoadMore = () => {
-    setIsLoadingMore(true);
-    // Simulate loading more products
-    setTimeout(() => {
-      const moreProducts = productServer;
-      // console.log(filteredProducts)
-      // @ts-ignore
-      setFilteredProducts((prevProducts) => [...prevProducts, ...moreProducts]);
-      setIsLoadingMore(false);
-    }, 1000);
-  };
+  const handleLoadMore = useCallback(() => {
+    setPage((prevPage) => prevPage + 1);
+  }, []);
+  const hasMoreProducts = paginatedProducts.length < filteredProducts.length;
 
   // @ts-ignore
   const highlightMatch = (text, query) => {
@@ -891,6 +882,44 @@ export default function EnhancedPOSSystem() {
         // @ts-ignore
         item._id === productId
     );
+  };
+
+  // Render cart items
+  const renderCartItems = () => {
+    return cart.map((item) => (
+      <div key={item._id} className="flex items-center justify-between py-2">
+        <div>
+          <div className="font-medium">{item.name}</div>
+          <div className="text-sm text-gray-500">
+            ${item.sellPrice.toFixed(2)} each
+          </div>
+        </div>
+        <div className="flex items-center space-x-2">
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => updateQuantity(item._id, item.quantity - 1)}
+          >
+            <Minus className="h-4 w-4" />
+          </Button>
+          <span>{item.quantity}</span>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => updateQuantity(item._id, item.quantity + 1)}
+          >
+            <Plus className="h-4 w-4" />
+          </Button>
+          <Button
+            size="sm"
+            variant="destructive"
+            onClick={() => removeFromCart(item._id)}
+          >
+            <Trash2 className="h-4 w-4" />
+          </Button>
+        </div>
+      </div>
+    ));
   };
 
   return (
@@ -1089,12 +1118,9 @@ export default function EnhancedPOSSystem() {
                       ref={searchResultsRef}
                     >
                       <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4">
-                        {filteredProducts?.map((product) => (
+                        {paginatedProducts?.map((product: Product) => (
                           <motion.div
-                            key={
-                              // @ts-ignore
-                              product._id
-                            }
+                            key={product._id}
                             layout
                             initial={{ opacity: 0 }}
                             animate={{ opacity: 1 }}
@@ -1141,17 +1167,18 @@ export default function EnhancedPOSSystem() {
                           </motion.div>
                         ))}
                       </div>
-                      {isLoadingMore ? (
-                        <div className="flex items-center justify-center py-4">
-                          <Loader2 className="h-6 w-6 animate-spin" />
-                        </div>
-                      ) : (
+
+                      {hasMoreProducts && (
                         <Button
                           className="mt-4 w-full"
                           onClick={handleLoadMore}
-                          disabled={!filteredProducts}
+                          disabled={isFetching}
                         >
-                          Load More
+                          {isFetching ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            'Load More'
+                          )}
                         </Button>
                       )}
                     </ScrollArea>
@@ -1161,88 +1188,17 @@ export default function EnhancedPOSSystem() {
             </div>
 
             {/* Shopping cart */}
-            <div className="h-screen w-full md:w-1/3">
+            <div className="max-h-screen w-full md:w-1/3">
               <Card>
                 <CardHeader>
-                  <CardTitle>Shopping Cart</CardTitle>
+                  <CardTitle>
+                    Shopping Cart{' '}
+                    <span className="float-end flex "> {cart.length} </span>{' '}
+                  </CardTitle>
                 </CardHeader>
                 <CardContent>
                   <ScrollArea className="h-[calc(100vh-400px)]">
-                    <AnimatePresence>
-                      {cart.map((item) => (
-                        <motion.div
-                          key={
-                            // @ts-ignore
-                            item._id
-                          }
-                          initial={{ opacity: 0, y: 20 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          exit={{ opacity: 0, y: -20 }}
-                          className="mb-4 flex items-center justify-between"
-                        >
-                          <div className="flex items-center space-x-4">
-                            <div>
-                              <div className="font-medium">
-                                {
-                                  // @ts-ignore
-                                  item.name
-                                }
-                              </div>
-                              <div className="text-sm text-gray-500">
-                                $
-                                {
-                                  // @ts-ignore
-                                  item.sellPrice.toFixed(2)
-                                }{' '}
-                                each
-                              </div>
-                            </div>
-                          </div>
-                          <div className="flex items-center space-x-2">
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() =>
-                                updateQuantity(
-                                  // @ts-ignore
-                                  item._id,
-                                  // @ts-ignore
-                                  item.quantity - 1
-                                )
-                              }
-                            >
-                              <Minus className="h-4 w-4" />
-                            </Button>
-                            <span>
-                              {
-                                // @ts-ignore
-                                item.quantity
-                              }
-                            </span>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() =>
-                                // @ts-ignore
-                                updateQuantity(item._id, item.quantity + 1)
-                              }
-                            >
-                              <Plus className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="destructive"
-                              onClick={() => {
-                                // @ts-ignore
-                                removeFromCart(item._id);
-                              }}
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        </motion.div>
-                      ))}
-                    </AnimatePresence>
+                    <AnimatePresence>{renderCartItems()}</AnimatePresence>
                   </ScrollArea>
                   <div className="mt-4 space-y-2">
                     <div className="flex justify-between">
@@ -1264,27 +1220,17 @@ export default function EnhancedPOSSystem() {
                   </div>
                   <div className="mt-4 space-y-2">
                     <div className="flex space-x-2">
-                      <Select
-                        value={discountType}
-                        onValueChange={setDiscountType}
-                      >
-                        <SelectTrigger className="w-[180px]">
-                          <SelectValue placeholder="Discount Type" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="percentage">Percentage</SelectItem>
-                          {/* <SelectItem value="fixed">Fixed Amount</SelectItem> */}
-                        </SelectContent>
-                      </Select>
                       <Input
                         type="number"
-                        placeholder={
-                          discountType === 'percentage'
-                            ? 'Discount %'
-                            : 'Discount Amount'
-                        }
+                        placeholder={'Discount Amount'}
                         value={discountValue}
-                        onChange={(e) => setDiscountValue(e.target.value)}
+                        ref={discountInputRef}
+                        onChange={(e) => {
+                          setDiscountValue(e.target.value);
+                          e.stopPropagation();
+                        }}
+                        onFocus={() => setInputFocused(true)}
+                        onBlur={() => setInputFocused(false)}
                       />
                     </div>
                     <Button
@@ -1516,7 +1462,14 @@ export default function EnhancedPOSSystem() {
                 >
                   Cancel
                 </Button>
-                <Button onClick={handlePayment} disabled={!paymentMethod}>
+                {console.log(calculateChange())}
+                <Button
+                  onClick={handlePayment}
+                  disabled={
+                    paymentMethod === 'Cash' &&
+                    parseFloat(cashReceived) < calculateTotal()
+                  }
+                >
                   Complete Payment
                 </Button>
               </DialogFooter>
@@ -1690,6 +1643,9 @@ export default function EnhancedPOSSystem() {
                     <TableRow>
                       <TableHead>Product</TableHead>
                       <TableHead>Quantity</TableHead>
+                      {selectedTransaction.status === 'Refunded' && (
+                        <TableHead>Returned Quantity</TableHead>
+                      )}
                       <TableHead>Price</TableHead>
                       <TableHead>Total</TableHead>
                     </TableRow>
@@ -1705,6 +1661,14 @@ export default function EnhancedPOSSystem() {
                           }
                         </TableCell>
                         <TableCell>{item.quantity}</TableCell>
+                        {selectedTransaction.status === 'Refunded' && (
+                          <TableCell>
+                            {
+                              // @ts-ignore
+                              item.returnQuantity
+                            }
+                          </TableCell>
+                        )}
                         <TableCell>${item.price.toFixed(2)}</TableCell>
                         <TableCell>
                           ${(item.price * item.quantity).toFixed(2)}
@@ -1994,7 +1958,7 @@ export default function EnhancedPOSSystem() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Transactions</SelectItem>
-                <SelectItem value="sale">Sales</SelectItem>
+                {/* <SelectItem value="sale">Sales</SelectItem> */}
                 <SelectItem value="Refunded">Refunds</SelectItem>
               </SelectContent>
             </Select>
@@ -2003,7 +1967,10 @@ export default function EnhancedPOSSystem() {
                 <TableHeader>
                   <TableRow>
                     <TableHead className="w-[100px]">
-                      <Button variant="ghost" onClick={() => requestSort('id')}>
+                      <Button
+                        variant="ghost"
+                        onClick={() => requestSort('invoiceNumber')}
+                      >
                         Invoice
                         <ArrowUpDown className="ml-2 h-4 w-4" />
                       </Button>
@@ -2011,7 +1978,7 @@ export default function EnhancedPOSSystem() {
                     <TableHead>
                       <Button
                         variant="ghost"
-                        onClick={() => requestSort('date')}
+                        onClick={() => requestSort('updatedAt')}
                       >
                         Date
                         <ArrowUpDown className="ml-2 h-4 w-4" />

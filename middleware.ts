@@ -16,6 +16,12 @@ export function middleware(request: NextRequest) {
   if (pathname === '/dashboard/pos' && !request.cookies.has('access_token'))
     return NextResponse.redirect(new URL('/', request.url));
 
+  if (
+    pathname === '/dashboard/soldproducts' &&
+    !request.cookies.has('access_token')
+  )
+    return NextResponse.redirect(new URL('/', request.url));
+
   return NextResponse.next();
 }
 
