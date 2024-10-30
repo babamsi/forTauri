@@ -561,7 +561,7 @@ export default function EnhancedPOSSystem() {
         return;
       }
       toast.success('Order placed successfully');
-      console.log(result);
+      // console.log(result);
       await refetchProducts();
       await refetch();
 
@@ -687,7 +687,7 @@ export default function EnhancedPOSSystem() {
       (total, item) => total + item.eachDiscount * Number(item.returnQuantity),
       0
     );
-    console.log(calculateEachDiscount);
+    // console.log(calculateEachDiscount);
     // let total = itemsToReturn.reduce((total, item) => total + Number(item.returnQuantity) *  )
     total -= calculateEachDiscount;
     total += total * 0.05;
@@ -748,7 +748,7 @@ export default function EnhancedPOSSystem() {
         throw new Error(result.error);
       }
 
-      console.log(total);
+      // console.log(total);
 
       toast.success(`Return processed. Refund amount: $${afterReturnAmount}`);
       await refetch();
@@ -1523,7 +1523,6 @@ export default function EnhancedPOSSystem() {
                   >
                     Cancel
                   </Button>
-                  {console.log(calculateChange())}
                   <Button
                     onClick={handlePayment}
                     disabled={
