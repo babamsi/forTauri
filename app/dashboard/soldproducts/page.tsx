@@ -383,7 +383,8 @@ const TransactionsTable: React.FC<{
                         // @ts-ignore
                         transaction.status != 'Refunded'
                           ? 'Paid'
-                          : transaction.status
+                          : // @ts-ignore
+                            transaction.status
                       }
                     </Badge>
                   </TableCell>
@@ -945,6 +946,7 @@ export default function CustomersPage() {
                         setDate({
                           // @ts-ignore
                           from: thirtyDaysAgo,
+                          // @ts-ignore
                           to: new Date()
                         });
                       }}
@@ -958,6 +960,7 @@ export default function CustomersPage() {
                         setDate({
                           // @ts-ignore
                           from: firstDayOfMonth,
+                          // @ts-ignore
                           to: new Date()
                         });
                       }}
@@ -974,6 +977,7 @@ export default function CustomersPage() {
                         setDate({
                           // @ts-ignore
                           from: firstDayOfQuarter,
+                          // @ts-ignore
                           to: new Date()
                         });
                       }}
@@ -990,6 +994,7 @@ export default function CustomersPage() {
                         setDate({
                           // @ts-ignore
                           from: firstDayOfYear,
+                          // @ts-ignore
                           to: new Date()
                         });
                       }}

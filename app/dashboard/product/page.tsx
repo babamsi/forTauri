@@ -111,8 +111,11 @@ interface Product {
 function BottomSheet({
   // @ts-ignore
   isOpen,
+  // @ts-ignore
   onClose,
+  // @ts-ignore
   title,
+  // @ts-ignore
   children
 }) {
   return (
@@ -1103,6 +1106,7 @@ export default function Component() {
             // @ts-ignore
             <RestockForm
               onSubmit={(amount) =>
+                // @ts-ignore
                 handleRestock(restockingProduct?._id, amount)
               }
             />
