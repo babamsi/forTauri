@@ -777,7 +777,9 @@ export default function CustomersPage() {
             customer.invoiceNumber
               .toLowerCase()
               .includes(searchTerm.toLowerCase())) &&
+          // @ts-ignore
           (!date?.from || new Date(customer.updatedAt) >= date.from) &&
+          // @ts-ignore
           (!date?.to || new Date(customer.updatedAt) <= date.to)
       )
       .sort(
