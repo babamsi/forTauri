@@ -803,6 +803,13 @@ export default function EnhancedPOSSystem() {
       toast.error('Please select a bank');
       return;
     }
+    if (
+      !paymentMethod ||
+      (!parseFloat(cashReceived) && paymentMethod === 'Cash')
+    ) {
+      toast.error('Please select a payment method and cash received');
+      return;
+    }
     processPayment();
   };
 
@@ -1526,8 +1533,9 @@ export default function EnhancedPOSSystem() {
                   <Button
                     onClick={handlePayment}
                     disabled={
-                      paymentMethod === 'Cash' &&
-                      parseFloat(cashReceived) < calculateTotal()
+                      !paymentMethod ||
+                      (paymentMethod === 'Cash' &&
+                        parseFloat(cashReceived) < calculateTotal())
                     }
                   >
                     Complete Payment

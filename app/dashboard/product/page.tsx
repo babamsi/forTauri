@@ -153,7 +153,8 @@ export default function Component() {
     refetch,
     isError
   } = useGetProductsQuery(cookies, {
-    skip: !cookies
+    skip: !cookies,
+    pollingInterval: 60000
   });
 
   const [updateProduct, { isLoading: isUpdating }] = useUpdateProductMutation();

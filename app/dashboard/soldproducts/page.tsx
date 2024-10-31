@@ -715,7 +715,8 @@ export default function CustomersPage() {
     error: errorOrders,
     refetch
   } = useGetAllOrdersQuery(cookies, {
-    skip: !cookies
+    skip: !cookies,
+    pollingInterval: 10000
   });
 
   // console.log(allOrders)
