@@ -1,6 +1,12 @@
 'use client';
 
-import React, { useState, useMemo, useCallback, useEffect } from 'react';
+import React, {
+  useState,
+  useMemo,
+  useCallback,
+  useEffect,
+  useRef
+} from 'react';
 import { format, parseISO } from 'date-fns';
 import {
   Search,
@@ -706,6 +712,8 @@ export default function CustomersPage() {
   });
   const [cookies, setCookies] = useState(null);
   const [transactionsPage, setTransactionsPage] = useState(1);
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
   const itemsPerPage = 10;
   const transactionsPerPage = 10;
 
@@ -764,6 +772,30 @@ export default function CustomersPage() {
     }
   }, [allOrders]);
 
+  const handleOpenDialog = useCallback(() => {
+    setIsDialogOpen(true);
+    if (containerRef.current) {
+      containerRef.current.style.pointerEvents = 'none';
+      containerRef.current.setAttribute('aria-hidden', 'true');
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!isDialogOpen) {
+      const body = document.body;
+      body.style.overflow = 'auto';
+      body.style.pointerEvents = 'auto';
+    }
+  }, [isDialogOpen]);
+
+  const handleCloseDialog = useCallback(() => {
+    setIsDialogOpen(false);
+    if (containerRef.current) {
+      containerRef.current.style.pointerEvents = 'auto';
+      containerRef.current.removeAttribute('aria-hidden');
+    }
+  }, []);
+
   const filteredData = useMemo(() => {
     console.log(customers);
     return customers
@@ -804,29 +836,38 @@ export default function CustomersPage() {
     filteredData.length / transactionsPerPage
   );
 
-  const handleViewDetails = useCallback((customer: Customer) => {
-    setSelectedCustomer(customer);
-    setIsContactBookOpen(false);
-    toast.success(
-      `Viewing details for ${
-        // @ts-ignore
-        customer.name
-      }`
-    );
-  }, []);
+  const handleViewDetails = useCallback(
+    (customer: Customer) => {
+      handleOpenDialog();
+      setSelectedCustomer(customer);
+      setIsContactBookOpen(false);
+      toast.success(
+        `Viewing details for ${
+          // @ts-ignore
+          customer.name
+        }`
+      );
+    },
+    [handleOpenDialog]
+  );
 
   const handleCloseDetails = useCallback(() => {
+    handleCloseDialog();
     setSelectedCustomer(null);
-  }, []);
+  }, [handleCloseDialog]);
 
-  const handleViewInvoice = useCallback((invoice: Invoice) => {
-    setSelectedInvoice(invoice);
-    toast.success(`Viewing invoice #${invoice.invoiceNumber}`);
-  }, []);
+  const handleViewInvoice = useCallback(
+    (invoice: Invoice) => {
+      handleOpenDialog();
+      setSelectedInvoice(invoice);
+    },
+    [handleOpenDialog]
+  );
 
   const handleCloseInvoice = useCallback(() => {
+    handleCloseDialog();
     setSelectedInvoice(null);
-  }, []);
+  }, [handleCloseDialog]);
 
   const handlePageChange = useCallback((page: number) => {
     setCurrentPage(page);
@@ -853,7 +894,7 @@ export default function CustomersPage() {
   }
 
   return (
-    <div className="container mx-auto p-4">
+    <div ref={containerRef} className="container mx-auto p-4">
       <div className="mb-6 flex items-center justify-between">
         <h1 className="text-3xl font-bold">Customer Management</h1>
         <Button size="sm" onClick={() => setIsContactBookOpen(true)}>
@@ -1038,7 +1079,13 @@ export default function CustomersPage() {
         </Button>
       </div>
 
-      <Dialog open={isContactBookOpen} onOpenChange={setIsContactBookOpen}>
+      <Dialog
+        open={isContactBookOpen}
+        onOpenChange={(open) => {
+          setIsContactBookOpen(open);
+          if (!open) handleCloseDialog();
+        }}
+      >
         <DialogContent>
           <ContactBook
             customers={customers}
@@ -1046,12 +1093,14 @@ export default function CustomersPage() {
           />
         </DialogContent>
       </Dialog>
+
       {selectedCustomer && (
         <CustomerDetails
           customer={selectedCustomer}
           onClose={handleCloseDetails}
         />
       )}
+
       {selectedInvoice && (
         <InvoiceDetails
           invoice={selectedInvoice}

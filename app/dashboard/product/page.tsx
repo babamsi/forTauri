@@ -1385,72 +1385,79 @@ function FilterOptions({
   setPriceRange: (range: number[]) => void;
 }) {
   return (
-    <Popover>
-      <PopoverTrigger asChild>
-        <Button variant="outline">
-          <Filter className="mr-2 h-4 w-4" />
-          Filters
-        </Button>
-      </PopoverTrigger>
-      <PopoverContent className="w-80">
-        <div className="grid gap-4">
-          <div className="space-y-2">
-            <h4 className="font-medium leading-none">Category</h4>
-            <Select
-              value={selectedCategory}
-              onValueChange={setSelectedCategory}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Select category" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="">All Categories</SelectItem>
-                {categories.map((category) => (
-                  <SelectItem key={category} value={category}>
-                    {category}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+    <div className="space-y-4">
+      <div>
+        <Label htmlFor="category">Category</Label>
+        <Select value={selectedCategory} onValueChange={setSelectedCategory}>
+          <SelectTrigger id="category">
+            <SelectValue placeholder="Select category" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="">All Categories</SelectItem>
+            {categories.map((category) => (
+              <SelectItem key={category} value={category}>
+                {category}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
 
-          <div className="space-y-2">
-            <h4 className="font-medium leading-none">Vendor</h4>
-            <Select value={selectedVendor} onValueChange={setSelectedVendor}>
-              <SelectTrigger>
-                <SelectValue placeholder="Select vendor" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="">All Vendors</SelectItem>
-                {vendors.map((vendor) => (
-                  <SelectItem key={vendor} value={vendor}>
-                    {vendor}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="space-y-2">
-            <h4 className="font-medium leading-none">Show Low Stock</h4>
-            <Switch checked={showLowStock} onCheckedChange={setShowLowStock} />
-          </div>
-          <div className="space-y-2">
-            <h4 className="font-medium leading-none">Price Range</h4>
-            <Slider
-              min={0}
-              max={2000}
-              step={10}
-              value={priceRange}
-              onValueChange={setPriceRange}
-            />
-            <div className="flex justify-between text-sm text-muted-foreground">
-              <span>${priceRange[0]}</span>
-              <span>${priceRange[1]}</span>
-            </div>
-          </div>
+      <div>
+        <Label htmlFor="supplier">Supplier</Label>
+        <Select value={selectedVendor} onValueChange={setSelectedVendor}>
+          <SelectTrigger id="supplier">
+            <SelectValue placeholder="Select supplier" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="">All Suppliers</SelectItem>
+            {vendors.map((vendor) => (
+              <SelectItem key={vendor} value={vendor}>
+                {vendor}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+      <div className="flex items-center space-x-2">
+        <Switch
+          id="show-low-stock"
+          checked={showLowStock}
+          onCheckedChange={setShowLowStock}
+        />
+        <Label htmlFor="show-low-stock">Show Low Stock</Label>
+      </div>
+      <div>
+        <Label>Price Range</Label>
+        <div className="flex items-center space-x-2">
+          <Input
+            type="number"
+            value={priceRange[0]}
+            onChange={(e) =>
+              setPriceRange([Number(e.target.value), priceRange[1]])
+            }
+            className="w-20"
+          />
+          <span>-</span>
+          <Input
+            type="number"
+            value={priceRange[1]}
+            onChange={(e) =>
+              setPriceRange([priceRange[0], Number(e.target.value)])
+            }
+            className="w-20"
+          />
         </div>
-      </PopoverContent>
-    </Popover>
+        <Slider
+          min={0}
+          max={2000}
+          step={10}
+          value={priceRange}
+          onValueChange={setPriceRange}
+          className="mt-2"
+        />
+      </div>
+    </div>
   );
 }
 
