@@ -1997,21 +1997,6 @@ export default function EnhancedPOSSystem() {
                 value={transactionSearchQuery}
                 onChange={(e) => setTransactionSearchQuery(e.target.value)}
               />
-              <Popover>
-                <PopoverTrigger asChild>
-                  <CalendarIcon className="mr-2 h-4 w-4" />
-                  {date ? format(date, 'PPP') : <span>Pick a date</span>}
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
-                  <Calendar
-                    mode="single"
-                    selected={date}
-                    // @ts-ignore
-                    onSelect={setDate}
-                    initialFocus
-                  />
-                </PopoverContent>
-              </Popover>
             </div>
             <Select
               value={transactionTypeFilter}
