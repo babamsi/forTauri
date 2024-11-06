@@ -82,7 +82,7 @@ import {
   CommandList
 } from '@/components/ui/command';
 import { Label } from '@/components/ui/label';
-import { useGetAllOrdersQuery } from '@/store/authApi';
+import { useGetAllOrdersQuery, useGetAllCustomerQuery } from '@/store/authApi';
 import { deleteAuthCookie, getAuthCookie } from '@/actions/auth.actions';
 import { CalendarDateRangePicker } from '@/components/date-range-picker';
 
@@ -158,7 +158,7 @@ const InvoiceDetails: React.FC<{
 
   return (
     <Dialog open={!!invoice} onOpenChange={onClose}>
-      <DialogContent className="flex h-[90vh] w-full max-w-4xl flex-col gap-0 p-0">
+      <DialogContent className="flex h-[90vh] w-full max-w-4xl flex-col gap-0 overflow-auto p-0">
         <DialogHeader className="sticky top-0 z-10 flex flex-row items-center justify-between border-b bg-background px-4 py-2">
           <div>
             <DialogTitle>Invoice Details</DialogTitle>
@@ -188,7 +188,7 @@ const InvoiceDetails: React.FC<{
                     <div className="font-medium">
                       {
                         // @ts-ignore
-                        invoice.user.name
+                        invoice.name
                       }
                     </div>
                   </div>
@@ -197,7 +197,7 @@ const InvoiceDetails: React.FC<{
                     <div className="font-medium">
                       {
                         //@ts-ignore
-                        invoice.user.email
+                        invoice.email
                       }
                     </div>
                   </div>
@@ -215,15 +215,19 @@ const InvoiceDetails: React.FC<{
                       <TableHead>Product</TableHead>
                       <TableHead className="text-right">Quantity</TableHead>
                       <TableHead className="text-right">Price</TableHead>
-                      {invoice.status === 'Refunded' && (
-                        <TableHead className="text-right">Returned</TableHead>
-                      )}
+
+                      <TableHead className="text-right">Returned</TableHead>
+
+                      <TableHead className="text-right">Date</TableHead>
+                      <TableHead className="text-right">Payment</TableHead>
+                      <TableHead className="text-right">Invoice</TableHead>
                       <TableHead className="text-right">Subtotal</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {//@ts-ignore
-                    invoice.products?.map((item) => (
+                    invoice.items?.map((item) => (
+                      // @ts-ignore
                       <TableRow key={item._id}>
                         <TableCell>{item.product}</TableCell>
                         <TableCell className="text-right">
@@ -232,11 +236,41 @@ const InvoiceDetails: React.FC<{
                         <TableCell className="text-right">
                           {formatCurrency(item.price)}
                         </TableCell>
-                        {invoice.status === 'Refunded' && (
-                          <TableCell className="text-right">
-                            {item.returnQuantity}
-                          </TableCell>
-                        )}
+
+                        <TableCell className="text-right">
+                          <Badge
+                            variant={
+                              // @ts-ignore
+                              item.returnQuantity === 0
+                                ? 'default'
+                                : 'destructive'
+                            }
+                          >
+                            {
+                              // @ts-ignore
+                              item.returnQuantity
+                            }
+                          </Badge>
+                        </TableCell>
+
+                        <TableCell className="text-right">
+                          {formatDate(
+                            // @ts-ignore
+                            item.soldAt
+                          )}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          {
+                            // @ts-ignore
+                            item.cashType
+                          }
+                        </TableCell>
+                        <TableCell className="text-right">
+                          {
+                            // @ts-ignore
+                            item.invoiceNumber
+                          }
+                        </TableCell>
                         <TableCell className="text-right">
                           {formatCurrency(item.subtotal)}
                         </TableCell>
@@ -258,35 +292,7 @@ const InvoiceDetails: React.FC<{
                       {formatCurrency(invoice.totalAmount)}
                     </div>
                   </div>
-                  <div>
-                    <Label>Payment Method</Label>
-                    <div className="flex items-center gap-2 font-medium">
-                      {
-                        // @ts-ignore
-                        invoice.cashType === 'Bank' && (
-                          <CreditCard className="h-4 w-4" />
-                        )
-                      }
-                      {
-                        // @ts-ignore
-                        invoice.cashType === 'Cash' && (
-                          <Banknote className="h-4 w-4" />
-                        )
-                      }
-                      {
-                        // @ts-ignore
-                        invoice.cashType === 'Mobile' && (
-                          <Wallet className="h-4 w-4" />
-                        )
-                      }
-                      <span>
-                        {
-                          // @ts-ignore
-                          invoice.cashType
-                        }
-                      </span>
-                    </div>
-                  </div>
+
                   <div>
                     <Label>Date</Label>
                     <div className="font-medium">
@@ -294,21 +300,6 @@ const InvoiceDetails: React.FC<{
                         // @ts-ignore
                         formatDate(invoice.updatedAt)
                       }
-                    </div>
-                  </div>
-                  <div>
-                    <Label>Status</Label>
-                    <div>
-                      <Badge
-                        variant={
-                          // @ts-ignore
-                          invoice.status !== 'Refunded'
-                            ? 'outline'
-                            : 'destructive'
-                        }
-                      >
-                        {invoice.status}
-                      </Badge>
                     </div>
                   </div>
                 </div>
@@ -351,15 +342,24 @@ const TransactionsTable: React.FC<{
                     <div className="flex items-center space-x-3">
                       <Avatar className="hidden sm:block">
                         <AvatarFallback>
-                          {transaction.user.name
-                            .split(' ')
-                            .map((n) => n[0])
-                            .join('')}
+                          {
+                            // @ts-ignore
+                            transaction.name
+                              .split(' ')
+                              .map(
+                                // @ts-ignore
+                                (n) => n[0]
+                              )
+                              .join('')
+                          }
                         </AvatarFallback>
                       </Avatar>
                       <div>
                         <div className="font-semibold">
-                          {transaction.user.name}
+                          {
+                            // @ts-ignore
+                            transaction.name
+                          }
                         </div>
                         <div className="hidden text-sm text-muted-foreground sm:block">
                           {
@@ -458,15 +458,29 @@ const CustomerDetails: React.FC<{
           <DialogTitle className="flex items-center gap-4">
             <Avatar>
               <AvatarFallback>
-                {customer.user.name
-                  .split(' ')
-                  .map((n) => n[0])
-                  .join('')}
+                {
+                  // @ts-ignore
+                  customer.name
+                    .split(' ')
+                    .map(
+                      // @ts-ignore
+                      (n) => n[0]
+                    )
+                    .join('')
+                }
               </AvatarFallback>
             </Avatar>
             <div>
-              {customer.user.name}
-              <DialogDescription>{customer.user.email}</DialogDescription>
+              {
+                // @ts-ignore
+                customer.name
+              }
+              <DialogDescription>
+                {
+                  // @ts-ignore
+                  customer.email
+                }
+              </DialogDescription>
             </div>
           </DialogTitle>
           <Button
@@ -527,11 +541,21 @@ const CustomerDetails: React.FC<{
                       <div className="grid gap-2">
                         <div className="flex items-center">
                           <Mail className="mr-2 h-4 w-4 opacity-70" />
-                          <span>{customer.user.email}</span>
+                          <span>
+                            {
+                              // @ts-ignore
+                              customer.email
+                            }
+                          </span>
                         </div>
                         <div className="flex items-center">
                           <Phone className="mr-2 h-4 w-4 opacity-70" />
-                          <span>{formatPhoneNumber(customer.user.phone)}</span>
+                          <span>
+                            {formatPhoneNumber(
+                              // @ts-ignore
+                              customer.phone
+                            )}
+                          </span>
                         </div>
                         <div className="flex items-center">
                           <User className="mr-2 h-4 w-4 opacity-70" />
@@ -614,9 +638,12 @@ const ContactBook: React.FC<{
   const filteredCustomers = useMemo(() => {
     return customers.filter(
       (customer) =>
-        customer.user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        customer.user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (customer.user.phone && customer.user.phone.includes(searchTerm))
+        // @ts-ignore
+        customer.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        // @ts-ignore
+        customer.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        // @ts-ignore
+        (customer.phone && customer.phone.includes(searchTerm))
     );
   }, [customers, searchTerm]);
 
@@ -652,16 +679,30 @@ const ContactBook: React.FC<{
             >
               <Avatar>
                 <AvatarFallback>
-                  {customer.user.name
-                    .split(' ')
-                    .map((n) => n[0])
-                    .join('')}
+                  {
+                    // @ts-ignore
+                    customer.name
+                      .split(' ')
+                      .map(
+                        // @ts-ignore
+                        (n) => n[0]
+                      )
+                      .join('')
+                  }
                 </AvatarFallback>
               </Avatar>
               <div>
-                <div className="font-medium">{customer.user.name}</div>
+                <div className="font-medium">
+                  {
+                    // @ts-ignore
+                    customer.name
+                  }
+                </div>
                 <div className="text-sm text-muted-foreground">
-                  {customer.user.email}
+                  {
+                    // @ts-ignore
+                    customer.email
+                  }
                 </div>
               </div>
             </div>
@@ -722,7 +763,7 @@ export default function CustomersPage() {
     isLoading: isLoadingOrders,
     error: errorOrders,
     refetch
-  } = useGetAllOrdersQuery(cookies, {
+  } = useGetAllCustomerQuery(cookies, {
     skip: !cookies,
     pollingInterval: 10000
   });
@@ -801,12 +842,10 @@ export default function CustomersPage() {
     return customers
       .filter(
         (customer) =>
-          (customer.user.name
-            .toLowerCase()
-            .includes(searchTerm.toLowerCase()) ||
-            customer.user.email
-              .toLowerCase()
-              .includes(searchTerm.toLowerCase()) ||
+          // @ts-ignore
+          (customer.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            // @ts-ignore
+            customer.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
             customer.invoiceNumber
               .toLowerCase()
               .includes(searchTerm.toLowerCase())) &&

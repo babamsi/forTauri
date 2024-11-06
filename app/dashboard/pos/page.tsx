@@ -101,6 +101,8 @@ import {
   Camera
 } from 'lucide-react';
 import { format } from 'date-fns';
+import 'react-phone-number-input/style.css';
+import PhoneInput from 'react-phone-number-input';
 
 interface Product {
   _id: string;
@@ -215,6 +217,7 @@ export default function EnhancedPOSSystem() {
   const [lastKeystrokeTime, setLastKeystrokeTime] = useState(0);
   const [inputFocused, setInputFocused] = useState(false);
   const [page, setPage] = useState(1);
+  const [valuePhoneNumber, setValuePhoneNumber] = useState();
   const ITEMS_PER_PAGE = 20;
 
   const VAT_RATE = 0.05; // 5% VAT rate
@@ -696,6 +699,7 @@ export default function EnhancedPOSSystem() {
 
   const handleReturnSubmit = async () => {
     setIsProcessingRefund(true);
+    // console.log(returnItems);
     const itemsToReturn = returnItems.filter(
       // @ts-ignore
       (item: Product) => item.returnQuantity > 0
@@ -733,11 +737,14 @@ export default function EnhancedPOSSystem() {
     // console.log(calculateRevenue - returnDiscounts)
 
     setAfterReturnAmount(total);
+    console.log(itemsToReturn);
+    // console.log(returnUser)
     try {
       const result = await updateOrder({
         data: {
           products: itemsToReturn,
           invoiceNumber: returnInvoice,
+          user: returnUser,
           amount: afterReturnAmount,
           rev: calculateRevenue - returnDiscounts
         },
@@ -834,7 +841,7 @@ export default function EnhancedPOSSystem() {
   const sortedTransactions =
     filteredTransactions &&
     [...filteredTransactions].sort((a, b) => {
-      if (sortConfig.key === null) return 0;
+      if (sortConfig.key === null) return -1;
       const aValue = a[sortConfig.key];
       const bValue = b[sortConfig.key];
       if (aValue < bValue) return sortConfig.direction === 'ascending' ? -1 : 1;
@@ -1516,7 +1523,14 @@ export default function EnhancedPOSSystem() {
                         disabled
                       />
                     ) : (
-                      <Input placeholder="Enter mobile number" />
+                      // @ts-ignore
+                      <PhoneInput
+                        defaultCountry="SO"
+                        placeholder="Enter phone number"
+                        value={valuePhoneNumber}
+                        // @ts-ignore
+                        onChange={setValuePhoneNumber}
+                      />
                     )}
                   </div>
                 )}
@@ -1569,7 +1583,12 @@ export default function EnhancedPOSSystem() {
                 <Input
                   placeholder="Enter customer ID or phone number"
                   value={customerSearchQuery}
-                  onChange={(e) => setCustomerSearchQuery(e.target.value)}
+                  onChange={(e) => {
+                    setCustomerSearchQuery(e.target.value);
+                    e.stopPropagation();
+                  }}
+                  onFocus={() => setInputFocused(true)}
+                  onBlur={() => setInputFocused(false)}
                 />
                 <Button
                   onClick={() => handleCustomerSearch(customerSearchQuery)}
@@ -1612,13 +1631,32 @@ export default function EnhancedPOSSystem() {
                     setNewCustomer({ ...newCustomer, name: e.target.value })
                   }
                 />
-                <Input
+                {/* <Input
                   placeholder="Phone Number"
                   value={newCustomer.phone}
                   onChange={(e) =>
                     setNewCustomer({ ...newCustomer, phone: e.target.value })
                   }
-                />
+                /> */}
+                {
+                  // @ts-ignore
+                  <PhoneInput
+                    defaultCountry="SO"
+                    international
+                    withCountryCallingCode
+                    placeholder="Phone number"
+                    value={newCustomer.phone}
+                    onChange={(e) =>
+                      setNewCustomer({
+                        ...newCustomer,
+                        // @ts-ignore
+                        phone: e
+                      })
+                    }
+                    className="input-phone"
+                  />
+                }
+
                 <Input
                   placeholder="Email (optional)"
                   value={newCustomer.email}

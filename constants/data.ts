@@ -179,8 +179,8 @@ export const navItems: NavItem[] = [
   //   label: 'Refund'
   // },
   {
-    title: 'Sold Products',
-    href: '/dashboard/soldproducts',
+    title: 'Customer Manager',
+    href: '/dashboard/customermanager',
     icon: 'sold',
     label: 'sold'
   }

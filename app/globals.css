@@ -58,6 +58,9 @@
     --chart-5: 340 75% 55%;
   }
 }
+.input-phone {
+  @apply mt-2 h-11 rounded-md border bg-black px-3 text-sm !important;
+}
 
 @layer base {
   * {

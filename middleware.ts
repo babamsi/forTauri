@@ -17,7 +17,7 @@ export function middleware(request: NextRequest) {
     return NextResponse.redirect(new URL('/', request.url));
 
   if (
-    pathname === '/dashboard/soldproducts' &&
+    pathname === '/dashboard/customermanager' &&
     !request.cookies.has('access_token')
   )
     return NextResponse.redirect(new URL('/', request.url));

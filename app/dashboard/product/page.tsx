@@ -20,6 +20,14 @@ import {
   TableRow
 } from '@/components/ui/table';
 import {
+  ChevronLeftIcon,
+  ChevronRightIcon,
+  DoubleArrowLeftIcon,
+  DoubleArrowRightIcon,
+  CheckIcon,
+  PlusCircledIcon
+} from '@radix-ui/react-icons';
+import {
   Dialog,
   DialogContent,
   DialogDescription,
@@ -1005,37 +1013,78 @@ export default function Component() {
             </motion.div>
           )}
         </AnimatePresence>
-        <div className="mt-4 flex justify-center">
-          <Pagination>
-            <PaginationContent>
-              <PaginationItem>
-                <PaginationPrevious
-                  onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
-                />
-              </PaginationItem>
-              {Array.from({ length: totalPages }, (_, i) => i + 1).map(
-                (page) => (
-                  <PaginationItem key={page}>
-                    <PaginationLink
-                      onClick={() => setCurrentPage(page)}
-                      isActive={currentPage === page}
-                    >
-                      {page}
-                    </PaginationLink>
-                  </PaginationItem>
-                )
-              )}
-              <PaginationItem>
-                <PaginationNext
-                  onClick={() =>
-                    setCurrentPage(Math.min(totalPages, currentPage + 1))
-                  }
-                />
-              </PaginationItem>
-            </PaginationContent>
-          </Pagination>
+
+        <div className="flex items-center justify-between px-2">
+          <div className="flex-1 text-sm text-muted-foreground">
+            Showing {paginatedProducts.length} of {sortedProducts.length}{' '}
+            products
+          </div>
+          <div className="flex items-center space-x-6 lg:space-x-8">
+            <div className="flex items-center space-x-2">
+              <p className="text-sm font-medium">Rows per page</p>
+              <Select
+                value={`${itemsPerPage}`}
+                onValueChange={(value) => setItemsPerPage(Number(value))}
+              >
+                <SelectTrigger className="h-8 w-[70px]">
+                  <SelectValue placeholder={itemsPerPage} />
+                </SelectTrigger>
+                <SelectContent side="top">
+                  {[5, 10, 20, 50].map((pageSize) => (
+                    <SelectItem key={pageSize} value={`${pageSize}`}>
+                      {pageSize}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="flex w-[100px] items-center justify-center text-sm font-medium">
+              Page {currentPage} of {totalPages}
+            </div>
+            <div className="flex items-center space-x-2">
+              <Button
+                variant="outline"
+                className="hidden h-8 w-8 p-0 lg:flex"
+                onClick={() => setCurrentPage(1)}
+                disabled={currentPage === 1}
+              >
+                <span className="sr-only">Go to first page</span>
+                <DoubleArrowLeftIcon className="h-4 w-4" />
+              </Button>
+              <Button
+                variant="outline"
+                className="h-8 w-8 p-0"
+                onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
+                disabled={currentPage === 1}
+              >
+                <span className="sr-only">Go to previous page</span>
+                <ChevronLeftIcon className="h-4 w-4" />
+              </Button>
+              <Button
+                variant="outline"
+                className="h-8 w-8 p-0"
+                onClick={() =>
+                  setCurrentPage((prev) => Math.min(totalPages, prev + 1))
+                }
+                disabled={currentPage === totalPages}
+              >
+                <span className="sr-only">Go to next page</span>
+                <ChevronRightIcon className="h-4 w-4" />
+              </Button>
+              <Button
+                variant="outline"
+                className="hidden h-8 w-8 p-0 lg:flex"
+                onClick={() => setCurrentPage(totalPages)}
+                disabled={currentPage === totalPages}
+              >
+                <span className="sr-only">Go to last page</span>
+                <DoubleArrowRightIcon className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
         </div>
       </div>
+
       <Dialog
         open={isProductLogDialogOpen}
         onOpenChange={setIsProductLogDialogOpen}
@@ -1323,17 +1372,19 @@ function ProductForm({
             </div>
           </>
         )}
+        {!formData.isQuantityBased && (
+          <div>
+            <Label htmlFor="units">Units (not pieces products)</Label>
+            <Input
+              id="units"
+              name="units"
+              value={formData.units}
+              onChange={handleChange}
+              required
+            />
+          </div>
+        )}
 
-        <div>
-          <Label htmlFor="units">Differenciate</Label>
-          <Input
-            id="units"
-            name="units"
-            value={formData.units}
-            onChange={handleChange}
-            required
-          />
-        </div>
         <div>
           <Label htmlFor="isQuantityBased">Is Pieaces</Label>
           <Switch
