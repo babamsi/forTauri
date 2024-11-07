@@ -196,6 +196,7 @@ export default function Dashboard() {
                   // @ts-ignore
                   style={{
                     backgroundColor:
+                      // @ts-ignore
                       chartConfig[entry.dataKey]?.color || entry.color
                   }}
                 />
