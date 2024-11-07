@@ -36,7 +36,7 @@ export const authApi = createApi({
     }),
     getSoldProducts: builder.query({
       query: (cred) => ({
-        url: '/products/soldProducts',
+        url: '/auth/me',
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
@@ -151,6 +151,16 @@ export const authApi = createApi({
         }
       })
     }),
+    getMyExpanses: builder.query({
+      query: (cred) => ({
+        url: `/expense/me`,
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${cred}`
+        }
+      })
+    }),
     getAllOrders: builder.query({
       query: (cred) => ({
         url: `/orders/all`,
@@ -168,6 +178,16 @@ export const authApi = createApi({
         headers: {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${cred}`
+        }
+      })
+    }),
+    getOrderFromCustomer: builder.query({
+      query: (cred) => ({
+        url: `/customers/${cred.phone}`,
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${cred.cookies}`
         }
       })
     })
@@ -189,6 +209,8 @@ export const {
   useGetOrderByInvoiceQuery,
   useUpdateOrderMutation,
   useGetExpenseQuery,
+  useGetMyExpansesQuery,
   useGetAllOrdersQuery,
-  useGetAllCustomerQuery
+  useGetAllCustomerQuery,
+  useGetOrderFromCustomerQuery
 } = authApi;

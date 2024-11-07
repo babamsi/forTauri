@@ -82,7 +82,10 @@ import {
   CommandList
 } from '@/components/ui/command';
 import { Label } from '@/components/ui/label';
-import { useGetAllOrdersQuery, useGetAllCustomerQuery } from '@/store/authApi';
+import {
+  useGetOrderFromCustomerQuery,
+  useGetAllCustomerQuery
+} from '@/store/authApi';
 import { deleteAuthCookie, getAuthCookie } from '@/actions/auth.actions';
 import { CalendarDateRangePicker } from '@/components/date-range-picker';
 
@@ -96,7 +99,7 @@ const formatCurrency = (amount: number, currency: string = 'USD') => {
 const formatDate = (dateString: string | undefined) => {
   if (!dateString) return 'N/A';
   try {
-    return format(parseISO(dateString), 'MMM d, yyyy');
+    return format(parseISO(dateString), 'MMM d, yyyy h:mm a');
   } catch (error) {
     console.error('Error formatting date:', error);
     return 'Invalid Date';
@@ -155,7 +158,7 @@ const InvoiceDetails: React.FC<{
   onClose: () => void;
 }> = ({ invoice, onClose }) => {
   if (!invoice) return null;
-
+  console.log(invoice);
   return (
     <Dialog open={!!invoice} onOpenChange={onClose}>
       <DialogContent className="flex h-[90vh] w-full max-w-4xl flex-col gap-0 overflow-auto p-0">
@@ -188,7 +191,7 @@ const InvoiceDetails: React.FC<{
                     <div className="font-medium">
                       {
                         // @ts-ignore
-                        invoice.name
+                        invoice.user.name
                       }
                     </div>
                   </div>
@@ -197,7 +200,7 @@ const InvoiceDetails: React.FC<{
                     <div className="font-medium">
                       {
                         //@ts-ignore
-                        invoice.email
+                        invoice.user.email
                       }
                     </div>
                   </div>
@@ -218,15 +221,15 @@ const InvoiceDetails: React.FC<{
 
                       <TableHead className="text-right">Returned</TableHead>
 
-                      <TableHead className="text-right">Date</TableHead>
+                      {/* <TableHead className="text-right">Date</TableHead> */}
                       <TableHead className="text-right">Payment</TableHead>
-                      <TableHead className="text-right">Invoice</TableHead>
+                      {/* <TableHead className="text-right">Invoice</TableHead> */}
                       <TableHead className="text-right">Subtotal</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {//@ts-ignore
-                    invoice.items?.map((item) => (
+                    invoice.products?.map((item) => (
                       // @ts-ignore
                       <TableRow key={item._id}>
                         <TableCell>{item.product}</TableCell>
@@ -253,24 +256,19 @@ const InvoiceDetails: React.FC<{
                           </Badge>
                         </TableCell>
 
-                        <TableCell className="text-right">
+                        {/* <TableCell className="text-right">
                           {formatDate(
                             // @ts-ignore
                             item.soldAt
                           )}
-                        </TableCell>
+                        </TableCell> */}
                         <TableCell className="text-right">
                           {
                             // @ts-ignore
-                            item.cashType
+                            invoice.cashType
                           }
                         </TableCell>
-                        <TableCell className="text-right">
-                          {
-                            // @ts-ignore
-                            item.invoiceNumber
-                          }
-                        </TableCell>
+
                         <TableCell className="text-right">
                           {formatCurrency(item.subtotal)}
                         </TableCell>
@@ -300,6 +298,50 @@ const InvoiceDetails: React.FC<{
                         // @ts-ignore
                         formatDate(invoice.updatedAt)
                       }
+                    </div>
+                  </div>
+                  <div>
+                    <Label>Payment Method</Label>
+                    <div className="flex items-center gap-2 font-medium">
+                      {
+                        // @ts-ignore
+                        invoice.cashType === 'Bank' && (
+                          <CreditCard className="h-4 w-4" />
+                        )
+                      }
+                      {
+                        // @ts-ignore
+                        invoice.cashType === 'Cash' && (
+                          <Banknote className="h-4 w-4" />
+                        )
+                      }
+                      {
+                        // @ts-ignore
+                        invoice.cashType === 'Mobile' && (
+                          <Wallet className="h-4 w-4" />
+                        )
+                      }
+                      <span>
+                        {
+                          // @ts-ignore
+                          invoice.cashType
+                        }
+                      </span>
+                    </div>
+                  </div>
+                  <div>
+                    <Label>Status</Label>
+                    <div>
+                      <Badge
+                        variant={
+                          // @ts-ignore
+                          invoice.status !== 'Refunded'
+                            ? 'outline'
+                            : 'destructive'
+                        }
+                      >
+                        {invoice.status}
+                      </Badge>
                     </div>
                   </div>
                 </div>
@@ -420,7 +462,7 @@ const TransactionsTable: React.FC<{
                           <User className="mr-2 h-4 w-4" />
                           <span>Visit profile</span>
                         </DropdownMenuItem>
-                        <DropdownMenuItem
+                        {/* <DropdownMenuItem
                           onClick={
                             // @ts-ignore
                             () => onViewInvoice(transaction)
@@ -428,7 +470,7 @@ const TransactionsTable: React.FC<{
                         >
                           <FileText className="mr-2 h-4 w-4" />
                           <span>View payment details</span>
-                        </DropdownMenuItem>
+                        </DropdownMenuItem> */}
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </TableCell>
@@ -448,8 +490,34 @@ const CustomerDetails: React.FC<{
 }> = ({ customer, onClose }) => {
   const [activeTab, setActiveTab] = useState('overview');
   const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
+  const [cookies, setCookies] = useState();
+  const {
+    data: allOrders,
+    isLoading: isLoadingOrders,
+    error: errorOrders,
+    refetch
+  } = useGetOrderFromCustomerQuery(
+    {
+      // @ts-ignore
+      phone: customer?.phone,
+      cookies
+    },
+    {
+      // @ts-ignore
+      skip: !cookies || !customer?.phone,
+      pollingInterval: 10000
+    }
+  );
+
+  useEffect(() => {
+    getAuthCookie().then((k: any) => {
+      setCookies(k);
+    });
+  }, []);
 
   if (!customer) return null;
+
+  console.log(allOrders);
 
   return (
     <Dialog open={!!customer} onOpenChange={onClose}>
@@ -584,8 +652,46 @@ const CustomerDetails: React.FC<{
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      <TableRow>
-                        <TableCell>{customer.invoiceNumber}</TableCell>
+                      {allOrders?.map(
+                        // @ts-ignore
+                        (order) => (
+                          <TableRow key={order.id}>
+                            <TableCell>{order.invoiceNumber}</TableCell>
+                            <TableCell>{formatDate(order.createdAt)}</TableCell>
+                            <TableCell>
+                              {formatCurrency(order.totalAmount)}
+                            </TableCell>
+                            <TableCell>
+                              <Badge
+                                variant={
+                                  order.status !== 'Refunded'
+                                    ? 'outline'
+                                    : 'destructive'
+                                }
+                              >
+                                {order.status !== 'Refunded'
+                                  ? 'Paid'
+                                  : order.status}
+                              </Badge>
+                            </TableCell>
+                            <TableCell>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() =>
+                                  setSelectedInvoice(
+                                    order as unknown as Invoice
+                                  )
+                                }
+                              >
+                                <ExternalLink className="mr-2 h-4 w-4" />
+                                View
+                              </Button>
+                            </TableCell>
+                          </TableRow>
+                        )
+                      )}
+                      {/* <TableCell>{customer.invoiceNumber}</TableCell>
                         <TableCell>{formatDate(customer.createdAt)}</TableCell>
                         <TableCell>
                           {formatCurrency(customer.totalAmount)}
@@ -605,7 +711,7 @@ const CustomerDetails: React.FC<{
                             View
                           </Button>
                         </TableCell>
-                      </TableRow>
+                      </TableRow> */}
                     </TableBody>
                   </Table>
                 </CardContent>
