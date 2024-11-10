@@ -283,10 +283,12 @@ export default function EnhancedPOSSystem() {
     const filtered = customers?.filter(
       // @ts-ignore
       (customer) =>
-        customer._id
+        (customer.name
           .toLowerCase()
-          .includes(customerSearchQuery.toLowerCase()) ||
-        customer.phone.includes(customerSearchQuery)
+          .includes(customerSearchQuery.toLowerCase()) &&
+          customer.name != 'Guest') ||
+        (customer.phone.includes(customerSearchQuery) &&
+          customer.name != 'Guest')
     );
     setFilteredCustomers(filtered);
   }, [customerSearchQuery, customers]);
@@ -914,7 +916,7 @@ export default function EnhancedPOSSystem() {
       />
 
       {/* Main content area */}
-      <main className="flex-1 overflow-y-hidden p-4">
+      <main className="flex-1 overflow-y-auto p-4">
         <div className="mx-auto max-w-7xl">
           {/* Search bar and function buttons */}
           <div className="mb-4 space-y-2">
@@ -1942,7 +1944,7 @@ export default function EnhancedPOSSystem() {
               View and search past transactions.
             </DialogDescription>
           </DialogHeader>
-          <div className="flex flex-grow flex-col space-y-4 overflow-hidden">
+          <div className="flex flex-grow flex-col space-y-4 overflow-y-auto">
             <div className="flex flex-col items-start justify-between gap-2 md:flex-row md:items-center">
               <Input
                 placeholder="Search transactions..."
