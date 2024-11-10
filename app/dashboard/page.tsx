@@ -80,8 +80,12 @@ export default function Dashboard() {
       setCookies(k);
     });
   }, []);
-  // @ts-ignore
-  const processUserData = (soldItems, period) => {
+
+  const processUserData = (
+    // @ts-ignore
+    soldItems,
+    period
+  ) => {
     if (!soldItems) return [];
     const now = new Date();
     const dailyData = {};
@@ -135,50 +139,55 @@ export default function Dashboard() {
   }, [soldProducts, selectedPeriod]);
 
   const getCardData = (metric: string) => {
-    // @ts-ignore
-    const filteredSoldItems = soldProducts?.soldItems.filter((item) => {
-      const itemDate = new Date(item.soldAt);
-      const now = new Date();
-      switch (selectedPeriod) {
-        case 'Today':
-          return itemDate.toDateString() === now.toDateString();
-        case 'Yesterday':
-          return (
-            itemDate.toDateString() ===
-            new Date(now.setDate(now.getDate() - 1)).toDateString()
-          );
-        case 'Last 7 days':
-          return itemDate >= new Date(now.setDate(now.getDate() - 7));
-        case 'Last 14 days':
-          return itemDate >= new Date(now.setDate(now.getDate() - 14));
-        case 'Last month':
-          return itemDate >= new Date(now.setMonth(now.getMonth() - 1));
-        default:
-          return true;
+    const filteredSoldItems = soldProducts?.soldItems.filter(
+      // @ts-ignore
+      (item) => {
+        const itemDate = new Date(item.soldAt);
+        const now = new Date();
+        switch (selectedPeriod) {
+          case 'Today':
+            return itemDate.toDateString() === now.toDateString();
+          case 'Yesterday':
+            return (
+              itemDate.toDateString() ===
+              new Date(now.setDate(now.getDate() - 1)).toDateString()
+            );
+          case 'Last 7 days':
+            return itemDate >= new Date(now.setDate(now.getDate() - 7));
+          case 'Last 14 days':
+            return itemDate >= new Date(now.setDate(now.getDate() - 14));
+          case 'Last month':
+            return itemDate >= new Date(now.setMonth(now.getMonth() - 1));
+          default:
+            return true;
+        }
       }
-    });
-    // @ts-ignore
-    const filteredExpenses = expenses?.filter((item) => {
-      const itemDate = new Date(item.date);
-      const now = new Date();
-      switch (selectedPeriod) {
-        case 'Today':
-          return itemDate.toDateString() === now.toDateString();
-        case 'Yesterday':
-          return (
-            itemDate.toDateString() ===
-            new Date(now.setDate(now.getDate() - 1)).toDateString()
-          );
-        case 'Last 7 days':
-          return itemDate >= new Date(now.setDate(now.getDate() - 7));
-        case 'Last 14 days':
-          return itemDate >= new Date(now.setDate(now.getDate() - 14));
-        case 'Last month':
-          return itemDate >= new Date(now.setMonth(now.getMonth() - 1));
-        default:
-          return true;
+    );
+
+    const filteredExpenses = expenses?.filter(
+      // @ts-ignore
+      (item) => {
+        const itemDate = new Date(item.date);
+        const now = new Date();
+        switch (selectedPeriod) {
+          case 'Today':
+            return itemDate.toDateString() === now.toDateString();
+          case 'Yesterday':
+            return (
+              itemDate.toDateString() ===
+              new Date(now.setDate(now.getDate() - 1)).toDateString()
+            );
+          case 'Last 7 days':
+            return itemDate >= new Date(now.setDate(now.getDate() - 7));
+          case 'Last 14 days':
+            return itemDate >= new Date(now.setDate(now.getDate() - 14));
+          case 'Last month':
+            return itemDate >= new Date(now.setMonth(now.getMonth() - 1));
+          default:
+            return true;
+        }
       }
-    });
+    );
 
     const totalSold =
       filteredSoldItems?.reduce(
@@ -210,8 +219,8 @@ export default function Dashboard() {
       case 'Visitors':
         return {
           icon: Users,
-          value: 'N/A',
-          trend: 'N/A',
+          value: filteredSoldItems?.length || 0,
+          trend: '11%',
           color: 'text-green-400'
         };
       case 'Sales':

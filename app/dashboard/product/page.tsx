@@ -390,7 +390,9 @@ export default function Component() {
       isQuantityBased: newProduct.isQuantityBased,
       reorderPoint: newProduct.reorderPoint,
       units: newProduct.units,
-      barcode: newProduct.barcode
+      barcode: newProduct.barcode,
+      // @ts-ignore
+      image: newProduct.image
     };
     console.log(data);
     try {
@@ -784,6 +786,7 @@ export default function Component() {
                 <Table>
                   <TableHeader>
                     <TableRow>
+                      <TableHead className="font-medium">Image</TableHead>
                       <TableHead className="font-medium">Product</TableHead>
                       <TableHead className="hidden font-medium sm:table-cell">
                         Category
@@ -806,6 +809,25 @@ export default function Component() {
                         key={product._id}
                         className="transition-colors hover:bg-muted/50"
                       >
+                        <TableCell>
+                          {
+                            // @ts-ignore
+                            product.image ? (
+                              <img
+                                src={
+                                  // @ts-ignore
+                                  product.image
+                                }
+                                alt={product.name}
+                                className="h-10 w-10 rounded-full object-cover"
+                              />
+                            ) : (
+                              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary text-primary-foreground">
+                                {product.name.charAt(0).toUpperCase()}
+                              </div>
+                            )
+                          }
+                        </TableCell>
                         <TableCell className="font-medium">
                           {product.name}
                           <p className="text-sm text-muted-foreground sm:hidden">
@@ -1216,13 +1238,16 @@ function ProductForm({
       barcode: '',
       units: '',
       reorderPoint: 0,
-      isQuantityBased: true
+      isQuantityBased: true,
+      // @ts-ignore
+      image: ''
     }
   );
   // const [isCameraActive, setIsCameraActive] = useState(false);
   // const [lastScanTime, setLastScanTime] = useState(0);
   const [isBarcodeReaderActive, setIsBarcodeReaderActive] = useState(false);
-  const [newVendor, setNewVendor] = useState('');
+  // const [newVendor, setNewVendor] = useState('');
+  const [isUploading, setIsUploading] = useState(false);
 
   const handleChange = (
     e: React.ChangeEvent<
@@ -1248,12 +1273,33 @@ function ProductForm({
     }
   };
 
-  const handleScan = async (scannedBarcode: string) => {
-    if (!scannedBarcode.trim()) {
-      toast.error('Please enter a barcode');
-      return;
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setIsUploading(true);
+      const formData = new FormData();
+      formData.append('file', file);
+
+      try {
+        const response = await fetch('/api/upload', {
+          method: 'POST',
+          body: formData
+        });
+
+        if (!response.ok) {
+          throw new Error('Image upload failed');
+        }
+
+        const data = await response.json();
+        setFormData((prev) => ({ ...prev, image: data.url }));
+        toast.success('Image uploaded successfully');
+      } catch (error) {
+        console.error('Error uploading image:', error);
+        toast.error('Failed to upload image. Please try again.');
+      } finally {
+        setIsUploading(false);
+      }
     }
-    setFormData((prev) => ({ ...prev, barcode: scannedBarcode }));
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -1266,6 +1312,33 @@ function ProductForm({
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       <div className="grid grid-cols-2 gap-4">
+        <div>
+          <Label htmlFor="image">Product Image</Label>
+          <Input
+            id="image"
+            name="image"
+            type="file"
+            accept="image/*"
+            onChange={handleImageUpload}
+            disabled={isUploading}
+          />
+          {isUploading && (
+            <p className="text-sm text-muted-foreground">Uploading...</p>
+          )}
+          {
+            // @ts-ignore
+            formData.image && (
+              <img
+                src={
+                  // @ts-ignore
+                  formData.image
+                }
+                alt="Product"
+                className="mt-2 h-20 w-20 rounded-md object-cover"
+              />
+            )
+          }
+        </div>
         <div>
           <Label htmlFor="name">Name</Label>
           <Input
@@ -1407,7 +1480,9 @@ function ProductForm({
           required
         />
       </div>
-      <Button type="submit">Submit</Button>
+      <Button type="submit" disabled={isUploading}>
+        {isUploading ? 'Uploading...' : 'Submit'}
+      </Button>
     </form>
   );
 }

@@ -215,7 +215,9 @@ export default function EnhancedPOSSystem() {
   const [filteredCustomers, setFilteredCustomers] = useState([]);
   const [accumulatedKeystrokes, setAccumulatedKeystrokes] = useState('');
   const [lastKeystrokeTime, setLastKeystrokeTime] = useState(0);
+  const [isReceiptSent, setIsReceiptSent] = useState(false);
   const [inputFocused, setInputFocused] = useState(false);
+  const [guestGender, setGuestGender] = useState<string>('');
   const [page, setPage] = useState(1);
   const [valuePhoneNumber, setValuePhoneNumber] = useState();
   const ITEMS_PER_PAGE = 20;
@@ -256,8 +258,6 @@ export default function EnhancedPOSSystem() {
     }
   }, [productsError]);
 
-  // console.log(productServer)
-
   const categories = useMemo(
     // @ts-ignore
     () => [...new Set(productServer?.map((product) => product.category))],
@@ -289,7 +289,7 @@ export default function EnhancedPOSSystem() {
         customer.phone.includes(customerSearchQuery)
     );
     setFilteredCustomers(filtered);
-  }, [customerSearchQuery]);
+  }, [customerSearchQuery, customers]);
 
   const paginatedProducts = useMemo(() => {
     const startIndex = 0;
@@ -399,71 +399,6 @@ export default function EnhancedPOSSystem() {
     return () => clearTimeout(timeoutId);
   }, [accumulatedKeystrokes, lastKeystrokeTime, inputFocused]);
 
-  //   const handleKeyDown = (e) => {
-  //     if (inputFocused) {
-  //       setAccumulatedKeystrokes('');
-  //     }
-
-  //     if (e.key.length === 1) {
-  //       setAccumulatedKeystrokes(accumulatedKeystrokes + e.key);
-  //       setLastKeystrokeTime(Date.now());
-  //     }
-
-  //     if (e.key === 'Enter' && !inputFocused) {
-  //       setSearchQuery(accumulatedKeystrokes);
-  //       setAccumulatedKeystrokes('');
-  //     }
-  //   };
-
-  //   document.addEventListener('keydown', handleKeyDown);
-
-  //   return () => {
-  //     document.removeEventListener('keydown', handleKeyDown);
-  //   };
-  // }, [accumulatedKeystrokes, inputFocused, searchQuery]);
-
-  // useEffect(() => {
-  //   const handleInputFocus = (e) => {
-  //     setInputFocused(e.target === searchInputRef.current);
-  //     if (e.target === searchInputRef.current) {
-  //       setAccumulatedKeystrokes('');
-  //     }
-  //   };
-
-  //   document.addEventListener('focusin', handleInputFocus);
-  //   document.addEventListener('focusout', handleInputFocus);
-
-  //   return () => {
-  //     document.removeEventListener('focusin', handleInputFocus);
-  //     document.removeEventListener('focusout', handleInputFocus);
-  //   };
-  // }, [searchInputRef]);
-
-  // useEffect(() => {
-  //   const timeoutId = setTimeout(() => {
-  //     if (Date.now() - lastKeystrokeTime > 500 && !inputFocused) {
-  //       setSearchQuery(accumulatedKeystrokes);
-  //       setAccumulatedKeystrokes('');
-  //     }
-  //   }, 500);
-
-  //   return () => clearTimeout(timeoutId);
-  // }, [accumulatedKeystrokes, lastKeystrokeTime, inputFocused]);
-
-  // useEffect(() => {
-  //   if (searchQuery && !inputFocused && searchQuery !== '') {
-  //     const scannedProduct = productServer?.find(
-  //       (product: Product) => product.barcode === searchQuery
-  //     );
-  //     if (scannedProduct) {
-  //       addToCart(scannedProduct);
-  //       setSearchQuery('');
-  //     } else {
-  //       toast.error('Product not found');
-  //     }
-  //   }
-  // }, [searchQuery, addToCart, inputFocused]);
-
   const updateQuantity = useCallback(
     (productId: string, newQuantity: number) => {
       // @ts-ignore
@@ -541,6 +476,7 @@ export default function EnhancedPOSSystem() {
     const newTransaction = {
       // id: `T${transactions.length + 1}`.padStart(4, '0'),
       user: currentCustomer ? currentCustomer : null,
+      gender: !currentCustomer && guestGender,
       total: calculateTotal(),
       products: cart.map((item: Product) => ({
         id: item._id,
@@ -553,6 +489,7 @@ export default function EnhancedPOSSystem() {
       discount: calculateDiscount(),
       cookies
     };
+    // console.log(newTransaction);
 
     try {
       // console.log(newTransaction)
@@ -599,19 +536,9 @@ export default function EnhancedPOSSystem() {
     setNewCustomer({ name: '', phone: '', email: '' });
   }, []);
 
-  const handleCustomerSearch = useCallback((query: any) => {
-    const customer = customers?.find(
-      // @ts-ignore
-      (c) => c._id === query || c.phone === query
-    );
-    if (customer) {
-      setCurrentCustomer(customer);
-      setIsCustomerDialogOpen(false);
-      toast.success('Customer found and selected');
-    } else {
-      toast.error('Customer not found');
-    }
-  }, []);
+  const handleCustomerSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setCustomerSearchQuery(e.target.value);
+  };
 
   const handleQuickRegister = useCallback(
     (customerData: Customer) => {
@@ -771,31 +698,8 @@ export default function EnhancedPOSSystem() {
       setReturnInvoice('');
       setIsReturnDialogOpen(false);
     }
-    // Process return
-    // const newTransaction = {
-    //   customerId: currentCustomer ? currentCustomer._id : null,
-    //   date: new Date().toISOString().split('T')[0],
-    //   total: -returnTotal, // Negative value for refunds
-    //   items: itemsToReturn.map(item => ({
-    //     id: item._id,
-    //     name: item.name,
-    //     price: item.sellPrice,
-    //     quantity: -item.returnQuantity // Negative quantity for refunds
-    //   })),
-    //   paymentMethod: 'Refund',
-    //   vat: -returnTotal * VAT_RATE,
-    //   discount: 0,
-    //   type: 'refund',
-    // }
-    // setTransactions(prev => [...prev, newTransaction])
 
-    // Update inventory
-    // productServer?.forEach((product: Product) => {
-    //   const returnItem = itemsToReturn.find(item => item._id === product._id)
-    //   if (returnItem) {
-    //     product.quantity += returnItem.returnQuantity
-    //   }
-    // })
+    //
   };
 
   const handlePayment = () => {
@@ -996,7 +900,7 @@ export default function EnhancedPOSSystem() {
   };
 
   return (
-    <div className="flex h-screen flex-col ">
+    <div className="flex h-screen flex-col">
       <ToastContainer
         position="top-right"
         autoClose={3000}
@@ -1010,10 +914,10 @@ export default function EnhancedPOSSystem() {
       />
 
       {/* Main content area */}
-      <main className="flex-1 overflow-y-auto overflow-x-hidden  p-4">
+      <main className="flex-1 overflow-y-auto p-4">
         <div className="mx-auto max-w-7xl">
           {/* Search bar and function buttons */}
-          <div className="mb-4 space-y-4">
+          <div className="mb-4 space-y-2">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <div className="relative flex-grow">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 transform text-gray-400" />
@@ -1025,7 +929,7 @@ export default function EnhancedPOSSystem() {
                   onChange={(e) => setSearchQuery(e.target.value)}
                   onFocus={() => setInputFocused(true)}
                   onBlur={() => setInputFocused(false)}
-                  className="w-full py-2 pl-10 pr-4"
+                  className="w-full py-1 pl-10 pr-4 text-sm"
                 />
                 {searchQuery && (
                   <Button
@@ -1037,52 +941,34 @@ export default function EnhancedPOSSystem() {
                       setAccumulatedKeystrokes('');
                     }}
                   >
-                    <X className="h-4 w-4" />
+                    <X className="h-3 w-3" />
                   </Button>
                 )}
-                {!isProductCatalogVisible && searchSuggestions.length > 0 && (
-                  <div className="absolute z-10 mt-1 w-full rounded-md bg-gray-300 shadow-lg">
-                    {searchSuggestions.map((product: Product) => (
-                      <div
-                        key={product._id}
-                        className="flex cursor-pointer items-center justify-between px-4 py-2"
-                        onClick={() => handleSearchSuggestionClick(product)}
-                      >
-                        <div>
-                          <div>{highlightMatch(product.name, searchQuery)}</div>
-                          <div className="text-sm text-gray-500">
-                            ${product.sellPrice.toFixed(2)}
-                          </div>
-                        </div>
-                        <Button size="sm" variant="ghost">
-                          <Plus className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    ))}
-                  </div>
-                )}
               </div>
-              <div className="flex gap-2">
+              <div className="flex gap-1">
                 <Button
                   variant="outline"
                   size="sm"
+                  className="text-xs"
                   onClick={() => setIsReturnDialogOpen(true)}
                 >
-                  <RefreshCcw className="h-4 w-4" />
+                  <RefreshCcw className="mr-1 h-3 w-3" />
+                  Return
                 </Button>
                 <Button
                   variant="outline"
                   size="sm"
+                  className="text-xs"
                   onClick={() => setIsTransactionHistoryOpen(true)}
                 >
-                  <FileText className="h-4 w-4" />
+                  <FileText className="mr-1 h-3 w-3" />
+                  History
                 </Button>
-
                 {currentCustomer ? (
                   <Popover>
                     <PopoverTrigger asChild>
-                      <Button variant="outline" size="sm">
-                        <User className="mr-2 h-4 w-4" />
+                      <Button variant="outline" size="sm" className="text-xs">
+                        <User className="mr-1 h-3 w-3" />
                         {
                           // @ts-ignore
                           maskCustomerInfo(currentCustomer.name, 'name')
@@ -1090,7 +976,7 @@ export default function EnhancedPOSSystem() {
                       </Button>
                     </PopoverTrigger>
                     <PopoverContent className="w-60">
-                      <div className="space-y-2">
+                      <div className="space-y-2 text-xs">
                         <p>
                           <strong>ID:</strong>{' '}
                           {
@@ -1121,6 +1007,7 @@ export default function EnhancedPOSSystem() {
                         </p>
                         <Button
                           size="sm"
+                          className="w-full text-xs"
                           onClick={() => setCurrentCustomer(null)}
                         >
                           Change Customer
@@ -1132,9 +1019,10 @@ export default function EnhancedPOSSystem() {
                   <Button
                     variant="outline"
                     size="sm"
+                    className="text-xs"
                     onClick={() => setIsCustomerDialogOpen(true)}
                   >
-                    <UserPlus className="mr-2 h-4 w-4" />
+                    <UserPlus className="mr-1 h-3 w-3" />
                     Add Customer
                   </Button>
                 )}
@@ -1147,12 +1035,13 @@ export default function EnhancedPOSSystem() {
             {/* Product search results */}
             <div className="w-full md:w-2/3">
               <Card>
-                <CardHeader>
+                <CardHeader className="p-4">
                   <div className="flex items-center justify-between">
-                    <CardTitle>Product Catalog</CardTitle>
+                    <CardTitle className="text-lg">Product Catalog</CardTitle>
                     <Button
                       variant="outline"
                       size="sm"
+                      className="text-xs"
                       onClick={() =>
                         setIsProductCatalogVisible(!isProductCatalogVisible)
                       }
@@ -1167,13 +1056,11 @@ export default function EnhancedPOSSystem() {
                         onValueChange={setSelectedCategory}
                         defaultValue="All"
                       >
-                        <SelectTrigger className="w-[180px]">
+                        <SelectTrigger className="w-[120px] text-xs">
                           <SelectValue placeholder="Category" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="All" defaultValue="All">
-                            All
-                          </SelectItem>
+                          <SelectItem value="All">All</SelectItem>
                           {categories.map((category) => (
                             <SelectItem key={category} value={category}>
                               {category}
@@ -1190,7 +1077,7 @@ export default function EnhancedPOSSystem() {
                       className="h-[calc(100vh-300px)]"
                       ref={searchResultsRef}
                     >
-                      <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4">
+                      <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4">
                         {paginatedProducts?.map((product: Product) => (
                           <motion.div
                             key={product._id}
@@ -1201,24 +1088,24 @@ export default function EnhancedPOSSystem() {
                           >
                             <Button
                               onClick={() => addToCart(product)}
-                              className="relative flex h-24 w-full flex-col items-center justify-center p-2 text-center"
+                              className="relative flex h-20 w-full flex-col items-center justify-center p-1 text-center"
                               variant="outline"
                             >
-                              <div className="text-sm font-medium">
+                              <div className="text-xs font-medium">
                                 {highlightMatch(
                                   // @ts-ignore
                                   product.name,
                                   searchQuery
                                 )}
                               </div>
-                              <div className="text-sm text-gray-500">
+                              <div className="text-xs text-gray-500">
                                 $
                                 {
                                   // @ts-ignore
                                   product.sellPrice.toFixed(2)
                                 }
                               </div>
-                              <div className="text-xs text-gray-400">
+                              <div className="text-[10px] text-gray-400">
                                 Stock:{' '}
                                 {
                                   // @ts-ignore
@@ -1231,7 +1118,7 @@ export default function EnhancedPOSSystem() {
                               ) && (
                                 <Badge
                                   variant="secondary"
-                                  className="absolute right-1 top-1"
+                                  className="absolute right-1 top-1 text-[8px]"
                                 >
                                   In Cart
                                 </Badge>
@@ -1243,12 +1130,12 @@ export default function EnhancedPOSSystem() {
 
                       {hasMoreProducts && (
                         <Button
-                          className="mt-4 w-full"
+                          className="mt-4 w-full text-xs"
                           onClick={handleLoadMore}
                           disabled={isFetching}
                         >
                           {isFetching ? (
-                            <Loader2 className="h-4 w-4 animate-spin" />
+                            <Loader2 className="h-3 w-3 animate-spin" />
                           ) : (
                             'Load More'
                           )}
@@ -1261,19 +1148,19 @@ export default function EnhancedPOSSystem() {
             </div>
 
             {/* Shopping cart */}
-            <div className="max-h-screen w-full md:w-1/3">
+            <div className="w-full md:w-1/3">
               <Card>
-                <CardHeader>
-                  <CardTitle>
+                <CardHeader className="p-4">
+                  <CardTitle className="text-lg">
                     Shopping Cart{' '}
-                    <span className="float-end flex "> {cart.length} </span>{' '}
+                    <span className="float-right text-sm"> {cart.length} </span>{' '}
                   </CardTitle>
                 </CardHeader>
-                <CardContent>
-                  <ScrollArea className="h-[calc(100vh-400px)]">
+                <CardContent className="p-4">
+                  <div className="h-[calc(100vh-450px)] overflow-y-auto">
                     <AnimatePresence>{renderCartItems()}</AnimatePresence>
-                  </ScrollArea>
-                  <div className="mt-4 space-y-2">
+                  </div>
+                  <div className="mt-4 space-y-1 text-sm">
                     <div className="flex justify-between">
                       <span>Subtotal:</span>
                       <span>${calculateSubtotal().toFixed(2)}</span>
@@ -1286,7 +1173,7 @@ export default function EnhancedPOSSystem() {
                       <span>Discount:</span>
                       <span>${calculateDiscount().toFixed(2) || 0}</span>
                     </div>
-                    <div className="flex justify-between text-lg font-bold">
+                    <div className="flex justify-between text-base font-bold">
                       <span>Total:</span>
                       <span>${calculateTotal().toFixed(2)}</span>
                     </div>
@@ -1304,10 +1191,11 @@ export default function EnhancedPOSSystem() {
                         }}
                         onFocus={() => setInputFocused(true)}
                         onBlur={() => setInputFocused(false)}
+                        className="text-xs"
                       />
                     </div>
                     <Button
-                      className="w-full"
+                      className="w-full text-sm"
                       onClick={handleCheckout}
                       disabled={cart.length === 0}
                     >
@@ -1324,7 +1212,16 @@ export default function EnhancedPOSSystem() {
       {/* Checkout Dialog */}
       <Dialog
         open={isCheckoutDialogOpen}
-        onOpenChange={setIsCheckoutDialogOpen}
+        onOpenChange={(open) => {
+          if (!open && !isReceiptSent && isSaleComplete) {
+            // Prevent closing if receipt is not sent
+            return;
+          }
+          setIsCheckoutDialogOpen(open);
+          if (!open) {
+            setIsReceiptSent(false);
+          }
+        }}
       >
         <DialogContent className="sm:max-w-[425px]">
           {isProcessingPayment ? (
@@ -1340,7 +1237,7 @@ export default function EnhancedPOSSystem() {
                   Sale Completed Successfully
                 </p>
               </div>
-              <div className="space-y-2">
+              <div className="space-y-2 text-sm">
                 <p>
                   <strong>Total:</strong> ${calculateTotal().toFixed(2)}
                 </p>
@@ -1361,7 +1258,7 @@ export default function EnhancedPOSSystem() {
               <div className="space-y-2">
                 <p className="font-semibold">Receipt Options:</p>
                 <Select value={receiptMethod} onValueChange={setReceiptMethod}>
-                  <SelectTrigger>
+                  <SelectTrigger className="w-full">
                     <SelectValue placeholder="Select receipt method" />
                   </SelectTrigger>
                   <SelectContent>
@@ -1371,9 +1268,10 @@ export default function EnhancedPOSSystem() {
                   </SelectContent>
                 </Select>
                 <Button
-                  className="w-full"
+                  className="w-full text-sm"
                   onClick={() => {
                     toast.success(`Receipt sent via ${receiptMethod}`);
+                    setIsReceiptSent(true);
                     setIsCheckoutDialogOpen(false);
                     resetSale();
                   }}
@@ -1398,7 +1296,7 @@ export default function EnhancedPOSSystem() {
                 <DialogDescription>Complete your purchase</DialogDescription>
               </DialogHeader>
               {currentCustomer ? (
-                <div className="space-y-2  rounded-md p-4">
+                <div className="space-y-2 rounded-md p-4 text-sm">
                   <p>
                     <strong>Name:</strong>{' '}
                     {
@@ -1422,52 +1320,74 @@ export default function EnhancedPOSSystem() {
                   </p>
                 </div>
               ) : (
-                <Button
-                  variant="outline"
-                  onClick={() => setIsCustomerDialogOpen(true)}
-                >
-                  Add Customer (Optional)
-                </Button>
+                <div className="space-y-2">
+                  <Button
+                    variant="outline"
+                    className="w-full text-sm"
+                    onClick={() => setIsCustomerDialogOpen(true)}
+                  >
+                    Add Customer (Optional)
+                  </Button>
+                  <div className="flex items-center space-x-2">
+                    <Checkbox
+                      id="guest-male"
+                      checked={guestGender === 'male'}
+                      onCheckedChange={() => setGuestGender('male')}
+                    />
+                    <Label htmlFor="guest-male">Male</Label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <Checkbox
+                      id="guest-female"
+                      checked={guestGender === 'female'}
+                      onCheckedChange={() => setGuestGender('female')}
+                    />
+                    <Label htmlFor="guest-female">Female</Label>
+                  </div>
+                </div>
               )}
               <div className="space-y-4">
-                <Label>Select Payment Method</Label>
-                <div className="grid grid-cols-3 gap-4">
+                <Label className="text-sm">Select Payment Method</Label>
+                <div className="grid grid-cols-3 gap-2">
                   <Button
-                    className="flex h-24 flex-col items-center justify-center"
+                    className="flex h-20 flex-col items-center justify-center text-xs"
                     variant={paymentMethod === 'Cash' ? 'default' : 'outline'}
                     onClick={() => setPaymentMethod('Cash')}
                   >
-                    <DollarSign className="mb-2 h-8 w-8" />
+                    <DollarSign className="mb-1 h-6 w-6" />
                     Cash
                   </Button>
                   <Button
-                    className="flex h-24 flex-col items-center justify-center"
+                    className="flex h-20 flex-col items-center justify-center text-xs"
                     variant={paymentMethod === 'Bank' ? 'default' : 'outline'}
                     onClick={() => setPaymentMethod('Bank')}
                   >
-                    <Building2 className="mb-2 h-8 w-8" />
+                    <Building2 className="mb-1 h-6 w-6" />
                     Bank
                   </Button>
                   <Button
-                    className="flex h-24 flex-col items-center justify-center"
+                    className="flex h-20 flex-col items-center justify-center text-xs"
                     variant={paymentMethod === 'Mobile' ? 'default' : 'outline'}
                     onClick={() => setPaymentMethod('Mobile')}
                   >
-                    <Smartphone className="mb-2 h-8 w-8" />
+                    <Smartphone className="mb-1 h-6 w-6" />
                     Mobile
                   </Button>
                 </div>
                 {paymentMethod === 'Cash' && (
                   <div className="mt-4 space-y-2">
-                    <Label htmlFor="cashReceived">Cash Received:</Label>
+                    <Label htmlFor="cashReceived" className="text-sm">
+                      Cash Received:
+                    </Label>
                     <Input
                       id="cashReceived"
                       type="number"
                       value={cashReceived}
                       onChange={(e) => setCashReceived(e.target.value)}
                       placeholder="Enter amount"
+                      className="text-sm"
                     />
-                    <div className="text-lg font-semibold">
+                    <div className="text-base font-semibold">
                       Change: ${calculateChange()}
                     </div>
                   </div>
@@ -1478,7 +1398,7 @@ export default function EnhancedPOSSystem() {
                       value={selectedBank}
                       onValueChange={setSelectedBank}
                     >
-                      <SelectTrigger>
+                      <SelectTrigger className="text-sm">
                         <SelectValue placeholder="Select Bank" />
                       </SelectTrigger>
                       <SelectContent>
@@ -1497,6 +1417,7 @@ export default function EnhancedPOSSystem() {
                           maskCustomerInfo(currentCustomer.phone, 'phone')
                         }
                         disabled
+                        className="text-sm"
                       />
                     )}
                   </div>
@@ -1504,7 +1425,7 @@ export default function EnhancedPOSSystem() {
                 {paymentMethod === 'Mobile' && (
                   <div className="mt-4 space-y-2">
                     <Select>
-                      <SelectTrigger>
+                      <SelectTrigger className="text-sm">
                         <SelectValue placeholder="Select Mobile Payment" />
                       </SelectTrigger>
                       <SelectContent>
@@ -1521,6 +1442,7 @@ export default function EnhancedPOSSystem() {
                           maskCustomerInfo(currentCustomer.phone, 'phone')
                         }
                         disabled
+                        className="text-sm"
                       />
                     ) : (
                       // @ts-ignore
@@ -1530,37 +1452,37 @@ export default function EnhancedPOSSystem() {
                         value={valuePhoneNumber}
                         // @ts-ignore
                         onChange={setValuePhoneNumber}
+                        className="text-sm"
                       />
                     )}
                   </div>
                 )}
               </div>
-              {
-                // @ts-ignore
-                <DialogFooter>
-                  <Button
-                    variant="outline"
-                    onClick={() => setIsCheckoutDialogOpen(false)}
-                  >
-                    Cancel
-                  </Button>
-                  <Button
-                    onClick={handlePayment}
-                    disabled={
-                      !paymentMethod ||
-                      (paymentMethod === 'Cash' &&
-                        parseFloat(cashReceived) < calculateTotal())
-                    }
-                  >
-                    Complete Payment
-                  </Button>
-                </DialogFooter>
-              }
+              <DialogFooter>
+                <Button
+                  variant="outline"
+                  onClick={() => setIsCheckoutDialogOpen(false)}
+                  className="text-sm"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  onClick={handlePayment}
+                  disabled={
+                    !paymentMethod ||
+                    (paymentMethod === 'Cash' &&
+                      parseFloat(cashReceived) < calculateTotal()) ||
+                    (!currentCustomer && !guestGender)
+                  }
+                  className="text-sm"
+                >
+                  Complete Payment
+                </Button>
+              </DialogFooter>
             </div>
           )}
         </DialogContent>
       </Dialog>
-
       {/* Customer Dialog */}
       <Dialog
         open={isCustomerDialogOpen}
@@ -1575,8 +1497,12 @@ export default function EnhancedPOSSystem() {
           </DialogHeader>
           <Tabs defaultValue="search" className="w-full">
             <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger value="search">Search</TabsTrigger>
-              <TabsTrigger value="register">Quick Register</TabsTrigger>
+              <TabsTrigger value="search" className="text-xs">
+                Search
+              </TabsTrigger>
+              <TabsTrigger value="register" className="text-xs">
+                Quick Register
+              </TabsTrigger>
             </TabsList>
             <TabsContent value="search">
               <div className="mt-4 space-y-4">
@@ -1584,30 +1510,33 @@ export default function EnhancedPOSSystem() {
                   placeholder="Enter customer ID or phone number"
                   value={customerSearchQuery}
                   onChange={(e) => {
-                    setCustomerSearchQuery(e.target.value);
+                    // setCustomerSearchQuery(e.target.value);
+                    handleCustomerSearch(e);
                     e.stopPropagation();
                   }}
                   onFocus={() => setInputFocused(true)}
                   onBlur={() => setInputFocused(false)}
+                  className="text-sm"
                 />
-                <Button
-                  onClick={() => handleCustomerSearch(customerSearchQuery)}
-                >
-                  Search
-                </Button>
+                {/* <Button
+                onClick={() => handleCustomerSearch(customerSearchQuery)}
+                className="w-full text-sm"
+              >
+                Search
+              </Button> */}
                 <ScrollArea className="h-[200px]">
                   {filteredCustomers?.map((customer) => (
                     <Button
                       // @ts-ignore
                       key={customer._id}
                       variant="ghost"
-                      className="w-full justify-start"
+                      className="w-full justify-start text-xs"
                       onClick={() => {
                         setCurrentCustomer(customer);
                         setIsCustomerDialogOpen(false);
                       }}
                     >
-                      <User className="mr-2 h-4 w-4" />
+                      <User className="mr-2 h-3 w-3" />
                       {
                         // @ts-ignore
                         customer.name
@@ -1630,14 +1559,8 @@ export default function EnhancedPOSSystem() {
                   onChange={(e) =>
                     setNewCustomer({ ...newCustomer, name: e.target.value })
                   }
+                  className="text-sm"
                 />
-                {/* <Input
-                  placeholder="Phone Number"
-                  value={newCustomer.phone}
-                  onChange={(e) =>
-                    setNewCustomer({ ...newCustomer, phone: e.target.value })
-                  }
-                /> */}
                 {
                   // @ts-ignore
                   <PhoneInput
@@ -1653,35 +1576,23 @@ export default function EnhancedPOSSystem() {
                         phone: e
                       })
                     }
-                    className="input-phone"
+                    className="input-phone text-sm"
                   />
                 }
-
                 <Input
                   placeholder="Email (optional)"
                   value={newCustomer.email}
                   onChange={(e) =>
                     setNewCustomer({ ...newCustomer, email: e.target.value })
                   }
+                  className="text-sm"
                 />
-                {/* {!isAuthCodeSent ? (
-                  <Button onClick={handleSendAuthCode}>Send Authentication Code</Button>
-                ) : (
-                  <>
-                    <Input
-                      placeholder="Enter 4-digit code"
-                      value={authCode}
-                      onChange={(e) => setAuthCode(e.target.value)}
-                      maxLength={4}
-                    />
-                   
-                  </>
-                )} */}
                 <Button
                   onClick={() => {
                     // @ts-ignore
                     handleQuickRegister(newCustomer);
                   }}
+                  className="w-full text-sm"
                 >
                   Register
                 </Button>
@@ -1705,7 +1616,7 @@ export default function EnhancedPOSSystem() {
           </DialogHeader>
           {selectedTransaction && (
             <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-2 gap-4 text-sm">
                 <div>
                   <Label>Invoice Number</Label>
                   <p className="font-medium">
@@ -1748,36 +1659,42 @@ export default function EnhancedPOSSystem() {
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Product</TableHead>
-                      <TableHead>Quantity</TableHead>
+                      <TableHead className="text-xs">Product</TableHead>
+                      <TableHead className="text-xs">Quantity</TableHead>
                       {selectedTransaction.status === 'Refunded' && (
-                        <TableHead>Returned Quantity</TableHead>
+                        <TableHead className="text-xs">
+                          Returned Quantity
+                        </TableHead>
                       )}
-                      <TableHead>Price</TableHead>
-                      <TableHead>Total</TableHead>
+                      <TableHead className="text-xs">Price</TableHead>
+                      <TableHead className="text-xs">Total</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {selectedTransaction.products.map((item) => (
                       // @ts-ignore
                       <TableRow key={item.id}>
-                        <TableCell>
+                        <TableCell className="text-xs">
                           {
                             // @ts-ignore
                             item.product
                           }
                         </TableCell>
-                        <TableCell>{item.quantity}</TableCell>
+                        <TableCell className="text-xs">
+                          {item.quantity}
+                        </TableCell>
                         {selectedTransaction.status === 'Refunded' && (
-                          <TableCell>
+                          <TableCell className="text-xs">
                             {
                               // @ts-ignore
                               item.returnQuantity
                             }
                           </TableCell>
                         )}
-                        <TableCell>${item.price.toFixed(2)}</TableCell>
-                        <TableCell>
+                        <TableCell className="text-xs">
+                          ${item.price.toFixed(2)}
+                        </TableCell>
+                        <TableCell className="text-xs">
                           ${(item.price * item.quantity).toFixed(2)}
                         </TableCell>
                       </TableRow>
@@ -1785,14 +1702,12 @@ export default function EnhancedPOSSystem() {
                   </TableBody>
                 </Table>
               </div>
-              <div className="space-y-2">
+              <div className="space-y-2 text-sm">
                 <div className="flex justify-between">
                   <span>Subtotal:</span>
                   <span>
                     $
                     {
-                      // @ts-ignore
-                      // @ts-ignore
                       // @ts-ignore
                       (
                         selectedTransaction.totalAmount -
@@ -1849,7 +1764,10 @@ export default function EnhancedPOSSystem() {
             </div>
           )}
           <DialogFooter>
-            <Button onClick={() => setIsTransactionDetailsOpen(false)}>
+            <Button
+              onClick={() => setIsTransactionDetailsOpen(false)}
+              className="text-sm"
+            >
               Close
             </Button>
           </DialogFooter>
@@ -1871,13 +1789,16 @@ export default function EnhancedPOSSystem() {
                 placeholder="Enter Invoice Number"
                 value={returnInvoice}
                 onChange={(e) => setReturnInvoice(e.target.value)}
+                className="text-sm"
               />
-              <Button onClick={handleReturnSearch}>Search</Button>
+              <Button onClick={handleReturnSearch} className="text-sm">
+                Search
+              </Button>
             </div>
 
             {returnItems.length > 0 && (
               <>
-                <div className="grid gap-2 text-sm sm:text-base">
+                <div className="grid gap-2 text-xs sm:text-sm">
                   <div>
                     <strong>Customer:</strong>{' '}
                     {
@@ -1918,10 +1839,10 @@ export default function EnhancedPOSSystem() {
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Product</TableHead>
-                      <TableHead>Price</TableHead>
-                      <TableHead>Quantity</TableHead>
-                      <TableHead>Return Quantity</TableHead>
+                      <TableHead className="text-xs">Product</TableHead>
+                      <TableHead className="text-xs">Price</TableHead>
+                      <TableHead className="text-xs">Quantity</TableHead>
+                      <TableHead className="text-xs">Return Quantity</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -1932,20 +1853,20 @@ export default function EnhancedPOSSystem() {
                           item._id
                         }
                       >
-                        <TableCell>
+                        <TableCell className="text-xs">
                           {
                             // @ts-ignore
                             item.product
                           }
                         </TableCell>
-                        <TableCell>
+                        <TableCell className="text-xs">
                           $
                           {
                             // @ts-ignore
                             item.price.toFixed(2)
                           }
                         </TableCell>
-                        <TableCell>
+                        <TableCell className="text-xs">
                           {
                             // @ts-ignore
                             item.quantity
@@ -1994,6 +1915,7 @@ export default function EnhancedPOSSystem() {
                                 e.preventDefault();
                               }
                             }}
+                            className="w-16 text-xs"
                           />
                         </TableCell>
                       </TableRow>
@@ -2006,8 +1928,8 @@ export default function EnhancedPOSSystem() {
               <Button
                 disabled={isProcessingRefund || isRefundButtonDisabled}
                 onClick={handleReturnSubmit}
+                className="w-full text-sm"
               >
-                {' '}
                 {isRefundButtonDisabled ? 'Already Refunded' : 'Process Return'}
               </Button>
             )}
@@ -2031,7 +1953,7 @@ export default function EnhancedPOSSystem() {
             <div className="flex flex-col items-start justify-between gap-2 md:flex-row md:items-center">
               <Input
                 placeholder="Search transactions..."
-                className="w-full md:w-64"
+                className="w-full text-sm md:w-64"
                 value={transactionSearchQuery}
                 onChange={(e) => setTransactionSearchQuery(e.target.value)}
               />
@@ -2040,12 +1962,11 @@ export default function EnhancedPOSSystem() {
               value={transactionTypeFilter}
               onValueChange={setTransactionTypeFilter}
             >
-              <SelectTrigger className="w-full md:w-[200px]">
+              <SelectTrigger className="w-full text-sm md:w-[200px]">
                 <SelectValue placeholder="Filter by type" />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Transactions</SelectItem>
-                {/* <SelectItem value="sale">Sales</SelectItem> */}
                 <SelectItem value="Refunded">Refunds</SelectItem>
               </SelectContent>
             </Select>
@@ -2057,47 +1978,51 @@ export default function EnhancedPOSSystem() {
                       <Button
                         variant="ghost"
                         onClick={() => requestSort('invoiceNumber')}
+                        className="text-xs"
                       >
                         Invoice
-                        <ArrowUpDown className="ml-2 h-4 w-4" />
+                        <ArrowUpDown className="ml-2 h-3 w-3" />
                       </Button>
                     </TableHead>
                     <TableHead>
                       <Button
                         variant="ghost"
                         onClick={() => requestSort('updatedAt')}
+                        className="text-xs"
                       >
                         Date
-                        <ArrowUpDown className="ml-2 h-4 w-4" />
+                        <ArrowUpDown className="ml-2 h-3 w-3" />
                       </Button>
                     </TableHead>
-                    <TableHead>Customer</TableHead>
+                    <TableHead className="text-xs">Customer</TableHead>
                     <TableHead className="text-right">
                       <Button
                         variant="ghost"
                         onClick={() => requestSort('totalAmount')}
+                        className="text-xs"
                       >
                         Total
-                        <ArrowUpDown className="ml-2 h-4 w-4" />
+                        <ArrowUpDown className="ml-2 h-3 w-3" />
                       </Button>
                     </TableHead>
-                    {/* <TableHead>Type</TableHead> */}
-                    <TableHead>Actions</TableHead>
+                    <TableHead className="text-xs">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {// @ts-ignore
                   sortedTransactions?.map((transaction) => (
                     <TableRow key={transaction.id}>
-                      <TableCell className="font-medium">
+                      <TableCell className="text-xs font-medium">
                         {transaction.invoiceNumber}
                       </TableCell>
-                      <TableCell>
+                      <TableCell className="text-xs">
                         {transaction.updatedAt.split('T')[0]}
                       </TableCell>
-                      <TableCell>{transaction.user.name || 'Guest'}</TableCell>
+                      <TableCell className="text-xs">
+                        {transaction.user.name || 'Guest'}
+                      </TableCell>
                       <TableCell
-                        className={`text-right ${
+                        className={`text-right text-xs ${
                           transaction.status === 'Refunded'
                             ? 'text-red-500'
                             : ''
@@ -2106,22 +2031,18 @@ export default function EnhancedPOSSystem() {
                         {transaction.status === 'Refunded' ? '-' : ''}$
                         {Math.abs(transaction.totalAmount).toFixed(2)}
                       </TableCell>
-                      {/* <TableCell>
-                        <Badge variant={transaction.type === 'sale' ? 'default' : 'destructive'}>
-                          {transaction.type === 'sale' ? 'Sale' : 'Refund'}
-                        </Badge>
-                      </TableCell> */}
                       <TableCell>
                         <Button
                           variant="ghost"
                           size="sm"
+                          className="text-xs"
                           onClick={() => {
                             console.log(transaction);
                             setSelectedTransaction(transaction);
                             setIsTransactionDetailsOpen(true);
                           }}
                         >
-                          <Eye className="mr-2 h-4 w-4" />
+                          <Eye className="mr-2 h-3 w-3" />
                           View
                         </Button>
                       </TableCell>
