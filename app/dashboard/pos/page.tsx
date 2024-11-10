@@ -1570,8 +1570,9 @@ export default function EnhancedPOSSystem() {
                   />
                 }
                 <Input
-                  placeholder="Email (optional)"
+                  placeholder="Email"
                   value={newCustomer.email}
+                  required
                   onChange={(e) =>
                     setNewCustomer({ ...newCustomer, email: e.target.value })
                   }
