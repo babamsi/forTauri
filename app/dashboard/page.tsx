@@ -84,6 +84,7 @@ export default function Dashboard() {
   const processUserData = (
     // @ts-ignore
     soldItems,
+    // @ts-ignore
     period
   ) => {
     if (!soldItems) return [];
