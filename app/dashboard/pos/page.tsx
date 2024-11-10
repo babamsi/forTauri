@@ -235,8 +235,11 @@ export default function EnhancedPOSSystem() {
     refetch: refetchProducts,
     isError
   } = useGetProductsQuery(cookies, { skip: !cookies });
-  const { data: customers, error: customersError } =
-    useGetAllCustomerQuery(cookies);
+  const {
+    data: customers,
+    error: customersError,
+    refetch: refetchCustomers
+  } = useGetAllCustomerQuery(cookies);
   const { data: orders, refetch } = useGetOrdersQuery(cookies, {
     skip: !cookies
   });
@@ -504,6 +507,7 @@ export default function EnhancedPOSSystem() {
       toast.success('Order placed successfully');
       // console.log(result);
       await refetchProducts();
+      await refetchCustomers();
       await refetch();
 
       setIsProcessingPayment(false);
@@ -554,6 +558,11 @@ export default function EnhancedPOSSystem() {
         loyaltyPoints: 0
       };
       // customers.push(newCustomer)
+      if (!newCustomer.phone || !newCustomer.name || !newCustomer.email) {
+        toast.error('All fields are required');
+        return;
+      }
+
       //@ts-ignore
       setCurrentCustomer(newCustomer);
       setIsCustomerDialogOpen(false);
