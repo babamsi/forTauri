@@ -476,7 +476,6 @@ export default function EnhancedPOSSystem() {
     const newTransaction = {
       // id: `T${transactions.length + 1}`.padStart(4, '0'),
       user: currentCustomer ? currentCustomer : null,
-      gender: !currentCustomer && guestGender,
       total: calculateTotal(),
       products: cart.map((item: Product) => ({
         id: item._id,
@@ -763,6 +762,7 @@ export default function EnhancedPOSSystem() {
   };
 
   const isRefundButtonDisabled = useMemo(() => {
+    // console.log(returnItems)
     return (
       !returnItems ||
       returnItems.every(
@@ -900,7 +900,7 @@ export default function EnhancedPOSSystem() {
   };
 
   return (
-    <div className="flex h-screen flex-col">
+    <div className="flex h-screen flex-col text-base">
       <ToastContainer
         position="top-right"
         autoClose={3000}
@@ -914,7 +914,7 @@ export default function EnhancedPOSSystem() {
       />
 
       {/* Main content area */}
-      <main className="flex-1 overflow-y-auto p-4">
+      <main className="flex-1 overflow-y-hidden p-4">
         <div className="mx-auto max-w-7xl">
           {/* Search bar and function buttons */}
           <div className="mb-4 space-y-2">
@@ -929,7 +929,7 @@ export default function EnhancedPOSSystem() {
                   onChange={(e) => setSearchQuery(e.target.value)}
                   onFocus={() => setInputFocused(true)}
                   onBlur={() => setInputFocused(false)}
-                  className="w-full py-1 pl-10 pr-4 text-sm"
+                  className="w-full py-2 pl-10 pr-4 text-base"
                 />
                 {searchQuery && (
                   <Button
@@ -941,7 +941,7 @@ export default function EnhancedPOSSystem() {
                       setAccumulatedKeystrokes('');
                     }}
                   >
-                    <X className="h-3 w-3" />
+                    <X className="h-4 w-4" />
                   </Button>
                 )}
               </div>
@@ -949,26 +949,26 @@ export default function EnhancedPOSSystem() {
                 <Button
                   variant="outline"
                   size="sm"
-                  className="text-xs"
+                  className="text-sm"
                   onClick={() => setIsReturnDialogOpen(true)}
                 >
-                  <RefreshCcw className="mr-1 h-3 w-3" />
+                  <RefreshCcw className="mr-1 h-4 w-4" />
                   Return
                 </Button>
                 <Button
                   variant="outline"
                   size="sm"
-                  className="text-xs"
+                  className="text-sm"
                   onClick={() => setIsTransactionHistoryOpen(true)}
                 >
-                  <FileText className="mr-1 h-3 w-3" />
+                  <FileText className="mr-1 h-4 w-4" />
                   History
                 </Button>
                 {currentCustomer ? (
                   <Popover>
                     <PopoverTrigger asChild>
-                      <Button variant="outline" size="sm" className="text-xs">
-                        <User className="mr-1 h-3 w-3" />
+                      <Button variant="outline" size="sm" className="text-sm">
+                        <User className="mr-1 h-4 w-4" />
                         {
                           // @ts-ignore
                           maskCustomerInfo(currentCustomer.name, 'name')
@@ -976,7 +976,7 @@ export default function EnhancedPOSSystem() {
                       </Button>
                     </PopoverTrigger>
                     <PopoverContent className="w-60">
-                      <div className="space-y-2 text-xs">
+                      <div className="space-y-2 text-sm">
                         <p>
                           <strong>ID:</strong>{' '}
                           {
@@ -1007,7 +1007,7 @@ export default function EnhancedPOSSystem() {
                         </p>
                         <Button
                           size="sm"
-                          className="w-full text-xs"
+                          className="w-full text-sm"
                           onClick={() => setCurrentCustomer(null)}
                         >
                           Change Customer
@@ -1019,10 +1019,10 @@ export default function EnhancedPOSSystem() {
                   <Button
                     variant="outline"
                     size="sm"
-                    className="text-xs"
+                    className="text-sm"
                     onClick={() => setIsCustomerDialogOpen(true)}
                   >
-                    <UserPlus className="mr-1 h-3 w-3" />
+                    <UserPlus className="mr-1 h-4 w-4" />
                     Add Customer
                   </Button>
                 )}
@@ -1037,11 +1037,11 @@ export default function EnhancedPOSSystem() {
               <Card>
                 <CardHeader className="p-4">
                   <div className="flex items-center justify-between">
-                    <CardTitle className="text-lg">Product Catalog</CardTitle>
+                    <CardTitle className="text-xl">Product Catalog</CardTitle>
                     <Button
                       variant="outline"
                       size="sm"
-                      className="text-xs"
+                      className="text-sm"
                       onClick={() =>
                         setIsProductCatalogVisible(!isProductCatalogVisible)
                       }
@@ -1056,7 +1056,7 @@ export default function EnhancedPOSSystem() {
                         onValueChange={setSelectedCategory}
                         defaultValue="All"
                       >
-                        <SelectTrigger className="w-[120px] text-xs">
+                        <SelectTrigger className="w-[120px] text-sm">
                           <SelectValue placeholder="Category" />
                         </SelectTrigger>
                         <SelectContent>
@@ -1088,24 +1088,24 @@ export default function EnhancedPOSSystem() {
                           >
                             <Button
                               onClick={() => addToCart(product)}
-                              className="relative flex h-20 w-full flex-col items-center justify-center p-1 text-center"
+                              className="relative flex h-24 w-full flex-col items-center justify-center p-1 text-center"
                               variant="outline"
                             >
-                              <div className="text-xs font-medium">
+                              <div className="text-sm font-medium">
                                 {highlightMatch(
                                   // @ts-ignore
                                   product.name,
                                   searchQuery
                                 )}
                               </div>
-                              <div className="text-xs text-gray-500">
+                              <div className="text-sm text-gray-500">
                                 $
                                 {
                                   // @ts-ignore
                                   product.sellPrice.toFixed(2)
                                 }
                               </div>
-                              <div className="text-[10px] text-gray-400">
+                              <div className="text-xs text-gray-400">
                                 Stock:{' '}
                                 {
                                   // @ts-ignore
@@ -1118,7 +1118,7 @@ export default function EnhancedPOSSystem() {
                               ) && (
                                 <Badge
                                   variant="secondary"
-                                  className="absolute right-1 top-1 text-[8px]"
+                                  className="absolute right-1 top-1 text-xs"
                                 >
                                   In Cart
                                 </Badge>
@@ -1130,12 +1130,12 @@ export default function EnhancedPOSSystem() {
 
                       {hasMoreProducts && (
                         <Button
-                          className="mt-4 w-full text-xs"
+                          className="mt-4 w-full text-sm"
                           onClick={handleLoadMore}
                           disabled={isFetching}
                         >
                           {isFetching ? (
-                            <Loader2 className="h-3 w-3 animate-spin" />
+                            <Loader2 className="h-4 w-4 animate-spin" />
                           ) : (
                             'Load More'
                           )}
@@ -1151,16 +1151,19 @@ export default function EnhancedPOSSystem() {
             <div className="w-full md:w-1/3">
               <Card>
                 <CardHeader className="p-4">
-                  <CardTitle className="text-lg">
+                  <CardTitle className="text-xl">
                     Shopping Cart{' '}
-                    <span className="float-right text-sm"> {cart.length} </span>{' '}
+                    <span className="float-right text-base">
+                      {' '}
+                      {cart.length}{' '}
+                    </span>{' '}
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="p-4">
                   <div className="h-[calc(100vh-450px)] overflow-y-auto">
                     <AnimatePresence>{renderCartItems()}</AnimatePresence>
                   </div>
-                  <div className="mt-4 space-y-1 text-sm">
+                  <div className="mt-4 space-y-1 text-base">
                     <div className="flex justify-between">
                       <span>Subtotal:</span>
                       <span>${calculateSubtotal().toFixed(2)}</span>
@@ -1173,7 +1176,7 @@ export default function EnhancedPOSSystem() {
                       <span>Discount:</span>
                       <span>${calculateDiscount().toFixed(2) || 0}</span>
                     </div>
-                    <div className="flex justify-between text-base font-bold">
+                    <div className="flex justify-between text-lg font-bold">
                       <span>Total:</span>
                       <span>${calculateTotal().toFixed(2)}</span>
                     </div>
@@ -1191,11 +1194,11 @@ export default function EnhancedPOSSystem() {
                         }}
                         onFocus={() => setInputFocused(true)}
                         onBlur={() => setInputFocused(false)}
-                        className="text-xs"
+                        className="text-base"
                       />
                     </div>
                     <Button
-                      className="w-full text-sm"
+                      className="w-full text-base"
                       onClick={handleCheckout}
                       disabled={cart.length === 0}
                     >
@@ -1328,22 +1331,6 @@ export default function EnhancedPOSSystem() {
                   >
                     Add Customer (Optional)
                   </Button>
-                  <div className="flex items-center space-x-2">
-                    <Checkbox
-                      id="guest-male"
-                      checked={guestGender === 'male'}
-                      onCheckedChange={() => setGuestGender('male')}
-                    />
-                    <Label htmlFor="guest-male">Male</Label>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <Checkbox
-                      id="guest-female"
-                      checked={guestGender === 'female'}
-                      onCheckedChange={() => setGuestGender('female')}
-                    />
-                    <Label htmlFor="guest-female">Female</Label>
-                  </div>
                 </div>
               )}
               <div className="space-y-4">
@@ -1472,7 +1459,8 @@ export default function EnhancedPOSSystem() {
                     !paymentMethod ||
                     (paymentMethod === 'Cash' &&
                       parseFloat(cashReceived) < calculateTotal()) ||
-                    (!currentCustomer && !guestGender)
+                    (paymentMethod === 'Bank' && !selectedBank) ||
+                    (paymentMethod === 'Mobile' && !valuePhoneNumber)
                   }
                   className="text-sm"
                 >
@@ -1926,7 +1914,12 @@ export default function EnhancedPOSSystem() {
             )}
             {returnItems.length > 0 && (
               <Button
-                disabled={isProcessingRefund || isRefundButtonDisabled}
+                disabled={
+                  isProcessingRefund ||
+                  isRefundButtonDisabled ||
+                  // @ts-ignore
+                  returnUser.name === 'Guest'
+                }
                 onClick={handleReturnSubmit}
                 className="w-full text-sm"
               >
