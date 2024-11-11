@@ -62,7 +62,8 @@ import {
   useGetOrdersQuery,
   useGetAllCustomerQuery,
   useSelProductMutation,
-  useUpdateOrderMutation
+  useUpdateOrderMutation,
+  useRegisterCustomerMutation
 } from '@/store/authApi';
 import { deleteAuthCookie, getAuthCookie } from '@/actions/auth.actions';
 import {
@@ -247,6 +248,9 @@ export default function EnhancedPOSSystem() {
     useSelProductMutation();
   const [updateOrder, { isLoading: isUpdating, isError: updateError }] =
     useUpdateOrderMutation();
+
+  const [registerCustomer, { isLoading: isCreatingCustomer }] =
+    useRegisterCustomerMutation();
 
   useEffect(() => {
     getAuthCookie().then((k: any) => {
@@ -460,7 +464,9 @@ export default function EnhancedPOSSystem() {
   }, [calculateSubtotal, calculateDiscount]);
 
   const calculateTotal = useCallback(() => {
-    return calculateSubtotal() - calculateDiscount() + calculateVAT() || 0;
+    const total =
+      calculateSubtotal() - calculateDiscount() + calculateVAT() || 0;
+    return Math.round(total * 2) / 2;
   }, [calculateSubtotal, calculateDiscount, calculateVAT]);
 
   const calculateChange = useCallback(() => {
@@ -545,23 +551,25 @@ export default function EnhancedPOSSystem() {
     setCustomerSearchQuery(e.target.value);
   };
 
-  const handleQuickRegister = useCallback(
-    (customerData: Customer) => {
-      // Demo authentication
-      // if (authCode !== '1234') {
-      //   toast.error('Invalid authentication code')
-      //   return
-      // }
-
-      const newCustomer = {
-        ...customerData,
-        loyaltyPoints: 0
-      };
-      // customers.push(newCustomer)
-      if (!newCustomer.phone || !newCustomer.name || !newCustomer.email) {
-        toast.error('All fields are required');
+  const handleQuickRegister = async (customerData: Customer) => {
+    const newCustomer = {
+      ...customerData,
+      loyaltyPoints: 0
+    };
+    console.log(newCustomer);
+    // customers.push(newCustomer)
+    if (!newCustomer.phone || !newCustomer.name || !newCustomer.email) {
+      toast.error('All fields are required');
+      return;
+    }
+    try {
+      console.log('before sending');
+      const result = await registerCustomer({ data: newCustomer, cookies });
+      if ('error' in result) {
+        toast.error('Error creating customer');
         return;
       }
+      console.log(result);
 
       //@ts-ignore
       setCurrentCustomer(newCustomer);
@@ -569,9 +577,10 @@ export default function EnhancedPOSSystem() {
       toast.success('Customer registered successfully');
       setAuthCode('');
       setIsAuthCodeSent(false);
-    },
-    [authCode]
-  );
+    } catch (error) {
+      toast.error('Error creating customer');
+    }
+  };
 
   const findProduct = (prod: Product) => {
     const orig = productServer?.find(
@@ -682,7 +691,7 @@ export default function EnhancedPOSSystem() {
           products: itemsToReturn,
           invoiceNumber: returnInvoice,
           user: returnUser,
-          amount: afterReturnAmount,
+          amount: Math.round(afterReturnAmount * 2) / 2,
           rev: calculateRevenue - returnDiscounts
         },
         cookies
@@ -694,7 +703,11 @@ export default function EnhancedPOSSystem() {
 
       // console.log(total);
 
-      toast.success(`Return processed. Refund amount: $${afterReturnAmount}`);
+      toast.success(
+        `Return processed. Refund amount: $${
+          Math.round(afterReturnAmount * 2) / 2
+        }`
+      );
       await refetch();
       await refetchProducts();
     } catch (error) {
@@ -1593,6 +1606,7 @@ export default function EnhancedPOSSystem() {
                     handleQuickRegister(newCustomer);
                   }}
                   className="w-full text-sm"
+                  disabled={isCreatingCustomer}
                 >
                   Register
                 </Button>
@@ -1834,7 +1848,10 @@ export default function EnhancedPOSSystem() {
                   <div>
                     <strong>Discount:</strong> {returnDiscount}$
                   </div>
-                  <div>Amount to be returned {afterReturnAmount}</div>
+                  <div>
+                    Amount to be returned $
+                    {Math.round(afterReturnAmount * 2) / 2}
+                  </div>
                 </div>
                 <Table>
                   <TableHeader>

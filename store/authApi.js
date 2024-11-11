@@ -190,6 +190,17 @@ export const authApi = createApi({
           Authorization: `Bearer ${cred.cookies}`
         }
       })
+    }),
+    registerCustomer: builder.mutation({
+      query: (cred) => ({
+        url: `/customers/register`,
+        method: 'POST',
+        body: cred.data,
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${cred.cookies}`
+        }
+      })
     })
   })
 });
@@ -212,5 +223,6 @@ export const {
   useGetMyExpansesQuery,
   useGetAllOrdersQuery,
   useGetAllCustomerQuery,
-  useGetOrderFromCustomerQuery
+  useGetOrderFromCustomerQuery,
+  useRegisterCustomerMutation
 } = authApi;

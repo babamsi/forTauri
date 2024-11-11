@@ -285,6 +285,12 @@ export default function Dashboard() {
     }
     return null;
   };
+  // @ts-ignore
+  if (error?.data.message === 'Token expired') {
+    // console.log(error);
+    deleteAuthCookie();
+    return;
+  }
 
   return (
     <div className="flex min-h-screen flex-col space-y-6 bg-[#0A0B0F] p-6 text-white">

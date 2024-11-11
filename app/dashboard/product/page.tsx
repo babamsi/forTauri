@@ -1111,30 +1111,37 @@ export default function Component() {
         open={isProductLogDialogOpen}
         onOpenChange={setIsProductLogDialogOpen}
       >
-        <DialogContent className="sm:max-w-[425px]">
+        <DialogContent className="flex max-h-[80vh] flex-col sm:max-w-[600px]">
           <DialogHeader>
-            <DialogTitle>Product Log: {selectedProductLog?.name}</DialogTitle>
+            <DialogTitle className="text-xl">
+              Product Log: {selectedProductLog?.name}
+            </DialogTitle>
             <DialogDescription>
               Activity log for this product.
             </DialogDescription>
           </DialogHeader>
-          <ScrollArea className="h-[300px]">
+          <ScrollArea className="flex-grow">
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Timestamp</TableHead>
+                  <TableHead className="w-[120px]">Timestamp</TableHead>
                   <TableHead>Action</TableHead>
-                  <TableHead>Details</TableHead>
+                  <TableHead className="w-[100px]">Details</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {selectedProductLog?.logs.map((entry) => (
                   <TableRow key={entry.id}>
-                    <TableCell>
+                    <TableCell className="text-xs">
                       {new Date(entry.date).toLocaleString()}
                     </TableCell>
-                    <TableCell>{entry.action}</TableCell>
-                    <TableCell>{entry.updatedBy}</TableCell>
+                    <TableCell className="text-sm">
+                      <div className="max-w-[200px] break-words">
+                        {entry.action}
+                      </div>
+                    </TableCell>
+
+                    <TableCell className="text-xs">{entry.updatedBy}</TableCell>
                   </TableRow>
                 ))}
               </TableBody>
