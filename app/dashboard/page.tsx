@@ -231,10 +231,12 @@ export default function Dashboard() {
         0
       ) || 0;
     const totalVisitors = filteredOrders?.length || 0;
-    // @ts-ignore
+
     const guestVisitors =
-      filteredOrders?.filter((order) => order.user.name === 'Guest').length ||
-      0;
+      filteredOrders?.filter(
+        // @ts-ignore
+        (order) => order.user.name === 'Guest'
+      ).length || 0;
     const customerVisitors = totalVisitors - guestVisitors;
 
     switch (metric) {
