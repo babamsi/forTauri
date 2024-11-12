@@ -53,9 +53,13 @@ const chartConfig = {
     label: 'Total',
     color: 'hsl(var(--chart-3))'
   },
-  visitors: {
-    label: 'Visitors',
+  guests: {
+    label: 'Guests',
     color: 'hsl(var(--chart-4))'
+  },
+  customers: {
+    label: 'Customers',
+    color: 'hsl(var(--chart-5))'
   }
 };
 
@@ -81,67 +85,77 @@ export default function Dashboard() {
       setCookies(k);
     });
   }, []);
-  // @ts-ignore
-  const processUserData = (orders, period) => {
-    if (!orders) return [];
-    const now = new Date();
-    const dailyData = {};
 
-    orders.forEach(
-      // @ts-ignore
-      (order) => {
-        const orderDate = new Date(order.updatedAt);
+  const processUserData =
+    // @ts-ignore
+    (orders, period) => {
+      if (!orders) return [];
+      const now = new Date();
+      const dailyData = {};
 
-        if (
-          (period === 'Today' &&
-            orderDate.toDateString() === now.toDateString()) ||
-          (period === 'Yesterday' &&
-            orderDate.toDateString() ===
-              new Date(now.setDate(now.getDate() - 1)).toDateString()) ||
-          (period === 'Last 7 days' &&
-            orderDate >= new Date(now.setDate(now.getDate() - 7))) ||
-          (period === 'Last 14 days' &&
-            orderDate >= new Date(now.setDate(now.getDate() - 14))) ||
-          (period === 'Last month' &&
-            orderDate >= new Date(now.setMonth(now.getMonth() - 1)))
-        ) {
-          const date = orderDate.toISOString().split('T')[0];
-          // @ts-ignore
-          if (!dailyData[date]) {
-            // @ts-ignore
-            dailyData[date] = {
-              date,
-              total: 0,
-              cash: 0,
-              mobile: 0,
-              soldProducts: 0,
-              visitors: 0
-            };
-          }
-          // @ts-ignore
-          dailyData[date].total += order.totalAmount;
-          // @ts-ignore
-          dailyData[date].soldProducts += order.products.length;
-          // @ts-ignore
-          dailyData[date].visitors += 1; // Count each order as a unique visitor
+      orders.forEach(
+        // @ts-ignore
+        (order) => {
+          const orderDate = new Date(order.updatedAt);
 
-          if (order.cashType === 'Cash') {
+          if (
+            (period === 'Today' &&
+              orderDate.toDateString() === now.toDateString()) ||
+            (period === 'Yesterday' &&
+              orderDate.toDateString() ===
+                new Date(now.setDate(now.getDate() - 1)).toDateString()) ||
+            (period === 'Last 7 days' &&
+              orderDate >= new Date(now.setDate(now.getDate() - 7))) ||
+            (period === 'Last 14 days' &&
+              orderDate >= new Date(now.setDate(now.getDate() - 14))) ||
+            (period === 'Last month' &&
+              orderDate >= new Date(now.setMonth(now.getMonth() - 1)))
+          ) {
+            const date = orderDate.toISOString().split('T')[0];
             // @ts-ignore
-            dailyData[date].cash += order.totalAmount;
-          } else if (order.cashType === 'Mobile') {
+            if (!dailyData[date]) {
+              // @ts-ignore
+              dailyData[date] = {
+                date,
+                total: 0,
+                cash: 0,
+                mobile: 0,
+                soldProducts: 0,
+                guests: 0,
+                customers: 0
+              };
+            }
             // @ts-ignore
-            dailyData[date].mobile += order.totalAmount;
+            dailyData[date].total += order.totalAmount;
+            // @ts-ignore
+            dailyData[date].soldProducts += order.products.length;
+
+            // Count guests and customers separately
+            if (order.user.name === 'Guest') {
+              // @ts-ignore
+              dailyData[date].guests += 1;
+            } else {
+              // @ts-ignore
+              dailyData[date].customers += 1;
+            }
+
+            if (order.cashType === 'Cash') {
+              // @ts-ignore
+              dailyData[date].cash += order.totalAmount;
+            } else if (order.cashType === 'Mobile') {
+              // @ts-ignore
+              dailyData[date].mobile += order.totalAmount;
+            }
           }
         }
-      }
-    );
+      );
 
-    return Object.values(dailyData).sort(
-      (a, b) =>
-        // @ts-ignore
-        new Date(a.date) - new Date(b.date)
-    );
-  };
+      return Object.values(dailyData).sort(
+        (a, b) =>
+          // @ts-ignore
+          new Date(a.date) - new Date(b.date)
+      );
+    };
 
   const chartData = useMemo(() => {
     return processUserData(orders, selectedPeriod);
@@ -217,6 +231,11 @@ export default function Dashboard() {
         0
       ) || 0;
     const totalVisitors = filteredOrders?.length || 0;
+    // @ts-ignore
+    const guestVisitors =
+      filteredOrders?.filter((order) => order.user.name === 'Guest').length ||
+      0;
+    const customerVisitors = totalVisitors - guestVisitors;
 
     switch (metric) {
       case 'Sold Products':
@@ -229,7 +248,7 @@ export default function Dashboard() {
       case 'Visitors':
         return {
           icon: Users,
-          value: totalVisitors.toString(),
+          value: `${Number(customerVisitors) + Number(guestVisitors)}`,
           trend: '11%',
           color: 'text-green-400'
         };
@@ -285,7 +304,7 @@ export default function Dashboard() {
                 </span>
               </div>
               <span className="ml-2 font-medium text-white">
-                {entry.dataKey === 'visitors'
+                {['guests', 'customers'].includes(entry.dataKey)
                   ? entry.value
                   : `$${entry.value?.toFixed(2) || '0.00'}`}
               </span>
@@ -406,8 +425,17 @@ export default function Dashboard() {
                     // @ts-ignore
                     <Line
                       type="monotone"
-                      dataKey="visitors"
-                      stroke={chartConfig.visitors.color}
+                      dataKey="guests"
+                      stroke={chartConfig.guests.color}
+                      strokeWidth={2}
+                    />
+                  }
+                  {
+                    // @ts-ignore
+                    <Line
+                      type="monotone"
+                      dataKey="customers"
+                      stroke={chartConfig.customers.color}
                       strokeWidth={2}
                     />
                   }

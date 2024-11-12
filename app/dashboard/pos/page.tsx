@@ -2060,8 +2060,7 @@ export default function EnhancedPOSSystem() {
                             : ''
                         }`}
                       >
-                        {transaction.status === 'Refunded' ? '-' : ''}$
-                        {Math.abs(transaction.totalAmount).toFixed(2)}
+                        ${Math.abs(transaction.totalAmount).toFixed(2)}
                       </TableCell>
                       <TableCell>
                         <Button
