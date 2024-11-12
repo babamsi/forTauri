@@ -380,89 +380,95 @@ const TransactionsTable: React.FC<{
             <TableBody>
               {transactions.map((transaction) => (
                 <TableRow key={transaction._id}>
-                  <TableCell className="font-medium">
-                    <div className="flex items-center space-x-3">
-                      <Avatar className="hidden sm:block">
-                        <AvatarFallback>
-                          {
-                            // @ts-ignore
-                            transaction.name
-                              .split(' ')
-                              .map(
-                                // @ts-ignore
-                                (n) => n[0]
-                              )
-                              .join('')
-                          }
-                        </AvatarFallback>
-                      </Avatar>
-                      <div>
-                        <div className="font-semibold">
-                          {
-                            // @ts-ignore
-                            transaction.name
-                          }
-                        </div>
-                        <div className="hidden text-sm text-muted-foreground sm:block">
-                          {
-                            // @ts-ignore
-                            transaction.email
-                          }
-                        </div>
-                      </div>
-                    </div>
-                  </TableCell>
-                  <TableCell className="text-right">
-                    {formatCurrency(transaction.totalAmount)}
-                  </TableCell>
-                  <TableCell className="hidden md:table-cell">
-                    {formatDate(transaction.createdAt)}
-                  </TableCell>
-                  <TableCell className="hidden sm:table-cell">
-                    <Badge
-                      variant={
-                        // @ts-ignore
-                        transaction.status != 'Refunded'
-                          ? 'outline'
-                          : 'destructive'
-                      }
-                    >
-                      {
-                        // @ts-ignore
-                        transaction.status != 'Refunded'
-                          ? 'Paid'
-                          : // @ts-ignore
-                            transaction.status
-                      }
-                    </Badge>
-                  </TableCell>
-                  <TableCell>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" className="h-8 w-8 p-0">
-                          <span className="sr-only">Open menu</span>
-                          <MoreHorizontal className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem
-                          onClick={() => {
-                            navigator.clipboard.writeText(
-                              transaction.invoiceNumber
-                            );
-                            toast.success('Invoice ID copied to clipboard');
-                          }}
-                        >
-                          <Copy className="mr-2 h-4 w-4" />
-                          <span>Copy invoice ID</span>
-                        </DropdownMenuItem>
-                        <DropdownMenuItem
-                          onClick={() => onViewCustomer(transaction)}
-                        >
-                          <User className="mr-2 h-4 w-4" />
-                          <span>Visit profile</span>
-                        </DropdownMenuItem>
-                        {/* <DropdownMenuItem
+                  {
+                    // @ts-ignore
+                    transaction.name !== 'Guest' && (
+                      <>
+                        <TableCell className="font-medium">
+                          <div className="flex items-center space-x-3">
+                            <Avatar className="hidden sm:block">
+                              <AvatarFallback>
+                                {
+                                  // @ts-ignore
+                                  transaction.name
+                                    .split(' ')
+                                    .map(
+                                      // @ts-ignore
+                                      (n) => n[0]
+                                    )
+                                    .join('')
+                                }
+                              </AvatarFallback>
+                            </Avatar>
+                            <div>
+                              <div className="font-semibold">
+                                {
+                                  // @ts-ignore
+                                  transaction.name
+                                }
+                              </div>
+                              <div className="hidden text-sm text-muted-foreground sm:block">
+                                {
+                                  // @ts-ignore
+                                  transaction.email
+                                }
+                              </div>
+                            </div>
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-right">
+                          {formatCurrency(transaction.totalAmount)}
+                        </TableCell>
+                        <TableCell className="hidden md:table-cell">
+                          {formatDate(transaction.createdAt)}
+                        </TableCell>
+                        <TableCell className="hidden sm:table-cell">
+                          <Badge
+                            variant={
+                              // @ts-ignore
+                              transaction.status != 'Refunded'
+                                ? 'outline'
+                                : 'destructive'
+                            }
+                          >
+                            {
+                              // @ts-ignore
+                              transaction.status != 'Refunded'
+                                ? 'Paid'
+                                : // @ts-ignore
+                                  transaction.status
+                            }
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" className="h-8 w-8 p-0">
+                                <span className="sr-only">Open menu</span>
+                                <MoreHorizontal className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem
+                                onClick={() => {
+                                  navigator.clipboard.writeText(
+                                    transaction.invoiceNumber
+                                  );
+                                  toast.success(
+                                    'Invoice ID copied to clipboard'
+                                  );
+                                }}
+                              >
+                                <Copy className="mr-2 h-4 w-4" />
+                                <span>Copy invoice ID</span>
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                onClick={() => onViewCustomer(transaction)}
+                              >
+                                <User className="mr-2 h-4 w-4" />
+                                <span>Visit profile</span>
+                              </DropdownMenuItem>
+                              {/* <DropdownMenuItem
                           onClick={
                             // @ts-ignore
                             () => onViewInvoice(transaction)
@@ -471,9 +477,12 @@ const TransactionsTable: React.FC<{
                           <FileText className="mr-2 h-4 w-4" />
                           <span>View payment details</span>
                         </DropdownMenuItem> */}
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </TableCell>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </TableCell>
+                      </>
+                    )
+                  }
                 </TableRow>
               ))}
             </TableBody>
