@@ -101,7 +101,7 @@ import {
   Menu,
   Camera
 } from 'lucide-react';
-import { format } from 'date-fns';
+import { format, parseISO } from 'date-fns';
 import 'react-phone-number-input/style.css';
 import PhoneInput from 'react-phone-number-input';
 
@@ -154,6 +154,16 @@ const localBanks = [
   { id: 'B003', name: 'Amal Bank' },
   { id: 'B004', name: 'Premier Bank' }
 ];
+
+const formatDate = (dateString: string | undefined) => {
+  if (!dateString) return 'N/A';
+  try {
+    return format(parseISO(dateString), 'MMM d, yyyy h:mm a');
+  } catch (error) {
+    console.error('Error formatting date:', error);
+    return 'Invalid Date';
+  }
+};
 
 export default function EnhancedPOSSystem() {
   const [cart, setCart] = useState([]);
@@ -1645,7 +1655,7 @@ export default function EnhancedPOSSystem() {
                   <p className="font-medium">
                     {
                       // @ts-ignore
-                      selectedTransaction.updatedAt.split('T')[0]
+                      formatDate(selectedTransaction.updatedAt)
                     }
                   </p>
                 </div>
@@ -2038,7 +2048,7 @@ export default function EnhancedPOSSystem() {
                         {transaction.invoiceNumber}
                       </TableCell>
                       <TableCell className="text-xs">
-                        {transaction.updatedAt.split('T')[0]}
+                        {formatDate(transaction.updatedAt)}
                       </TableCell>
                       <TableCell className="text-xs">
                         {transaction.user.name || 'Guest'}
