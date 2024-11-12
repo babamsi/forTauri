@@ -7,7 +7,7 @@ import React, {
   useEffect,
   useRef
 } from 'react';
-import { format, parseISO } from 'date-fns';
+import { format, parseISO, startOfDay, endOfDay } from 'date-fns';
 import {
   Search,
   Calendar as CalendarIcon,
@@ -953,22 +953,27 @@ export default function CustomersPage() {
   }, []);
 
   const filteredData = useMemo(() => {
-    console.log(customers);
     return customers
-      .filter(
-        (customer) =>
+      .filter((customer) => {
+        const customerDate = new Date(customer.updatedAt);
+        const today = new Date();
+        const isToday =
+          customerDate >= startOfDay(today) && customerDate <= endOfDay(today);
+
+        return (
           // @ts-ignore
           (customer.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
             // @ts-ignore
             customer.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            // @ts-ignore
             customer.invoiceNumber
               .toLowerCase()
               .includes(searchTerm.toLowerCase())) &&
-          // @ts-ignore
-          (!date?.from || new Date(customer.updatedAt) >= date.from) &&
-          // @ts-ignore
-          (!date?.to || new Date(customer.updatedAt) <= date.to)
-      )
+          (!date?.from || customerDate >= startOfDay(date.from)) &&
+          (!date?.to || customerDate <= endOfDay(date.to)) &&
+          (date?.from ? true : isToday) // Apply "Today" filter only if no date range is selected
+        );
+      })
       .sort(
         (a, b) =>
           new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()

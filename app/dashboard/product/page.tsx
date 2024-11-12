@@ -1120,7 +1120,7 @@ export default function Component() {
               Activity log for this product.
             </DialogDescription>
           </DialogHeader>
-          <ScrollArea className="flex-grow">
+          <ScrollArea className="h-[400px] flex-grow">
             <Table>
               <TableHeader>
                 <TableRow>

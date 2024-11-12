@@ -52,6 +52,10 @@ const chartConfig = {
   total: {
     label: 'Total',
     color: 'hsl(var(--chart-3))'
+  },
+  visitors: {
+    label: 'Visitors',
+    color: 'hsl(var(--chart-4))'
   }
 };
 
@@ -77,13 +81,8 @@ export default function Dashboard() {
       setCookies(k);
     });
   }, []);
-
-  const processUserData = (
-    // @ts-ignore
-    orders,
-    // @ts-ignore
-    period
-  ) => {
+  // @ts-ignore
+  const processUserData = (orders, period) => {
     if (!orders) return [];
     const now = new Date();
     const dailyData = {};
@@ -91,9 +90,8 @@ export default function Dashboard() {
     orders.forEach(
       // @ts-ignore
       (order) => {
-        const orderDate = new Date(order.updatedAt); // Using updatedAt instead of createdAt
+        const orderDate = new Date(order.updatedAt);
 
-        // Filter based on selected period
         if (
           (period === 'Today' &&
             orderDate.toDateString() === now.toDateString()) ||
@@ -116,17 +114,17 @@ export default function Dashboard() {
               total: 0,
               cash: 0,
               mobile: 0,
-              soldProducts: 0 // Adding sold products count
+              soldProducts: 0,
+              visitors: 0
             };
           }
-
-          // Update totals
           // @ts-ignore
           dailyData[date].total += order.totalAmount;
           // @ts-ignore
           dailyData[date].soldProducts += order.products.length;
+          // @ts-ignore
+          dailyData[date].visitors += 1; // Count each order as a unique visitor
 
-          // Update payment method totals
           if (order.cashType === 'Cash') {
             // @ts-ignore
             dailyData[date].cash += order.totalAmount;
@@ -218,6 +216,7 @@ export default function Dashboard() {
         (acc, item) => acc + item.amount,
         0
       ) || 0;
+    const totalVisitors = filteredOrders?.length || 0;
 
     switch (metric) {
       case 'Sold Products':
@@ -230,7 +229,7 @@ export default function Dashboard() {
       case 'Visitors':
         return {
           icon: Users,
-          value: orders?.length || 0,
+          value: totalVisitors.toString(),
           trend: '11%',
           color: 'text-green-400'
         };
@@ -286,7 +285,9 @@ export default function Dashboard() {
                 </span>
               </div>
               <span className="ml-2 font-medium text-white">
-                ${entry.value?.toFixed(2) || '0.00'}
+                {entry.dataKey === 'visitors'
+                  ? entry.value
+                  : `$${entry.value?.toFixed(2) || '0.00'}`}
               </span>
             </div>
           ))}
@@ -376,99 +377,131 @@ export default function Dashboard() {
               }
             </div>
           ) : chartData.length > 0 ? (
-            selectedMetric === 'Sold Products' ||
-            selectedMetric === 'Expenses' ? (
-              <ResponsiveContainer width="100%" height={400}>
-                {
-                  // @ts-ignore
-                  <LineChart
-                    data={chartData}
-                    margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
-                  >
-                    <CartesianGrid strokeDasharray="3 3" stroke="#2A2B2F" />
-                    <XAxis
-                      dataKey="date"
-                      stroke="#888888"
-                      fontSize={12}
-                      tickLine={false}
-                      axisLine={false}
+            <ResponsiveContainer width="100%" height={400}>
+              {selectedMetric === 'Visitors' ? (
+                // @ts-ignore
+                <LineChart
+                  data={chartData}
+                  margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
+                >
+                  <CartesianGrid strokeDasharray="3 3" stroke="#2A2B2F" />
+                  <XAxis
+                    dataKey="date"
+                    stroke="#888888"
+                    fontSize={12}
+                    tickLine={false}
+                    axisLine={false}
+                  />
+                  <YAxis
+                    stroke="#888888"
+                    fontSize={12}
+                    tickLine={false}
+                    axisLine={false}
+                  />
+                  {
+                    // @ts-ignore
+                    <Tooltip content={<CustomTooltip />} />
+                  }
+                  {
+                    // @ts-ignore
+                    <Line
+                      type="monotone"
+                      dataKey="visitors"
+                      stroke={chartConfig.visitors.color}
+                      strokeWidth={2}
                     />
-                    <YAxis
-                      stroke="#888888"
-                      fontSize={12}
-                      tickLine={false}
-                      axisLine={false}
-                      tickFormatter={(value) => `$${value}`}
+                  }
+                </LineChart>
+              ) : selectedMetric === 'Sold Products' ||
+                selectedMetric === 'Expenses' ? (
+                // @ts-ignore
+                <LineChart
+                  data={chartData}
+                  margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
+                >
+                  <CartesianGrid strokeDasharray="3 3" stroke="#2A2B2F" />
+                  <XAxis
+                    dataKey="date"
+                    stroke="#888888"
+                    fontSize={12}
+                    tickLine={false}
+                    axisLine={false}
+                  />
+                  <YAxis
+                    stroke="#888888"
+                    fontSize={12}
+                    tickLine={false}
+                    axisLine={false}
+                    tickFormatter={(value) => `$${value}`}
+                  />
+                  {
+                    // @ts-ignore
+                    <Tooltip content={<CustomTooltip />} />
+                  }
+                  {
+                    // @ts-ignore
+                    <Line
+                      type="monotone"
+                      dataKey={
+                        selectedMetric === 'Sold Products'
+                          ? 'soldProducts'
+                          : 'total'
+                      }
+                      stroke={
+                        selectedMetric === 'Sold Products'
+                          ? '#3b82f6'
+                          : '#ef4444'
+                      }
+                      strokeWidth={2}
                     />
-                    {
-                      // @ts-ignore
-                      <Tooltip content={<CustomTooltip />} />
-                    }
-                    {
-                      // @ts-ignore
-                      <Line
-                        type="monotone"
-                        dataKey="total"
-                        stroke={
-                          selectedMetric === 'Sold Products'
-                            ? '#3b82f6'
-                            : '#ef4444'
-                        }
-                        strokeWidth={2}
-                      />
-                    }
-                  </LineChart>
-                }
-              </ResponsiveContainer>
-            ) : (
-              <ResponsiveContainer width="100%" height={400}>
-                {
-                  // @ts-ignore
-                  <BarChart
-                    data={chartData}
-                    margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
-                  >
-                    <CartesianGrid strokeDasharray="3 3" stroke="#2A2B2F" />
-                    <XAxis
-                      dataKey="date"
-                      stroke="#888888"
-                      fontSize={12}
-                      tickLine={false}
-                      axisLine={false}
+                  }
+                </LineChart>
+              ) : (
+                // @ts-ignore
+                <BarChart
+                  data={chartData}
+                  margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
+                >
+                  <CartesianGrid strokeDasharray="3 3" stroke="#2A2B2F" />
+                  <XAxis
+                    dataKey="date"
+                    stroke="#888888"
+                    fontSize={12}
+                    tickLine={false}
+                    axisLine={false}
+                  />
+                  <YAxis
+                    stroke="#888888"
+                    fontSize={12}
+                    tickLine={false}
+                    axisLine={false}
+                    tickFormatter={(value) => `$${value}`}
+                  />
+                  {
+                    // @ts-ignore
+                    <Tooltip content={<CustomTooltip />} />
+                  }
+                  {
+                    // @ts-ignore
+                    <Bar
+                      dataKey="cash"
+                      stackId="a"
+                      fill={chartConfig.cash.color}
+                      radius={[4, 4, 0, 0]}
                     />
-                    <YAxis
-                      stroke="#888888"
-                      fontSize={12}
-                      tickLine={false}
-                      axisLine={false}
-                      tickFormatter={(value) => `$${value}`}
+                  }
+                  {
+                    // @ts-ignore
+                    <Bar
+                      dataKey="mobile"
+                      stackId="a"
+                      fill={chartConfig.mobile.color}
+                      radius={[4, 4, 0, 0]}
                     />
-                    {
-                      // @ts-ignore
-                      <Tooltip content={<CustomTooltip />} />
-                    }
-                    {
-                      // @ts-ignore
-                      <Bar
-                        dataKey="cash"
-                        stackId="a"
-                        fill={chartConfig.cash.color}
-                        radius={[4, 4, 0, 0]}
-                      />
-                    }
-                    {
-                      // @ts-ignore
-                      <Bar
-                        dataKey="mobile"
-                        stackId="a"
-                        fill={chartConfig.mobile.color}
-                        radius={[4, 4, 0, 0]}
-                      />
-                    }
-                  </BarChart>
-                }
-              </ResponsiveContainer>
-            )
+                  }
+                </BarChart>
+              )}
+            </ResponsiveContainer>
           ) : (
             <div>No data available for the selected period</div>
           )}
