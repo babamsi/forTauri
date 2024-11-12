@@ -340,7 +340,7 @@ const InvoiceDetails: React.FC<{
                             : 'destructive'
                         }
                       >
-                        {invoice.status}
+                        {invoice.status === 'Refunded' ? 'Refunded' : 'Paid'}
                       </Badge>
                     </div>
                   </div>
