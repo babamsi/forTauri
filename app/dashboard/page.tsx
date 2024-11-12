@@ -37,10 +37,7 @@ import {
   SelectTrigger,
   SelectValue
 } from '@/components/ui/select';
-import {
-  useGetSoldProductsQuery,
-  useGetMyExpansesQuery
-} from '@/store/authApi';
+import { useGetMyExpansesQuery, useGetOrdersQuery } from '@/store/authApi';
 import { getAuthCookie, deleteAuthCookie } from '@/actions/auth.actions';
 
 const chartConfig = {
@@ -64,11 +61,11 @@ export default function Dashboard() {
   const [cookies, setCookies] = useState(null);
 
   const {
-    data: soldProducts,
+    data: orders,
     isLoading,
     error,
     refetch
-  } = useGetSoldProductsQuery(cookies, {
+  } = useGetOrdersQuery(cookies, {
     skip: !cookies,
     pollingInterval: 30000
   });
@@ -83,51 +80,64 @@ export default function Dashboard() {
 
   const processUserData = (
     // @ts-ignore
-    soldItems,
+    orders,
     // @ts-ignore
     period
   ) => {
-    if (!soldItems) return [];
+    if (!orders) return [];
     const now = new Date();
     const dailyData = {};
 
-    soldItems.forEach(
+    orders.forEach(
       // @ts-ignore
-      (item) => {
-        const itemDate = new Date(item.soldAt);
+      (order) => {
+        const orderDate = new Date(order.updatedAt); // Using updatedAt instead of createdAt
 
         // Filter based on selected period
         if (
           (period === 'Today' &&
-            itemDate.toDateString() === now.toDateString()) ||
+            orderDate.toDateString() === now.toDateString()) ||
           (period === 'Yesterday' &&
-            itemDate.toDateString() ===
+            orderDate.toDateString() ===
               new Date(now.setDate(now.getDate() - 1)).toDateString()) ||
           (period === 'Last 7 days' &&
-            itemDate >= new Date(now.setDate(now.getDate() - 7))) ||
+            orderDate >= new Date(now.setDate(now.getDate() - 7))) ||
           (period === 'Last 14 days' &&
-            itemDate >= new Date(now.setDate(now.getDate() - 14))) ||
+            orderDate >= new Date(now.setDate(now.getDate() - 14))) ||
           (period === 'Last month' &&
-            itemDate >= new Date(now.setMonth(now.getMonth() - 1)))
+            orderDate >= new Date(now.setMonth(now.getMonth() - 1)))
         ) {
-          const date = itemDate.toISOString().split('T')[0];
+          const date = orderDate.toISOString().split('T')[0];
           // @ts-ignore
           if (!dailyData[date]) {
             // @ts-ignore
-            dailyData[date] = { date, total: 0, cash: 0, mobile: 0 };
+            dailyData[date] = {
+              date,
+              total: 0,
+              cash: 0,
+              mobile: 0,
+              soldProducts: 0 // Adding sold products count
+            };
           }
+
+          // Update totals
           // @ts-ignore
-          dailyData[date].total += item.price;
-          if (item.cashType === 'Cash') {
+          dailyData[date].total += order.totalAmount;
+          // @ts-ignore
+          dailyData[date].soldProducts += order.products.length;
+
+          // Update payment method totals
+          if (order.cashType === 'Cash') {
             // @ts-ignore
-            dailyData[date].cash += item.price;
-          } else if (item.cashType === 'Mobile') {
+            dailyData[date].cash += order.totalAmount;
+          } else if (order.cashType === 'Mobile') {
             // @ts-ignore
-            dailyData[date].mobile += item.price;
+            dailyData[date].mobile += order.totalAmount;
           }
         }
       }
     );
+
     return Object.values(dailyData).sort(
       (a, b) =>
         // @ts-ignore
@@ -136,29 +146,29 @@ export default function Dashboard() {
   };
 
   const chartData = useMemo(() => {
-    return processUserData(soldProducts?.soldItems, selectedPeriod);
-  }, [soldProducts, selectedPeriod]);
+    return processUserData(orders, selectedPeriod);
+  }, [orders, selectedPeriod]);
 
   const getCardData = (metric: string) => {
-    const filteredSoldItems = soldProducts?.soldItems.filter(
+    const filteredOrders = orders?.filter(
       // @ts-ignore
-      (item) => {
-        const itemDate = new Date(item.soldAt);
+      (order) => {
+        const orderDate = new Date(order.createdAt);
         const now = new Date();
         switch (selectedPeriod) {
           case 'Today':
-            return itemDate.toDateString() === now.toDateString();
+            return orderDate.toDateString() === now.toDateString();
           case 'Yesterday':
             return (
-              itemDate.toDateString() ===
+              orderDate.toDateString() ===
               new Date(now.setDate(now.getDate() - 1)).toDateString()
             );
           case 'Last 7 days':
-            return itemDate >= new Date(now.setDate(now.getDate() - 7));
+            return orderDate >= new Date(now.setDate(now.getDate() - 7));
           case 'Last 14 days':
-            return itemDate >= new Date(now.setDate(now.getDate() - 14));
+            return orderDate >= new Date(now.setDate(now.getDate() - 14));
           case 'Last month':
-            return itemDate >= new Date(now.setMonth(now.getMonth() - 1));
+            return orderDate >= new Date(now.setMonth(now.getMonth() - 1));
           default:
             return true;
         }
@@ -190,16 +200,16 @@ export default function Dashboard() {
       }
     );
 
-    const totalSold =
-      filteredSoldItems?.reduce(
+    const totalSoldProducts =
+      filteredOrders?.reduce(
         // @ts-ignore
-        (acc, item) => acc + item.quantity,
+        (acc, order) => acc + order.products.length,
         0
       ) || 0;
     const totalSales =
-      filteredSoldItems?.reduce(
+      filteredOrders?.reduce(
         // @ts-ignore
-        (acc, item) => acc + item.price,
+        (acc, order) => acc + order.totalAmount,
         0
       ) || 0;
     const totalExpenses =
@@ -213,14 +223,14 @@ export default function Dashboard() {
       case 'Sold Products':
         return {
           icon: Package,
-          value: totalSold.toString(),
+          value: totalSoldProducts.toString(),
           trend: '+15%',
           color: 'text-blue-400'
         };
       case 'Visitors':
         return {
           icon: Users,
-          value: filteredSoldItems?.length || 0,
+          value: orders?.length || 0,
           trend: '11%',
           color: 'text-green-400'
         };
@@ -286,10 +296,9 @@ export default function Dashboard() {
     return null;
   };
   // @ts-ignore
-  if (error?.data.message === 'Token expired') {
-    // console.log(error);
+  if (error?.data?.message === 'Token expired') {
     deleteAuthCookie();
-    return;
+    return null;
   }
 
   return (
