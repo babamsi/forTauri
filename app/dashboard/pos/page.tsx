@@ -614,7 +614,7 @@ export default function EnhancedPOSSystem() {
           ...item,
           returnQuantity: 0,
           status: transaction.status,
-          eachDiscount: transaction.eachDiscount,
+          // eachDiscount: transaction.eachDiscount,
           originalPrice: findProduct(item),
           revenue: transaction.revenue
         }))
@@ -630,6 +630,7 @@ export default function EnhancedPOSSystem() {
   }, [returnInvoice, orders]);
 
   const calculateAfterReturnAmount = useMemo(() => {
+    console.log(returnItems);
     const itemsToReturn = returnItems.filter(
       // @ts-ignore
       (item: Product) => item.returnQuantity > 0
