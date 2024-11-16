@@ -469,13 +469,19 @@ export default function ProductManagement() {
       setConfirmAction(null);
     });
   };
-  // @ts-ignore
+
   const handleRestock = async (
+    // @ts-ignore
     productId,
+    // @ts-ignore
     amount,
+    // @ts-ignore
     receiptNumber,
+    // @ts-ignore
     newPrice,
+    // @ts-ignore
     newSellPrice,
+    // @ts-ignore
     newExpirationDate
   ) => {
     console.log('Received expiration date:', newExpirationDate);
@@ -1105,23 +1111,26 @@ export default function ProductManagement() {
             </DialogDescription>
           </DialogHeader>
           <RestockForm
-            onSubmit={
+            onSubmit={(
               // @ts-ignore
-              (
+              amount,
+              // @ts-ignore
+              receiptNumber,
+              // @ts-ignore
+              newPrice,
+              // @ts-ignore
+              newSellPrice,
+              // @ts-ignore
+              newExpirationDate
+            ) =>
+              handleRestock(
+                restockingProduct?._id,
                 amount,
                 receiptNumber,
                 newPrice,
                 newSellPrice,
                 newExpirationDate
-              ) =>
-                handleRestock(
-                  restockingProduct?._id,
-                  amount,
-                  receiptNumber,
-                  newPrice,
-                  newSellPrice,
-                  newExpirationDate
-                )
+              )
             }
             currentQuantity={restockingProduct?.quantity}
             isQuantityBased={restockingProduct?.isQuantityBased}
@@ -1633,17 +1642,15 @@ function FilterOptions({
   );
 }
 
-function RestockForm(
+function RestockForm({
   // @ts-ignore
-  {
-    onSubmit,
-    currentQuantity = 0,
-    isQuantityBased = true,
-    currentPrice = 0,
-    currentExpirationDate = null,
-    product = {}
-  }
-) {
+  onSubmit,
+  currentQuantity = 0,
+  isQuantityBased = true,
+  currentPrice = 0,
+  currentExpirationDate = null,
+  product = {}
+}) {
   const [amount, setAmount] = useState(0);
   const [receiptNumber, setReceiptNumber] = useState('');
   const [isPriceChanging, setIsPriceChanging] = useState(false);

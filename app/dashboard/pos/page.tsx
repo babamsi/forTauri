@@ -1317,18 +1317,17 @@ export default function EnhancedPOSSystem() {
                   <CardContent>
                     <p>
                       Expires on{' '}
-                      {
+                      {new Date(
                         // @ts-ignore
-                        new Date(
-                          selectedProduct.expirationDate
-                        ).toLocaleDateString()
-                      }
+                        selectedProduct.expirationDate
+                      ).toLocaleDateString()}
                     </p>
                     <p>
                       Quantity:{' '}
                       {
                         // @ts-ignore
                         selectedProduct.quantity -
+                          // @ts-ignore
                           selectedProduct.newBatchQuantity
                       }
                     </p>
@@ -1347,12 +1346,10 @@ export default function EnhancedPOSSystem() {
                   <CardContent>
                     <p>
                       Expires on{' '}
-                      {
+                      {new Date(
                         // @ts-ignore
-                        new Date(
-                          selectedProduct.newBatchExpiration
-                        ).toLocaleDateString()
-                      }
+                        selectedProduct.newBatchExpiration
+                      ).toLocaleDateString()}
                     </p>
                     <p>
                       Quantity:{' '}
