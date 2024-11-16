@@ -1300,7 +1300,7 @@ export default function EnhancedPOSSystem() {
             <DialogTitle>Select Batch</DialogTitle>
             <DialogDescription>
               This product has multiple batches available. Please select which
-              batch you'd like to add to the cart.
+              batch you like to add to the cart.
             </DialogDescription>
           </DialogHeader>
           {selectedProduct && (
