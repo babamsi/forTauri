@@ -1,6 +1,12 @@
 'use client';
 
-import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import React, {
+  useState,
+  useEffect,
+  useCallback,
+  useMemo,
+  useRef
+} from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -80,24 +86,34 @@ import {
   Loader2,
   Barcode,
   MoreHorizontal,
-  X
+  X,
+  CalendarIcon
 } from 'lucide-react';
-import { Heading } from '@/components/ui/heading';
 import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import { motion, AnimatePresence } from 'framer-motion';
-import { getAuthCookie, getUserInfo } from '@/actions/auth.actions';
+import {
+  getAuthCookie,
+  getUserInfo,
+  deleteAuthCookie
+} from '@/actions/auth.actions';
 import {
   useGetProductsQuery,
   useUpdateProductMutation,
   useDeleteProductMutation,
   useCreateProductMutation
 } from '@/store/authApi';
-
-import { BarcodeScanner } from '@thewirv/react-barcode-scanner';
-import { deleteAuthCookie } from '@/actions/auth.actions';
-import dynamic from 'next/dynamic';
+import {
+  format,
+  addDays,
+  isAfter,
+  isBefore,
+  parseISO,
+  isValid
+} from 'date-fns';
+import { Calendar } from '@/components/ui/calendar';
 import { useMediaQuery } from 'react-responsive';
+import { cn } from '@/lib/utils';
 
 interface Product {
   _id: string;
@@ -114,18 +130,16 @@ interface Product {
   isQuantityBased: boolean;
   logs: any[];
   reorderPoint: number;
+  expirationDate: string | null;
+  reminderDays: number;
+  receiptNumber: string;
+  image: string;
 }
 
-function BottomSheet({
+function BottomSheet(
   // @ts-ignore
-  isOpen,
-  // @ts-ignore
-  onClose,
-  // @ts-ignore
-  title,
-  // @ts-ignore
-  children
-}) {
+  { isOpen, onClose, title, children }
+) {
   return (
     <AnimatePresence>
       {isOpen && (
@@ -151,7 +165,16 @@ function BottomSheet({
   );
 }
 
-export default function Component() {
+function isProductExpiring(product: Product, currentDate = new Date()) {
+  if (!product.expirationDate) return false;
+  const expirationDate = new Date(product.expirationDate);
+  const reminderDate = addDays(expirationDate, -product.reminderDays);
+  return (
+    isAfter(currentDate, reminderDate) && isBefore(currentDate, expirationDate)
+  );
+}
+
+export default function ProductManagement() {
   const [cookies, setCookies] = useState<string | null>(null);
   const {
     data: productsServer,
@@ -166,30 +189,15 @@ export default function Component() {
   });
 
   const [updateProduct, { isLoading: isUpdating }] = useUpdateProductMutation();
-
   const [deleteProduct, { isLoading: isDeleting }] = useDeleteProductMutation();
-
   const [createProduct, { isLoading: isCreating }] = useCreateProductMutation();
 
-  useEffect(() => {
-    // @ts-ignore
-    getAuthCookie().then((cookie: string | null) => {
-      setCookies(cookie);
-    });
-    // const savedValue = window.localStorage.getItem('userStore');
-    // setUser(JSON.parse(savedValue || '{}'));
-    getUserInfo().then((userInfo) => {
-      // console.log(userInfo)
-      setUser(userInfo);
-    });
-  }, []);
-
   const [products, setProducts] = useState<Product[]>([]);
-  const [producttorestoc, setProductsToRestock] = useState<Product[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('');
   const [selectedVendor, setSelectedVendor] = useState('');
   const [showLowStock, setShowLowStock] = useState(false);
+  const [showExpiringProducts, setShowExpiringProducts] = useState(false);
   const [priceRange, setPriceRange] = useState([0, 2000]);
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
@@ -198,8 +206,6 @@ export default function Component() {
   const [isAddProductDialogOpen, setIsAddProductDialogOpen] = useState(false);
   const [isEditProductDialogOpen, setIsEditProductDialogOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
-  const [isTrashBinDialogOpen, setIsTrashBinDialogOpen] = useState(false);
-  const [deletedProducts, setDeletedProducts] = useState<Product[]>([]);
   const [isProductLogDialogOpen, setIsProductLogDialogOpen] = useState(false);
   const [selectedProductLog, setSelectedProductLog] = useState<Product | null>(
     null
@@ -209,16 +215,22 @@ export default function Component() {
     null
   );
   const [user, setUser] = useState({});
-  const [confirmAction, setConfirmAction] = useState<(() => void) | null>(null);
-  const [isBarcodeDialogOpen, setIsBarcodeDialogOpen] = useState(false);
-  const [isBarcodeScanning, setIsBarcodeScanning] = useState(false);
-  const [lastScanTime, setLastScanTime] = useState(0);
   const [isFilterOpen, setIsFilterOpen] = useState(false);
-  const [inputFocused, setInputFocused] = useState(false);
-  const [accumulatedKeystrokes, setAccumulatedKeystrokes] = useState('');
-  const [lastKeystrokeTime, setLastKeystrokeTime] = useState(0);
   const searchInputRef = useRef(null);
-  const [anyInputFocused, setAnyInputFocused] = useState(false);
+
+  const isMobile = useMediaQuery({ maxWidth: 767 });
+
+  useEffect(() => {
+    getAuthCookie().then(
+      // @ts-ignore
+      (cookie: string | null) => {
+        setCookies(cookie);
+      }
+    );
+    getUserInfo().then((userInfo) => {
+      setUser(userInfo);
+    });
+  }, []);
 
   useEffect(() => {
     if (productsServer) {
@@ -226,75 +238,17 @@ export default function Component() {
     }
   }, [productsServer]);
 
-  // @ts-ignore
   const categories = useMemo(
     // @ts-ignore
     () => [...new Set(products.map((product) => product.category))],
     [products]
   );
 
-  const newCategories = [
-    'Cosmatics',
-    'Stationary',
-    'Snacks',
-    'Breakfast',
-    'Sauces',
-    'Dry food',
-    'Drinks',
-    'Cleaning tools',
-    'Electronics',
-    'Vegetables',
-    'Meats',
-    'Others'
-  ];
-
   const vendors = useMemo(
     // @ts-ignore
     () => [...new Set(products.map((product) => product.vendor))],
     [products]
   );
-
-  const isMobile = useMediaQuery({ maxWidth: 767 });
-
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (!inputFocused && !anyInputFocused && e.key.length === 1) {
-        setSearchQuery((prev) => prev + e.key);
-      }
-    };
-
-    const handleFocusIn = (e: FocusEvent) => {
-      setAnyInputFocused(
-        e.target instanceof HTMLInputElement ||
-          e.target instanceof HTMLTextAreaElement
-      );
-      if (e.target === searchInputRef.current) {
-        setInputFocused(true);
-      }
-    };
-
-    const handleFocusOut = (e: FocusEvent) => {
-      if (
-        e.target instanceof HTMLInputElement ||
-        e.target instanceof HTMLTextAreaElement
-      ) {
-        setAnyInputFocused(false);
-      }
-      if (e.target === searchInputRef.current) {
-        setInputFocused(false);
-      }
-    };
-
-    document.addEventListener('keydown', handleKeyDown);
-    document.addEventListener('focusin', handleFocusIn);
-    document.addEventListener('focusout', handleFocusOut);
-
-    return () => {
-      document.removeEventListener('keydown', handleKeyDown);
-      document.removeEventListener('focusin', handleFocusIn);
-      document.removeEventListener('focusout', handleFocusOut);
-    };
-  }, [inputFocused, anyInputFocused]);
 
   const filteredProducts = useMemo(() => {
     return products.filter((product) => {
@@ -307,16 +261,20 @@ export default function Component() {
         !selectedCategory || product.category === selectedCategory;
       const matchesVendor =
         !selectedVendor || product.vendor === selectedVendor;
-      const matchesLowStock = !showLowStock || product.quantity <= 10; // Assuming low stock is 10 or less
+      const matchesLowStock =
+        !showLowStock || product.quantity <= product.reorderPoint;
       const matchesPriceRange =
         product.sellPrice >= priceRange[0] &&
         product.sellPrice <= priceRange[1];
+      const matchesExpiring =
+        !showExpiringProducts || isProductExpiring(product);
       return (
         matchesSearch &&
         matchesCategory &&
         matchesVendor &&
         matchesLowStock &&
-        matchesPriceRange
+        matchesPriceRange &&
+        matchesExpiring
       );
     });
   }, [
@@ -325,7 +283,8 @@ export default function Component() {
     selectedCategory,
     selectedVendor,
     showLowStock,
-    priceRange
+    priceRange,
+    showExpiringProducts
   ]);
 
   const sortedProducts = useMemo(() => {
@@ -358,6 +317,7 @@ export default function Component() {
     setSelectedCategory('');
     setSelectedVendor('');
     setShowLowStock(false);
+    setShowExpiringProducts(false);
     setPriceRange([0, 2000]);
     setSortConfig({ key: '', direction: '' });
     setCurrentPage(1);
@@ -392,7 +352,10 @@ export default function Component() {
       units: newProduct.units,
       barcode: newProduct.barcode,
       // @ts-ignore
-      image: newProduct.image
+      image: newProduct.image,
+      expirationDate: newProduct.expirationDate,
+      reminderDays: newProduct.reminderDays,
+      receiptNumber: newProduct.receiptNumber
     };
     console.log(data);
     try {
@@ -453,6 +416,12 @@ export default function Component() {
       barcode: updatedProduct.barcode,
       units: updatedProduct.units,
       reorderPoint: updatedProduct.reorderPoint,
+      // @ts-ignore
+      expirationDate: new Date(updatedProduct.expirationDate),
+      reminderDays: updatedProduct.reminderDays,
+      receiptNumber: updatedProduct.receiptNumber,
+      // @ts-ignore
+      image: updateProduct.image,
       action: logs
     };
     const all = {
@@ -460,6 +429,7 @@ export default function Component() {
       cookies: cookies,
       data: data
     };
+    console.log(all);
     try {
       const result = await updateProduct(all);
       if ('error' in result) {
@@ -476,6 +446,7 @@ export default function Component() {
   };
 
   const handleDeleteProduct = async (productId: string) => {
+    // @ts-ignore
     setConfirmAction(() => async () => {
       const productToDelete = products.find(
         (product) => product._id === productId
@@ -494,50 +465,65 @@ export default function Component() {
           refetch();
         }
       }
+      // @ts-ignore
       setConfirmAction(null);
     });
   };
-
-  const handleRestock = async (productId: string, amount: number) => {
+  // @ts-ignore
+  const handleRestock = async (
+    productId,
+    amount,
+    receiptNumber,
+    newPrice,
+    newSellPrice,
+    newExpirationDate
+  ) => {
+    console.log('Received expiration date:', newExpirationDate);
     try {
-      const s = products.filter((j) => j._id === productId);
-      let data;
-      if (s[0].isQuantityBased) {
-        data = {
-          quantity: s[0].quantity + amount,
-          isQuantityBased: true,
-          action: [
-            {
-              action: `Restock from ${s[0].quantity} to ${
-                s[0].quantity + amount
-              }`,
-              // @ts-ignore
-              updatedBy: user.username
-            }
-          ]
-        };
-      } else {
-        data = {
-          units: amount,
-          isQuantityBased: false,
-          action: [
-            {
-              action: `Restock from ${s[0].units} to ${amount}`,
-              // @ts-ignore
-              updatedBy: user.username
-            }
-          ]
-        };
-      }
+      const productToRestock = products.find((p) => p._id === productId);
+      if (!productToRestock) return;
+
+      const newQuantity = productToRestock.isQuantityBased
+        ? productToRestock.quantity + amount
+        : amount;
+
+      const data = {
+        quantity: newQuantity,
+        isQuantityBased: productToRestock.isQuantityBased,
+        receiptNumber: receiptNumber,
+        price: newPrice,
+        sellPrice: newSellPrice,
+        expirationDate: newExpirationDate + ' newStock', // Make sure this is passed correctly
+        action: [
+          {
+            action: `Restocked from ${
+              productToRestock.quantity
+            } to ${newQuantity}. Receipt changed from
+            ${productToRestock.receiptNumber} to ${receiptNumber}${
+              newPrice !== productToRestock.price
+                ? `. Price updated from ${productToRestock.price} to ${newPrice}`
+                : ''
+            }${
+              newExpirationDate !== productToRestock.expirationDate
+                ? `. Expiration date updated from ${
+                    // @ts-ignore
+                    format(new Date(productToRestock.expirationDate), 'PPP')
+                  } to ${format(new Date(newExpirationDate), 'PPP')}`
+                : ''
+            }`,
+            updatedBy: (user as any).username
+          }
+        ]
+      };
 
       const result = await updateProduct({
         id: productId,
         data: data,
         cookies
       });
+
       if ('error' in result) {
-        // @ts-ignore
-        throw new Error(error);
+        throw new Error(result.error as string);
       }
 
       setProducts((prevProducts) =>
@@ -545,9 +531,11 @@ export default function Component() {
           product._id === productId
             ? {
                 ...product,
-                quantity: product.isQuantityBased
-                  ? product.quantity + amount
-                  : Number(product.units.split(' ')[0]) + amount
+                quantity: newQuantity,
+                price: newPrice,
+                sellPrice: newSellPrice,
+                receiptNumber: receiptNumber,
+                expirationDate: newExpirationDate
               }
             : product
         )
@@ -555,23 +543,11 @@ export default function Component() {
       toast.success('Product restocked successfully');
       refetch();
     } catch (error) {
-      toast.error('Unable to restock');
+      toast.error('Failed to restock product');
     }
 
     setIsRestockDialogOpen(false);
     setRestockingProduct(null);
-    toast.success('Product restocked successfully!');
-  };
-
-  const SortIcon = ({ field }: { field: string }) => {
-    if (sortConfig.key === field) {
-      return sortConfig.direction === 'ascending' ? (
-        <ChevronUp className="inline" />
-      ) : (
-        <ChevronDown className="inline" />
-      );
-    }
-    return null;
   };
 
   if (isLoading) {
@@ -579,9 +555,7 @@ export default function Component() {
   }
 
   if (isError) {
-    // console.log(error)
-    // @ts-ignore
-    if (error?.data?.message === 'Token expired') {
+    if ((error as any)?.data?.message === 'Token expired') {
       deleteAuthCookie();
     }
     return <div>Error: {error.toString()}</div>;
@@ -612,18 +586,20 @@ export default function Component() {
                     Add Product
                   </Button>
                 </DialogTrigger>
-                <DialogContent className="sm:max-w-[425px]">
+                <DialogContent className="max-h-[80vh] overflow-y-auto sm:max-w-[425px]">
                   <DialogHeader>
                     <DialogTitle>Add New Product</DialogTitle>
                     <DialogDescription>
                       Enter the details for the new product.
                     </DialogDescription>
                   </DialogHeader>
-                  <ProductForm
-                    onSubmit={handleAddProduct}
-                    categories={newCategories}
-                    vendors={vendors}
-                  />
+                  <div className="flex-1 overflow-y-auto pr-1">
+                    <ProductForm
+                      onSubmit={handleAddProduct}
+                      categories={categories}
+                      vendors={vendors}
+                    />
+                  </div>
                 </DialogContent>
               </Dialog>
             )}
@@ -635,7 +611,7 @@ export default function Component() {
             >
               <ProductForm
                 onSubmit={handleAddProduct}
-                categories={newCategories}
+                categories={categories}
                 vendors={vendors}
               />
             </BottomSheet>
@@ -643,10 +619,12 @@ export default function Component() {
             <BottomSheet
               isOpen={isMobile && isEditProductDialogOpen}
               onClose={() => setIsEditProductDialogOpen(false)}
-              title="Add New Product"
+              title="Edit Product"
             >
               <ProductForm
                 onSubmit={handleEditProduct}
+                // @ts-ignore
+                initialData={editingProduct}
                 categories={categories}
                 vendors={vendors}
               />
@@ -700,6 +678,8 @@ export default function Component() {
                       setSelectedVendor={setSelectedVendor}
                       showLowStock={showLowStock}
                       setShowLowStock={setShowLowStock}
+                      showExpiringProducts={showExpiringProducts}
+                      setShowExpiringProducts={setShowExpiringProducts}
                       priceRange={priceRange}
                       setPriceRange={setPriceRange}
                     />
@@ -721,6 +701,8 @@ export default function Component() {
                   setSelectedVendor={setSelectedVendor}
                   showLowStock={showLowStock}
                   setShowLowStock={setShowLowStock}
+                  showExpiringProducts={showExpiringProducts}
+                  setShowExpiringProducts={setShowExpiringProducts}
                   priceRange={priceRange}
                   setPriceRange={setPriceRange}
                 />
@@ -810,23 +792,17 @@ export default function Component() {
                         className="transition-colors hover:bg-muted/50"
                       >
                         <TableCell>
-                          {
-                            // @ts-ignore
-                            product.image ? (
-                              <img
-                                src={
-                                  // @ts-ignore
-                                  product.image
-                                }
-                                alt={product.name}
-                                className="h-10 w-10 rounded-full object-cover"
-                              />
-                            ) : (
-                              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary text-primary-foreground">
-                                {product.name.charAt(0).toUpperCase()}
-                              </div>
-                            )
-                          }
+                          {product.image ? (
+                            <img
+                              src={product.image}
+                              alt={product.name}
+                              className="h-10 w-10 rounded-full object-cover"
+                            />
+                          ) : (
+                            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary text-primary-foreground">
+                              {product.name.charAt(0).toUpperCase()}
+                            </div>
+                          )}
                         </TableCell>
                         <TableCell className="font-medium">
                           {product.name}
@@ -878,10 +854,7 @@ export default function Component() {
                                     Edit
                                   </Button>
                                   <Button
-                                    disabled={
-                                      // @ts-ignore
-                                      user?.role != 'Admin'
-                                    }
+                                    disabled={(user as any)?.role !== 'Admin'}
                                     variant="ghost"
                                     className="justify-start"
                                     onClick={() =>
@@ -969,12 +942,18 @@ export default function Component() {
                       <p className="truncate">{product.vendor}</p>
                     </div>
                     <div className="space-y-1">
-                      <p className="font-semibold">Buyer</p>
-                      {/* <p className="truncate">{product.buyer}</p> */}
+                      <p className="font-semibold">Expiration</p>
+                      <p className="truncate">
+                        {product.expirationDate
+                          ? format(
+                              new Date(product.expirationDate),
+                              'MM/dd/yyyy'
+                            )
+                          : 'N/A'}
+                      </p>
                     </div>
                   </CardContent>
                   <CardFooter className="flex items-center justify-between bg-secondary/10 p-4">
-                    {/* <span className="text-xs text-muted-foreground">SKU: {product.sku}</span> */}
                     <Popover>
                       <PopoverTrigger asChild>
                         <Button variant="ghost" size="icon">
@@ -986,17 +965,16 @@ export default function Component() {
                           <Button
                             variant="ghost"
                             className="justify-start"
-                            onClick={() => setEditingProduct(product)}
+                            onClick={() => {
+                              setEditingProduct(product);
+                              setIsEditProductDialogOpen(true);
+                            }}
                           >
                             <Edit className="mr-2 h-4 w-4" />
                             Edit
                           </Button>
-
                           <Button
-                            disabled={
-                              // @ts-ignore
-                              user.role !== 'Admin'
-                            }
+                            disabled={(user as any).role !== 'Admin'}
                             variant="ghost"
                             className="justify-start"
                             onClick={() => handleDeleteProduct(product._id)}
@@ -1036,186 +1014,127 @@ export default function Component() {
           )}
         </AnimatePresence>
 
-        <div className="flex items-center justify-between px-2">
-          <div className="flex-1 text-sm text-muted-foreground">
-            Showing {paginatedProducts.length} of {sortedProducts.length}{' '}
-            products
-          </div>
-          <div className="flex items-center space-x-6 lg:space-x-8">
-            <div className="flex items-center space-x-2">
-              <p className="text-sm font-medium">Rows per page</p>
-              <Select
-                value={`${itemsPerPage}`}
-                onValueChange={(value) => setItemsPerPage(Number(value))}
-              >
-                <SelectTrigger className="h-8 w-[70px]">
-                  <SelectValue placeholder={itemsPerPage} />
-                </SelectTrigger>
-                <SelectContent side="top">
-                  {[5, 10, 20, 50].map((pageSize) => (
-                    <SelectItem key={pageSize} value={`${pageSize}`}>
-                      {pageSize}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="flex w-[100px] items-center justify-center text-sm font-medium">
-              Page {currentPage} of {totalPages}
-            </div>
-            <div className="flex items-center space-x-2">
-              <Button
-                variant="outline"
-                className="hidden h-8 w-8 p-0 lg:flex"
-                onClick={() => setCurrentPage(1)}
+        <Pagination className="mt-4">
+          <PaginationContent>
+            <PaginationItem>
+              <PaginationPrevious
+                // @ts-ignore
+                onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+                // @ts-ignore
                 disabled={currentPage === 1}
-              >
-                <span className="sr-only">Go to first page</span>
-                <DoubleArrowLeftIcon className="h-4 w-4" />
-              </Button>
-              <Button
-                variant="outline"
-                className="h-8 w-8 p-0"
-                onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
-                disabled={currentPage === 1}
-              >
-                <span className="sr-only">Go to previous page</span>
-                <ChevronLeftIcon className="h-4 w-4" />
-              </Button>
-              <Button
-                variant="outline"
-                className="h-8 w-8 p-0"
+              />
+            </PaginationItem>
+            {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+              <PaginationItem key={page}>
+                <PaginationLink
+                  onClick={() => setCurrentPage(page)}
+                  isActive={currentPage === page}
+                >
+                  {page}
+                </PaginationLink>
+              </PaginationItem>
+            ))}
+            <PaginationItem>
+              <PaginationNext
                 onClick={() =>
-                  setCurrentPage((prev) => Math.min(totalPages, prev + 1))
+                  setCurrentPage((prev) => Math.min(prev + 1, totalPages))
                 }
+                // @ts-ignore
                 disabled={currentPage === totalPages}
-              >
-                <span className="sr-only">Go to next page</span>
-                <ChevronRightIcon className="h-4 w-4" />
-              </Button>
-              <Button
-                variant="outline"
-                className="hidden h-8 w-8 p-0 lg:flex"
-                onClick={() => setCurrentPage(totalPages)}
-                disabled={currentPage === totalPages}
-              >
-                <span className="sr-only">Go to last page</span>
-                <DoubleArrowRightIcon className="h-4 w-4" />
-              </Button>
-            </div>
-          </div>
-        </div>
+              />
+            </PaginationItem>
+          </PaginationContent>
+        </Pagination>
       </div>
+
+      {!isMobile && (
+        <Dialog
+          open={isEditProductDialogOpen}
+          onOpenChange={setIsEditProductDialogOpen}
+        >
+          <DialogContent className="max-h-[80vh] overflow-y-auto sm:max-w-[425px]">
+            <DialogHeader>
+              <DialogTitle>Edit Product</DialogTitle>
+              <DialogDescription>
+                Make changes to the product details.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="flex-1 overflow-y-auto pr-1">
+              <ProductForm
+                onSubmit={handleEditProduct}
+                // @ts-ignore
+                initialData={editingProduct}
+                categories={categories}
+                vendors={vendors}
+              />
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
 
       <Dialog
         open={isProductLogDialogOpen}
         onOpenChange={setIsProductLogDialogOpen}
       >
-        <DialogContent className="flex max-h-[80vh] flex-col sm:max-w-[600px]">
-          <DialogHeader>
-            <DialogTitle className="text-xl">
-              Product Log: {selectedProductLog?.name}
-            </DialogTitle>
-            <DialogDescription>
-              Activity log for this product.
-            </DialogDescription>
-          </DialogHeader>
-          <ScrollArea className="h-[400px] flex-grow">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="w-[120px]">Timestamp</TableHead>
-                  <TableHead>Action</TableHead>
-                  <TableHead className="w-[100px]">Details</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {selectedProductLog?.logs.map((entry) => (
-                  <TableRow key={entry.id}>
-                    <TableCell className="text-xs">
-                      {new Date(entry.date).toLocaleString()}
-                    </TableCell>
-                    <TableCell className="text-sm">
-                      <div className="max-w-[200px] break-words">
-                        {entry.action}
-                      </div>
-                    </TableCell>
-
-                    <TableCell className="text-xs">{entry.updatedBy}</TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </ScrollArea>
-        </DialogContent>
-      </Dialog>
-
-      <Dialog
-        open={isEditProductDialogOpen}
-        onOpenChange={setIsEditProductDialogOpen}
-      >
         <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
-            <DialogTitle>Edit Product</DialogTitle>
+            <DialogTitle>Product Log</DialogTitle>
             <DialogDescription>
-              Update the details for this product.
+              View the log history for this product.
             </DialogDescription>
           </DialogHeader>
-          {editingProduct && (
-            <ProductForm
-              // @ts-ignore
-              onSubmit={handleEditProduct}
-              initialData={editingProduct}
-              categories={categories}
-              vendors={vendors}
-            />
-          )}
+          <ScrollArea className="h-[300px]">
+            {selectedProductLog?.logs?.map((log, index) => (
+              <div key={index} className="mb-4 border-b pb-2">
+                <p className="text-sm font-medium">{log.action}</p>
+                <p className="text-xs text-gray-500">
+                  By: {log.updatedBy} on {new Date(log.date).toLocaleString()}
+                </p>
+              </div>
+            ))}
+          </ScrollArea>
         </DialogContent>
       </Dialog>
 
       <Dialog open={isRestockDialogOpen} onOpenChange={setIsRestockDialogOpen}>
         <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
-            <DialogTitle>Re-stock Product</DialogTitle>
+            <DialogTitle>Restock Product</DialogTitle>
             <DialogDescription>
-              Enter the amount to re-stock for {restockingProduct?.name}
+              Enter the amount to restock for {restockingProduct?.name}.
             </DialogDescription>
           </DialogHeader>
-          {
+          <RestockForm
+            onSubmit={
+              // @ts-ignore
+              (
+                amount,
+                receiptNumber,
+                newPrice,
+                newSellPrice,
+                newExpirationDate
+              ) =>
+                handleRestock(
+                  restockingProduct?._id,
+                  amount,
+                  receiptNumber,
+                  newPrice,
+                  newSellPrice,
+                  newExpirationDate
+                )
+            }
+            currentQuantity={restockingProduct?.quantity}
+            isQuantityBased={restockingProduct?.isQuantityBased}
+            currentPrice={restockingProduct?.price}
             // @ts-ignore
-            <RestockForm
-              onSubmit={(amount) =>
-                // @ts-ignore
-                handleRestock(restockingProduct?._id, amount)
-              }
-            />
-          }
-        </DialogContent>
-      </Dialog>
-
-      <Dialog open={isFilterOpen} onOpenChange={setIsFilterOpen}>
-        <DialogContent className="sm:max-w-[425px]">
-          <DialogHeader>
-            <DialogTitle>Filters</DialogTitle>
-            <DialogDescription>
-              Apply filters to refine your product list.
-            </DialogDescription>
-          </DialogHeader>
-          <FilterOptions
-            categories={categories}
-            vendors={vendors}
-            selectedCategory={selectedCategory}
-            setSelectedCategory={setSelectedCategory}
-            selectedVendor={selectedVendor}
-            setSelectedVendor={setSelectedVendor}
-            showLowStock={showLowStock}
-            setShowLowStock={setShowLowStock}
-            priceRange={priceRange}
-            setPriceRange={setPriceRange}
+            currentExpirationDate={restockingProduct?.expirationDate}
+            // @ts-ignore
+            product={restockingProduct}
           />
         </DialogContent>
       </Dialog>
-      <ToastContainer position="bottom-right" />
+
+      <ToastContainer />
     </div>
   );
 }
@@ -1224,7 +1143,11 @@ function ProductForm({
   onSubmit,
   initialData,
   categories,
-  vendors
+  vendors,
+  // @ts-ignore
+  onUpdate,
+  // @ts-ignore
+  editMode = 'full'
 }: {
   onSubmit: (data: Omit<Product, 'id' | 'log'>) => void;
   initialData?: Product;
@@ -1247,7 +1170,10 @@ function ProductForm({
       reorderPoint: 0,
       isQuantityBased: true,
       // @ts-ignore
-      image: ''
+      image: '',
+      expirationDate: null,
+      reminderDays: 7,
+      receiptNumber: ''
     }
   );
   // const [isCameraActive, setIsCameraActive] = useState(false);
@@ -1308,13 +1234,59 @@ function ProductForm({
       }
     }
   };
-
+  // @ts-ignore
+  const handleDateChange = (e) => {
+    const { name, value } = e.target;
+    setFormData((prev) => ({
+      ...prev,
+      [name]: value ? new Date(value).toISOString() : null
+    }));
+  };
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
     // @ts-ignore
     onSubmit(formData);
   };
+  // @ts-ignore
+  const handleUpdate = (e) => {
+    e.preventDefault();
+    onUpdate(formData);
+  };
+
+  if (editMode === 'priceOnly') {
+    return (
+      <form onSubmit={handleUpdate} className="space-y-4">
+        <div>
+          <Label htmlFor="price">Price</Label>
+          <Input
+            id="price"
+            name="price"
+            type="number"
+            step="0.01"
+            value={formData.price}
+            onChange={handleChange}
+            required
+          />
+        </div>
+        <div>
+          <Label htmlFor="sellPrice">Sell Price</Label>
+          <Input
+            id="sellPrice"
+            name="sellPrice"
+            type="number"
+            step="0.01"
+            value={formData.sellPrice}
+            onChange={handleChange}
+            required
+          />
+        </div>
+        <Button type="button" onClick={(e) => handleUpdate(e)}>
+          Update Prices
+        </Button>
+      </form>
+    );
+  }
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
@@ -1426,6 +1398,53 @@ function ProductForm({
             placeholder="Enter new vendor name"
           />
         </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="expirationDate">Expiration Date</Label>
+          <div className="flex items-center">
+            <Input
+              type="date"
+              id="expirationDate"
+              name="expirationDate"
+              value={
+                formData.expirationDate
+                  ? format(new Date(formData.expirationDate), 'yyyy-MM-dd')
+                  : ''
+              }
+              onChange={handleDateChange}
+              className="w-full"
+            />
+            <CalendarIcon className="ml-2 h-4 w-4 text-gray-400" />
+          </div>
+          {formData.expirationDate && (
+            <p className="text-sm text-muted-foreground">
+              Selected: {format(new Date(formData.expirationDate), 'PPP')}
+            </p>
+          )}
+        </div>
+
+        <div>
+          <Label htmlFor="reminderDays">
+            Reminder (days before expiration)
+          </Label>
+          <Input
+            id="reminderDays"
+            name="reminderDays"
+            type="number"
+            value={formData.reminderDays}
+            onChange={handleChange}
+            min={1}
+          />
+        </div>
+        <div>
+          <Label htmlFor="receiptNumber">Receipt Number</Label>
+          <Input
+            id="receiptNumber"
+            name="receiptNumber"
+            value={formData.receiptNumber}
+            onChange={handleChange}
+          />
+        </div>
         {formData.isQuantityBased && (
           <>
             <div>
@@ -1495,63 +1514,73 @@ function ProductForm({
 }
 
 function FilterOptions({
+  // @ts-ignore
   categories,
+  // @ts-ignore
   vendors,
+  // @ts-ignore
   selectedCategory,
+  // @ts-ignore
   setSelectedCategory,
+  // @ts-ignore
   selectedVendor,
+  // @ts-ignore
   setSelectedVendor,
+  // @ts-ignore
   showLowStock,
+  // @ts-ignore
   setShowLowStock,
+  // @ts-ignore
+  showExpiringProducts,
+  // @ts-ignore
+  setShowExpiringProducts,
+  // @ts-ignore
   priceRange,
+  // @ts-ignore
   setPriceRange
-}: {
-  categories: string[];
-  vendors: string[];
-  selectedCategory: string;
-  setSelectedCategory: (category: string) => void;
-  selectedVendor: string;
-  setSelectedVendor: (vendor: string) => void;
-  showLowStock: boolean;
-  setShowLowStock: (show: boolean) => void;
-  priceRange: number[];
-  setPriceRange: (range: number[]) => void;
 }) {
   return (
     <div className="space-y-4">
       <div>
-        <Label htmlFor="category">Category</Label>
+        <Label htmlFor="category-filter">Category</Label>
         <Select value={selectedCategory} onValueChange={setSelectedCategory}>
-          <SelectTrigger id="category">
-            <SelectValue placeholder="Select category" />
+          <SelectTrigger id="category-filter">
+            <SelectValue placeholder="All Categories" />
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="">All Categories</SelectItem>
-            {categories.map((category) => (
-              <SelectItem key={category} value={category}>
-                {category}
-              </SelectItem>
-            ))}
+            {categories.map(
+              // @ts-ignore
+              (category) => (
+                <SelectItem key={category} value={category}>
+                  {category}
+                </SelectItem>
+              )
+            )}
           </SelectContent>
         </Select>
       </div>
 
       <div>
-        <Label htmlFor="supplier">Supplier</Label>
+        <Label htmlFor="vendor-filter">Vendor</Label>
         <Select value={selectedVendor} onValueChange={setSelectedVendor}>
-          <SelectTrigger id="supplier">
-            <SelectValue placeholder="Select supplier" />
+          <SelectTrigger id="vendor-filter">
+            <SelectValue placeholder="All Vendors" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="">All Suppliers</SelectItem>
-            {vendors.map((vendor) => (
-              <SelectItem key={vendor} value={vendor}>
-                {vendor}
-              </SelectItem>
-            ))}
+            <SelectItem value="">All Vendors</SelectItem>
+            {vendors.map(
+              // @ts-ignore
+              (vendor) => (
+                <SelectItem key={vendor} value={vendor}>
+                  {vendor}
+                </SelectItem>
+              )
+            )}
           </SelectContent>
         </Select>
       </div>
+
       <div className="flex items-center space-x-2">
         <Switch
           id="show-low-stock"
@@ -1560,6 +1589,16 @@ function FilterOptions({
         />
         <Label htmlFor="show-low-stock">Show Low Stock</Label>
       </div>
+
+      <div className="flex items-center space-x-2">
+        <Switch
+          id="show-expiring-products"
+          checked={showExpiringProducts}
+          onCheckedChange={setShowExpiringProducts}
+        />
+        <Label htmlFor="show-expiring-products">Show Expiring Products</Label>
+      </div>
+
       <div>
         <Label>Price Range</Label>
         <div className="flex items-center space-x-2">
@@ -1571,7 +1610,7 @@ function FilterOptions({
             }
             className="w-20"
           />
-          <span>-</span>
+          <span>to</span>
           <Input
             type="number"
             value={priceRange[1]}
@@ -1594,32 +1633,196 @@ function FilterOptions({
   );
 }
 
-function RestockForm({ onSubmit }: { onSubmit: (amount: number) => void }) {
+function RestockForm(
+  // @ts-ignore
+  {
+    onSubmit,
+    currentQuantity = 0,
+    isQuantityBased = true,
+    currentPrice = 0,
+    currentExpirationDate = null,
+    product = {}
+  }
+) {
   const [amount, setAmount] = useState(0);
-  const [restockButtonDiabled, setRestockButtonDisalbed] = useState(false);
+  const [receiptNumber, setReceiptNumber] = useState('');
+  const [isPriceChanging, setIsPriceChanging] = useState(false);
+  const [newPrice, setNewPrice] = useState(currentPrice);
+  // @ts-ignore
+  const [newSellPrice, setNewSellPrice] = useState(product?.sellPrice || 0);
+  const [isExpirationChanging, setIsExpirationChanging] = useState(false);
+  const [newExpirationDate, setNewExpirationDate] = useState(
+    currentExpirationDate
+  );
+  const [isEditPriceDialogOpen, setIsEditPriceDialogOpen] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  useEffect(() => {
+    if (currentExpirationDate) {
+      setNewExpirationDate(currentExpirationDate);
+    }
+  }, [currentExpirationDate]);
+  // @ts-ignore
+  const handleSubmit = (e) => {
     e.preventDefault();
-    setRestockButtonDisalbed(true);
-    onSubmit(amount);
+    const submittedExpirationDate = isExpirationChanging
+      ? newExpirationDate
+      : currentExpirationDate;
+    console.log('Submitting expiration date:', submittedExpirationDate);
+    onSubmit(
+      amount,
+      receiptNumber,
+      isPriceChanging ? newPrice : currentPrice,
+      // @ts-ignore
+      isPriceChanging ? newSellPrice : product.sellPrice || 0,
+      submittedExpirationDate
+    );
+  };
+  // @ts-ignore
+  const handlePriceUpdate = (updatedPrices) => {
+    setNewPrice(updatedPrices.price);
+    setNewSellPrice(updatedPrices.sellPrice);
+    setIsPriceChanging(true);
+    setIsEditPriceDialogOpen(false);
+  };
+  // @ts-ignore
+  const handleDateChange = (e) => {
+    const dateValue = e.target.value;
+    if (dateValue) {
+      const parsedDate = new Date(dateValue);
+      if (isValid(parsedDate)) {
+        parsedDate.setUTCHours(12, 0, 0, 0);
+        // @ts-ignore
+        setNewExpirationDate(parsedDate.toISOString());
+      } else {
+        console.error('Invalid date entered:', dateValue);
+        setNewExpirationDate(null);
+      }
+    } else {
+      setNewExpirationDate(null);
+    }
+  };
+  // @ts-ignore
+  const handleExpirationToggle = (checked) => {
+    setIsExpirationChanging(checked);
+    if (!checked) {
+      setNewExpirationDate(currentExpirationDate);
+    }
+  };
+  // @ts-ignore
+  const formatDateForInput = (dateString) => {
+    if (!dateString) return '';
+    const date = new Date(dateString);
+    return isValid(date) ? format(date, 'yyyy-MM-dd') : '';
   };
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       <div>
-        <Label htmlFor="amount">Restock Amount</Label>
+        <Label htmlFor="amount">
+          {isQuantityBased ? 'Amount to Add' : 'New Quantity'}
+        </Label>
         <Input
           id="amount"
           type="number"
           value={amount}
           onChange={(e) => setAmount(Number(e.target.value))}
-          min={1}
+          min={0}
           required
         />
       </div>
-      <Button disabled={restockButtonDiabled} type="submit">
-        Confirm Restock
-      </Button>
+      {isQuantityBased && (
+        <p className="text-sm text-muted-foreground">
+          Current quantity: {currentQuantity}
+        </p>
+      )}
+      <div>
+        <Label htmlFor="receiptNumber">Receipt Number</Label>
+        <Input
+          id="receiptNumber"
+          type="text"
+          value={receiptNumber}
+          onChange={(e) => setReceiptNumber(e.target.value)}
+          required
+        />
+      </div>
+      <div className="flex items-center space-x-2">
+        <Switch
+          id="changePrice"
+          checked={isPriceChanging}
+          onCheckedChange={(checked) => {
+            setIsPriceChanging(checked);
+            if (checked) {
+              setIsEditPriceDialogOpen(true);
+            } else {
+              setNewPrice(currentPrice);
+              // @ts-ignore
+              setNewSellPrice(product.sellPrice || 0);
+            }
+          }}
+        />
+        <Label htmlFor="changePrice">Change Price</Label>
+      </div>
+      {isPriceChanging && (
+        <div>
+          <p>New Price: ${newPrice}</p>
+          <p>New Sell Price: ${newSellPrice}</p>
+          <Button type="button" onClick={() => setIsEditPriceDialogOpen(true)}>
+            Edit Prices
+          </Button>
+        </div>
+      )}
+      <div className="flex items-center space-x-2">
+        <Switch
+          id="changeExpiration"
+          checked={isExpirationChanging}
+          onCheckedChange={handleExpirationToggle}
+        />
+        <Label htmlFor="changeExpiration">Change Expiration Date</Label>
+      </div>
+      {isExpirationChanging && (
+        <div className="space-y-2">
+          <Label htmlFor="newExpirationDate">New Expiration Date</Label>
+          <div className="flex items-center">
+            <Input
+              type="date"
+              id="newExpirationDate"
+              value={formatDateForInput(newExpirationDate)}
+              onChange={handleDateChange}
+              className="w-full"
+            />
+            <CalendarIcon className="ml-2 h-4 w-4 text-gray-400" />
+          </div>
+          {newExpirationDate && (
+            <p className="text-sm text-muted-foreground">
+              Selected: {format(new Date(newExpirationDate), 'PPP')}
+            </p>
+          )}
+        </div>
+      )}
+      <DialogFooter>
+        <Button type="submit">Restock</Button>
+      </DialogFooter>
+
+      <Dialog
+        open={isEditPriceDialogOpen}
+        onOpenChange={setIsEditPriceDialogOpen}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edit Product Price</DialogTitle>
+          </DialogHeader>
+          <ProductForm
+            onUpdate={handlePriceUpdate}
+            // @ts-ignore
+            initialData={{
+              ...product,
+              price: newPrice,
+              sellPrice: newSellPrice
+            }}
+            editMode="priceOnly"
+          />
+        </DialogContent>
+      </Dialog>
     </form>
   );
 }

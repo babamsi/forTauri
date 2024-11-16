@@ -120,6 +120,10 @@ interface Product {
   createdAt: string;
   updatedAt: string;
   barcode: string | null;
+  newBatch: boolean;
+  newBatchQuantity: number;
+  newBatchExpiration: string;
+  expirationDate: string;
 }
 
 interface Customer {
@@ -146,6 +150,11 @@ interface Order {
   status: string;
 }
 
+interface CartItem extends Product {
+  isNewBatch: boolean;
+  quantity: number;
+}
+
 // Mock data for products, customers, and transactions
 
 const localBanks = [
@@ -166,7 +175,7 @@ const formatDate = (dateString: string | undefined) => {
 };
 
 export default function EnhancedPOSSystem() {
-  const [cart, setCart] = useState([]);
+  const [cart, setCart] = useState<CartItem[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   // const [productsServer, setProductsServer] = useState([]);
   const [filteredProducts, setFilteredProducts] = useState([]);
@@ -231,6 +240,9 @@ export default function EnhancedPOSSystem() {
   const [guestGender, setGuestGender] = useState<string>('');
   const [page, setPage] = useState(1);
   const [valuePhoneNumber, setValuePhoneNumber] = useState();
+  const [isBatchDialogOpen, setIsBatchDialogOpen] = useState(false);
+  const [selectedProduct, setSelectedProduct] = useState(null);
+
   const ITEMS_PER_PAGE = 20;
 
   const VAT_RATE = 0.05; // 5% VAT rate
@@ -317,50 +329,90 @@ export default function EnhancedPOSSystem() {
   }, [filteredProducts, page]);
 
   const addToCart = useCallback((product: Product) => {
-    // @ts-ignore
-    setCart((prevCart) => {
-      const existingItem = prevCart.find(
-        (item) =>
-          // @ts-ignore
-          item._id === product._id
-      );
+    if (product.newBatch && product.newBatchQuantity > 0) {
+      // @ts-ignore
+      setSelectedProduct(product);
+      setIsBatchDialogOpen(true);
+    } else {
+      // @ts-ignore
+      addProductToCart(product);
+    }
+  }, []);
 
-      if (existingItem) {
-        // @ts-ignore
-        if (existingItem.quantity >= product.quantity) {
-          toast.error(`Cannot add more ${product.name}. Stock limit reached.`);
-          return prevCart;
-        }
-        return prevCart.map((item) =>
-          // @ts-ignore
-          item._id === product._id
-            ? {
-                // @ts-ignore
-                ...item,
-                // @ts-ignore
-                quantity: Math.min(item.quantity + 1, product.quantity)
-              }
-            : item
+  const addProductToCart = useCallback(
+    (product: Product, useNewBatch: boolean) => {
+      setCart((prevCart) => {
+        const existingCurrentBatchItem = prevCart.find(
+          (item) => item._id === product._id && !item.isNewBatch
         );
-      } else {
-        if (product.quantity === 0) {
-          toast.error(`${product.name} is out of stock.`);
-          return prevCart;
-        }
-        return [...prevCart, { ...product, quantity: 1 }];
-      }
-    });
-  }, []);
+        const existingNewBatchItem = prevCart.find(
+          (item) => item._id === product._id && item.isNewBatch
+        );
 
-  const removeFromCart = useCallback((productId: string) => {
-    setCart((prevCart) =>
-      prevCart.filter(
-        (item) =>
-          // @ts-ignore
-          item._id !== productId
-      )
-    );
-  }, []);
+        const availableQuantity = useNewBatch
+          ? product.newBatchQuantity
+          : product.quantity;
+        const existingItem = useNewBatch
+          ? existingNewBatchItem
+          : existingCurrentBatchItem;
+
+        if (existingItem) {
+          if (existingItem.quantity >= availableQuantity) {
+            toast.error(
+              `Cannot add more ${product.name} from ${
+                useNewBatch ? 'new' : 'current'
+              } batch. Stock limit reached.`
+            );
+            return prevCart;
+          }
+          return prevCart.map((item) =>
+            item._id === product._id && item.isNewBatch === useNewBatch
+              ? {
+                  ...item,
+                  quantity: Math.min(item.quantity + 1, availableQuantity)
+                }
+              : item
+          );
+        } else {
+          if (availableQuantity === 0) {
+            toast.error(
+              `${product.name} is out of stock in the ${
+                useNewBatch ? 'new' : 'current'
+              } batch.`
+            );
+            return prevCart;
+          }
+          return [
+            ...prevCart,
+            { ...product, isNewBatch: useNewBatch, quantity: 1 }
+          ];
+        }
+      });
+    },
+    []
+  );
+
+  const handleBatchSelection = useCallback(
+    (useNewBatch: boolean) => {
+      if (selectedProduct) {
+        addProductToCart(selectedProduct, useNewBatch);
+        setIsBatchDialogOpen(false);
+        setSelectedProduct(null);
+      }
+    },
+    [selectedProduct, addProductToCart]
+  );
+
+  const removeFromCart = useCallback(
+    (productId: string, isNewBatch: boolean) => {
+      setCart((prevCart) =>
+        prevCart.filter(
+          (item) => !(item._id === productId && item.isNewBatch === isNewBatch)
+        )
+      );
+    },
+    []
+  );
 
   const handleBarcodeSubmit = useCallback(
     //@ts-ignore
@@ -419,38 +471,36 @@ export default function EnhancedPOSSystem() {
   }, [accumulatedKeystrokes, lastKeystrokeTime, inputFocused]);
 
   const updateQuantity = useCallback(
-    (productId: string, newQuantity: number) => {
-      // @ts-ignore
+    (productId: string, isNewBatch: boolean, newQuantity: number) => {
       setCart((prevCart) => {
-        const updatedCart = prevCart.map((item) => {
-          // @ts-ignore
-          if (item._id === productId) {
-            const product = productServer.find(
+        return prevCart
+          .map((item) => {
+            if (item._id === productId && item.isNewBatch === isNewBatch) {
               // @ts-ignore
-              (p) => p._id === productId
-            );
-            if (!product) {
-              toast.error('Product not found in inventory.');
-              return item;
+              const product = productServer.find((p) => p._id === productId);
+              if (!product) {
+                toast.error(`Product not found in inventory.`);
+                return item;
+              }
+
+              const maxQuantity = isNewBatch
+                ? product.newBatchQuantity
+                : product.quantity;
+
+              if (newQuantity > maxQuantity) {
+                toast.error(
+                  `Cannot add more ${item.name} from ${
+                    isNewBatch ? 'new' : 'current'
+                  } batch. Stock limit reached.`
+                );
+                return item;
+              }
+
+              return { ...item, quantity: newQuantity };
             }
-            if (newQuantity > product.quantity) {
-              toast.error(
-                `Cannot add more ${
-                  // @ts-ignore
-                  item.name
-                }. Stock limit reached.`
-              );
-              return item;
-            }
-            return {
-              // @ts-ignore
-              ...item,
-              quantity: newQuantity
-            };
-          }
-          return item;
-        });
-        return updatedCart.filter((item) => item.quantity > 0);
+            return item;
+          })
+          .filter((item) => item.quantity > 0);
       });
     },
     [productServer]
@@ -492,7 +542,7 @@ export default function EnhancedPOSSystem() {
 
   const processPayment = async () => {
     setIsProcessingPayment(true);
-
+    console.log(cart);
     // Simulate payment processing
     const newTransaction = {
       // id: `T${transactions.length + 1}`.padStart(4, '0'),
@@ -502,7 +552,9 @@ export default function EnhancedPOSSystem() {
         id: item._id,
         name: item.name,
         price: item.price,
-        quantity: String(item.quantity)
+        quantity: String(item.quantity),
+        // @ts-ignore
+        isNewBatch: item.isNewBatch
       })),
       cashType: paymentMethod,
       vat: calculateVAT(),
@@ -512,7 +564,7 @@ export default function EnhancedPOSSystem() {
     // console.log(newTransaction);
 
     try {
-      // console.log(newTransaction)
+      console.log(newTransaction);
       const result = await sell(newTransaction);
       if ('error' in result) {
         toast.error('An error occurred during checkout');
@@ -809,7 +861,8 @@ export default function EnhancedPOSSystem() {
 
   // @ts-ignore
   const handleSearchSuggestionClick = (product) => {
-    addToCart(product);
+    // @ts-ignore
+    addProductToCart(product);
     setSearchQuery('');
   };
 
@@ -870,26 +923,21 @@ export default function EnhancedPOSSystem() {
   const renderCartItems = () => {
     return cart.map((item) => (
       <div
-        key={
-          // @ts-ignore
-          item._id
-        }
+        key={`${item._id}-${item.isNewBatch ? 'new' : 'current'}`}
         className="flex items-center justify-between py-2"
       >
         <div>
           <div className="font-medium">
-            {
-              // @ts-ignore
-              item.name
-            }
+            {item.name}
+            <Badge
+              variant={item.isNewBatch ? 'secondary' : 'outline'}
+              className="ml-2"
+            >
+              {item.isNewBatch ? 'New Batch' : 'Current Batch'}
+            </Badge>
           </div>
           <div className="text-sm text-gray-500">
-            $
-            {
-              // @ts-ignore
-              item.sellPrice.toFixed(2)
-            }{' '}
-            each
+            ${item.sellPrice.toFixed(2)} each
           </div>
         </div>
         <div className="flex items-center space-x-2">
@@ -897,24 +945,17 @@ export default function EnhancedPOSSystem() {
             size="sm"
             variant="outline"
             onClick={() =>
-              // @ts-ignore
-              updateQuantity(item._id, item.quantity - 1)
+              updateQuantity(item._id, item.isNewBatch, item.quantity - 1)
             }
           >
             <Minus className="h-4 w-4" />
           </Button>
-          <span>
-            {
-              // @ts-ignore
-              item.quantity
-            }
-          </span>
+          <span>{item.quantity}</span>
           <Button
             size="sm"
             variant="outline"
             onClick={() =>
-              // @ts-ignore
-              updateQuantity(item._id, item.quantity + 1)
+              updateQuantity(item._id, item.isNewBatch, item.quantity + 1)
             }
           >
             <Plus className="h-4 w-4" />
@@ -922,10 +963,7 @@ export default function EnhancedPOSSystem() {
           <Button
             size="sm"
             variant="destructive"
-            onClick={() =>
-              // @ts-ignore
-              removeFromCart(item._id)
-            }
+            onClick={() => removeFromCart(item._id, item.isNewBatch)}
           >
             <Trash2 className="h-4 w-4" />
           </Button>
@@ -1246,6 +1284,90 @@ export default function EnhancedPOSSystem() {
           </div>
         </div>
       </main>
+
+      {/* Batch Selection Dialog */}
+      <Dialog
+        open={isBatchDialogOpen}
+        onOpenChange={(open) => {
+          if (open === false) {
+            // Prevent dialog from closing if a batch hasn't been selected
+            toast.error('Please select a batch before closing.');
+          }
+        }}
+      >
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Select Batch</DialogTitle>
+            <DialogDescription>
+              This product has multiple batches available. Please select which
+              batch you'd like to add to the cart.
+            </DialogDescription>
+          </DialogHeader>
+          {selectedProduct && (
+            <div className="grid gap-4">
+              <motion.div
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={() => handleBatchSelection(false)}
+              >
+                <Card className="cursor-pointer transition-colors hover:bg-gray-100 dark:hover:bg-gray-800">
+                  <CardHeader>
+                    <CardTitle>Current Batch</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <p>
+                      Expires on{' '}
+                      {
+                        // @ts-ignore
+                        new Date(
+                          selectedProduct.expirationDate
+                        ).toLocaleDateString()
+                      }
+                    </p>
+                    <p>
+                      Quantity:{' '}
+                      {
+                        // @ts-ignore
+                        selectedProduct.quantity -
+                          selectedProduct.newBatchQuantity
+                      }
+                    </p>
+                  </CardContent>
+                </Card>
+              </motion.div>
+              <motion.div
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={() => handleBatchSelection(true)}
+              >
+                <Card className="cursor-pointer transition-colors hover:bg-gray-100 dark:hover:bg-gray-800">
+                  <CardHeader>
+                    <CardTitle>New Batch</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <p>
+                      Expires on{' '}
+                      {
+                        // @ts-ignore
+                        new Date(
+                          selectedProduct.newBatchExpiration
+                        ).toLocaleDateString()
+                      }
+                    </p>
+                    <p>
+                      Quantity:{' '}
+                      {
+                        // @ts-ignore
+                        selectedProduct.newBatchQuantity
+                      }
+                    </p>
+                  </CardContent>
+                </Card>
+              </motion.div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
 
       {/* Checkout Dialog */}
       <Dialog

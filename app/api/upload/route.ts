@@ -16,7 +16,7 @@ export async function POST(request: Request) {
   }
 
   try {
-    console.log('haaaa');
+    // console.log('haaaa');
     const arrayBuffer = await file.arrayBuffer();
     const buffer = Buffer.from(arrayBuffer);
 
