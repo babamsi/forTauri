@@ -520,17 +520,17 @@ export default function EnhancedPOSSystem() {
   }, [discountValue]);
 
   const calculateVAT = useCallback(() => {
-    return (calculateSubtotal() - calculateDiscount()) * VAT_RATE;
+    return calculateSubtotal() * VAT_RATE;
   }, [calculateSubtotal, calculateDiscount]);
 
   const calculateTotal = useCallback(() => {
     const total =
-      calculateSubtotal() - calculateDiscount() + calculateVAT() || 0;
-    return Math.round(total * 2) / 2;
+      calculateSubtotal() + calculateVAT() - calculateDiscount() || 0;
+    return total;
   }, [calculateSubtotal, calculateDiscount, calculateVAT]);
 
   const calculateChange = useCallback(() => {
-    const total = calculateTotal();
+    const total = Math.round(calculateTotal() * 2) / 2;
     const received = parseFloat(cashReceived);
     // console.log(received >= total && (received - total).toFixed(2));
     return received >= total && (received - total).toFixed(2);
@@ -548,6 +548,7 @@ export default function EnhancedPOSSystem() {
       // id: `T${transactions.length + 1}`.padStart(4, '0'),
       user: currentCustomer ? currentCustomer : null,
       total: calculateTotal(),
+      subtotal: calculateSubtotal(),
       products: cart.map((item: Product) => ({
         id: item._id,
         name: item.name,
@@ -655,22 +656,39 @@ export default function EnhancedPOSSystem() {
   const handleReturnSearch = useCallback(() => {
     const transaction = orders?.find(
       // @ts-ignore
-      (t: Product) => t.invoiceNumber === returnInvoice
+      (t) => t.invoiceNumber === returnInvoice
     );
 
     if (transaction) {
-      // console.log(transaction)
-      setReturnItems(
+      const consolidatedProducts = transaction.products.reduce(
         // @ts-ignore
-        transaction.products.map((item) => ({
-          ...item,
-          returnQuantity: 0,
-          status: transaction.status,
-          // eachDiscount: transaction.eachDiscount,
-          originalPrice: findProduct(item),
-          revenue: transaction.revenue
-        }))
+        (acc, item) => {
+          const existingItem = acc.find(
+            // @ts-ignore
+            (p) => p.productId === item.productId
+          );
+          if (existingItem) {
+            existingItem.quantity += Number(item.quantity);
+            existingItem.price =
+              (existingItem.price * existingItem.quantity +
+                item.price * Number(item.quantity)) /
+              (existingItem.quantity + Number(item.quantity));
+          } else {
+            acc.push({
+              ...item,
+              quantity: Number(item.quantity),
+              returnQuantity: 0,
+              status: transaction.status,
+              originalPrice: findProduct(item),
+              revenue: transaction.revenue
+            });
+          }
+          return acc;
+        },
+        []
       );
+
+      setReturnItems(consolidatedProducts);
       setReturnUser(transaction.user);
       setReturnDate(transaction.createdAt);
       setReturnDiscount(transaction.discount);
@@ -679,7 +697,7 @@ export default function EnhancedPOSSystem() {
     } else {
       toast.error('Invoice not found');
     }
-  }, [returnInvoice, orders]);
+  }, [returnInvoice, orders, findProduct]);
 
   const calculateAfterReturnAmount = useMemo(() => {
     console.log(returnItems);
@@ -701,8 +719,9 @@ export default function EnhancedPOSSystem() {
     );
     // console.log(calculateEachDiscount);
     // let total = itemsToReturn.reduce((total, item) => total + Number(item.returnQuantity) *  )
-    total -= calculateEachDiscount;
     total += total * 0.05;
+    total -= calculateEachDiscount;
+
     setAfterReturnAmount(total);
   }, [returnItems]);
 
@@ -740,8 +759,9 @@ export default function EnhancedPOSSystem() {
     );
 
     let total = Number(returnTotal.toFixed(2));
-    total += total * 0.05;
+
     total -= returnDiscounts;
+    total += total * 0.05;
 
     // console.log(calculateRevenue - returnDiscounts)
 
@@ -1251,7 +1271,7 @@ export default function EnhancedPOSSystem() {
                     </div>
                     <div className="flex justify-between text-lg font-bold">
                       <span>Total:</span>
-                      <span>${calculateTotal().toFixed(2)}</span>
+                      <span>${Math.round(calculateTotal() * 2) / 2}</span>
                     </div>
                   </div>
                   <div className="mt-4 space-y-2">
@@ -1800,51 +1820,65 @@ export default function EnhancedPOSSystem() {
               </div>
               <div>
                 <Label>Items</Label>
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead className="text-xs">Product</TableHead>
-                      <TableHead className="text-xs">Quantity</TableHead>
-                      {selectedTransaction.status === 'Refunded' && (
-                        <TableHead className="text-xs">
-                          Returned Quantity
-                        </TableHead>
-                      )}
-                      <TableHead className="text-xs">Price</TableHead>
-                      <TableHead className="text-xs">Total</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {selectedTransaction.products.map((item) => (
-                      // @ts-ignore
-                      <TableRow key={item.id}>
-                        <TableCell className="text-xs">
-                          {
-                            // @ts-ignore
-                            item.product
-                          }
-                        </TableCell>
-                        <TableCell className="text-xs">
-                          {item.quantity}
-                        </TableCell>
+                <ScrollArea className="h-[200px]">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead className="text-xs">Product</TableHead>
+                        <TableHead className="text-xs">Quantity</TableHead>
                         {selectedTransaction.status === 'Refunded' && (
+                          <TableHead className="text-xs">
+                            Returned Quantity
+                          </TableHead>
+                        )}
+                        <TableHead className="text-xs">Price</TableHead>
+                        <TableHead className="text-xs">Total</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {selectedTransaction.products.map((item) => (
+                        // @ts-ignore
+                        <TableRow key={item.id}>
                           <TableCell className="text-xs">
                             {
                               // @ts-ignore
-                              item.returnQuantity
+                              item.product
                             }
+                            <Badge
+                              variant={
+                                // @ts-ignore
+                                item.isNewBatch ? 'secondary' : 'outline'
+                              }
+                              className="ml-2"
+                            >
+                              {
+                                // @ts-ignore
+                                item.isNewBatch ? 'New Batch' : 'Current Batch'
+                              }
+                            </Badge>
                           </TableCell>
-                        )}
-                        <TableCell className="text-xs">
-                          ${item.price.toFixed(2)}
-                        </TableCell>
-                        <TableCell className="text-xs">
-                          ${(item.price * item.quantity).toFixed(2)}
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
+                          <TableCell className="text-xs">
+                            {item.quantity}
+                          </TableCell>
+                          {selectedTransaction.status === 'Refunded' && (
+                            <TableCell className="text-xs">
+                              {
+                                // @ts-ignore
+                                item.returnQuantity
+                              }
+                            </TableCell>
+                          )}
+                          <TableCell className="text-xs">
+                            ${item.price.toFixed(2)}
+                          </TableCell>
+                          <TableCell className="text-xs">
+                            ${(item.price * item.quantity).toFixed(2)}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </ScrollArea>
               </div>
               <div className="space-y-2 text-sm">
                 <div className="flex justify-between">
