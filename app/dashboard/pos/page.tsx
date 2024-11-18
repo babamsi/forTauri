@@ -1044,33 +1044,36 @@ export default function EnhancedPOSSystem() {
         );
         if (!product) return;
 
-        // Try to increase current batch first
+        // Get current quantities from both batches
         const currentBatchItem = cart.find(
           (item) => item._id === groupedItem._id && !item.isNewBatch
         );
-
-        if (currentBatchItem && currentBatchItem.quantity < product.quantity) {
-          updateQuantity(groupedItem._id, false, currentBatchItem.quantity + 1);
-          return;
-        }
-
-        // If current batch is maxed out or doesn't exist, try new batch
         const newBatchItem = cart.find(
           (item) => item._id === groupedItem._id && item.isNewBatch
         );
 
-        if (newBatchItem && newBatchItem.quantity < product.newBatchQuantity) {
-          updateQuantity(groupedItem._id, true, newBatchItem.quantity + 1);
+        const currentBatchQty = currentBatchItem?.quantity || 0;
+        const newBatchQty = newBatchItem?.quantity || 0;
+
+        // Try to increase current batch first
+        if (currentBatchQty < product.quantity - product.newBatchQuantity) {
+          updateQuantity(groupedItem._id, false, currentBatchQty + 1);
           return;
         }
 
-        // If neither batch exists, add to current batch
-        if (!currentBatchItem && !newBatchItem && product.quantity > 0) {
-          addProductToCart(product, false);
+        // If current batch is full, automatically switch to new batch
+        if (newBatchQty < product.newBatchQuantity) {
+          // If new batch doesn't exist yet, create it
+          if (!newBatchItem) {
+            addProductToCart(product, true);
+          } else {
+            updateQuantity(groupedItem._id, true, newBatchQty + 1);
+          }
           return;
         }
 
-        toast.error('Maximum quantity reached');
+        // If both batches are at maximum
+        toast.error('Maximum quantity reached for both batches');
       };
 
       const handleDecrease = (groupedItem: any) => {
@@ -1165,29 +1168,47 @@ export default function EnhancedPOSSystem() {
 
   // Update the quantity dialog handler
   const handleQuantityUpdate = (productId: string, newQty: number) => {
-    // @ts-ignore
-    const product = productServer?.find((p) => p._id === productId);
+    const product = productServer?.find(
+      // @ts-ignore
+      (p) => p._id === productId
+    );
     if (!product) return;
 
-    const totalAvailable = (product.newBatchQuantity || 0) + product.quantity;
+    const currentBatchItem = cart.find(
+      (item) => item._id === productId && !item.isNewBatch
+    );
+    const newBatchItem = cart.find(
+      (item) => item._id === productId && item.isNewBatch
+    );
 
-    if (newQty > totalAvailable) {
-      toast.error(`Cannot exceed total available quantity (${totalAvailable})`);
+    // Validate total quantity against available stock
+    const maxAvailableQuantity = product.quantity || 0;
+    if (newQty > maxAvailableQuantity) {
+      toast.error(`Maximum available quantity is ${maxAvailableQuantity}`);
       return;
     }
 
-    // Try to allocate to new batch first, then current batch
-    let newBatchQty = Math.min(newQty, product.newBatchQuantity || 0);
-    let currentBatchQty = Math.max(0, newQty - newBatchQty);
-
-    // Update new batch if needed
-    if (newBatchQty > 0) {
-      updateQuantity(productId, true, newBatchQty);
+    // If only current batch exists
+    if (currentBatchItem && !newBatchItem) {
+      if (newQty > product.quantity - product.newBatchQuantity) {
+        toast.error(
+          `Maximum available quantity in current batch is ${
+            product.quantity - product.newBatchQuantity
+          }`
+        );
+        return;
+      }
+      updateQuantity(productId, false, newQty);
     }
-
-    // Update current batch if needed
-    if (currentBatchQty > 0) {
-      updateQuantity(productId, false, currentBatchQty);
+    // If only new batch exists
+    else if (newBatchItem && !currentBatchItem) {
+      if (newQty > product.newBatchQuantity) {
+        toast.error(
+          `Maximum available quantity in new batch is ${product.newBatchQuantity}`
+        );
+        return;
+      }
+      updateQuantity(productId, true, newQty);
     }
 
     setIsQuantityDialogOpen(false);
