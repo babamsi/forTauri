@@ -125,6 +125,7 @@ interface Product {
   vendor: string;
   addedBy: string;
   quantity: number;
+  newBatchQuantity: number; // Add this line
   barcode: string;
   units: string;
   isQuantityBased: boolean;
@@ -135,7 +136,6 @@ interface Product {
   receiptNumber: string;
   image: string;
 }
-
 function BottomSheet(
   // @ts-ignore
   { isOpen, onClose, title, children }
@@ -257,6 +257,9 @@ export default function ProductManagement() {
         product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
         product.vendor.toLowerCase().includes(searchQuery.toLowerCase()) ||
         product.addedBy.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        product.receiptNumber
+          .toLowerCase()
+          .includes(searchQuery.toLowerCase()) ||
         product.barcode === searchQuery;
       const matchesCategory =
         !selectedCategory || product.category === selectedCategory;
@@ -830,19 +833,37 @@ export default function ProductManagement() {
                           {product.category}
                         </TableCell>
                         <TableCell className="text-right">
-                          <Badge
-                            variant={
-                              product.quantity <= product.reorderPoint
-                                ? 'destructive'
-                                : 'secondary'
-                            }
-                            className="w-12 justify-center"
-                          >
-                            {showNewBatch
-                              ? // @ts-ignore
-                                product.newBatchQuantity
-                              : product.quantity}
-                          </Badge>
+                          <div className="flex flex-col items-end gap-1">
+                            <Badge
+                              variant={
+                                product.quantity <= product.reorderPoint
+                                  ? 'destructive'
+                                  : 'secondary'
+                              }
+                              className="w-12 justify-center"
+                            >
+                              {product.quantity}
+                            </Badge>
+
+                            {/* Show new batch indicator if newBatchQuantity exists and is greater than 0 */}
+                            {product.newBatchQuantity > 0 && (
+                              <div className="flex items-center gap-1">
+                                <Badge
+                                  variant="outline"
+                                  className="bg-blue-300 text-xs"
+                                >
+                                  +{product.newBatchQuantity}
+                                </Badge>
+                              </div>
+                            )}
+
+                            {/* Show total if there are multiple batches */}
+                            {/* {product.newBatchQuantity > 0 && (
+      <div className="text-xs text-muted-foreground">
+        Total: {product.quantity + product.newBatchQuantity}
+      </div>
+    )} */}
+                          </div>
                         </TableCell>
                         <TableCell className="hidden text-right sm:table-cell">
                           ${product.price}

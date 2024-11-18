@@ -242,6 +242,10 @@ export default function EnhancedPOSSystem() {
   const [valuePhoneNumber, setValuePhoneNumber] = useState();
   const [isBatchDialogOpen, setIsBatchDialogOpen] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState(null);
+  const [isQuantityDialogOpen, setIsQuantityDialogOpen] = useState(false);
+  const [selectedCartItem, setSelectedCartItem] = useState<any>(null);
+  const [newQuantity, setNewQuantity] = useState<string>('');
+  const [batchAllocationDialog, setBatchAllocationDialog] = useState(false);
 
   const ITEMS_PER_PAGE = 20;
 
@@ -338,6 +342,38 @@ export default function EnhancedPOSSystem() {
       addProductToCart(product);
     }
   }, []);
+
+  // Add this function to handle quantity allocation between batches
+  const handleQuantityAllocation = (
+    totalQuantity: number,
+    productId: string
+  ) => {
+    const product = cart.find((item) => item._id === productId);
+    if (!product) return;
+
+    const availableNewBatch = product.newBatchQuantity || 0;
+    const availableCurrentBatch = product.quantity || 0;
+
+    // If requested quantity is less than or equal to new batch quantity
+    if (totalQuantity <= availableNewBatch) {
+      updateQuantity(productId, true, totalQuantity);
+      updateQuantity(productId, false, 0);
+    } else {
+      // Allocate maximum possible to new batch, rest to current batch
+      const newBatchAllocation = Math.min(totalQuantity, availableNewBatch);
+      const currentBatchAllocation = Math.min(
+        totalQuantity - newBatchAllocation,
+        availableCurrentBatch
+      );
+
+      updateQuantity(productId, true, newBatchAllocation);
+      updateQuantity(productId, false, currentBatchAllocation);
+    }
+
+    setBatchAllocationDialog(false);
+    setIsQuantityDialogOpen(false);
+    setNewQuantity('');
+  };
 
   const addProductToCart = useCallback(
     (product: Product, useNewBatch: boolean) => {
@@ -938,58 +974,130 @@ export default function EnhancedPOSSystem() {
         item._id === productId
     );
   };
-
+  const getUniqueProductCount = (cart: any[]) => {
+    const uniqueIds = new Set(cart.map((item) => item._id));
+    return uniqueIds.size;
+  };
   // Render cart items
   const renderCartItems = () => {
-    return cart.map((item) => (
-      <div
-        key={`${item._id}-${item.isNewBatch ? 'new' : 'current'}`}
-        className="flex items-center justify-between py-2"
-      >
-        <div>
-          <div className="font-medium">
-            {item.name}
-            <Badge
-              variant={item.isNewBatch ? 'secondary' : 'outline'}
-              className="ml-2"
+    const groupedItems = cart.reduce(
+      (acc, item) => {
+        if (!acc[item._id]) {
+          acc[item._id] = {
+            ...item,
+            batches: []
+          };
+        }
+        acc[item._id].batches.push({
+          isNewBatch: item.isNewBatch,
+          quantity: item.quantity
+        });
+        return acc;
+      },
+      {} as Record<string, any>
+    );
+
+    return Object.values(groupedItems).map((groupedItem) => {
+      const totalQuantity = groupedItem.batches.reduce(
+        (sum: number, batch: { quantity: number }) => sum + batch.quantity,
+        0
+      );
+      const newBatchQuantity =
+        groupedItem.batches.find(
+          (batch: { isNewBatch: boolean }) => batch.isNewBatch
+        )?.quantity || 0;
+      const currentBatchQuantity =
+        groupedItem.batches.find(
+          (batch: { isNewBatch: boolean }) => !batch.isNewBatch
+        )?.quantity || 0;
+
+      return (
+        <div
+          key={groupedItem._id}
+          className="flex items-center justify-between py-2"
+        >
+          <div>
+            <div className="flex items-center gap-2 font-medium">
+              {groupedItem.name}
+              {newBatchQuantity > 0 && (
+                <Badge variant="secondary" className="text-xs">
+                  +{newBatchQuantity} new
+                </Badge>
+              )}
+            </div>
+            <div className="text-sm text-gray-500">
+              ${groupedItem.sellPrice.toFixed(2)} each
+            </div>
+          </div>
+          <div className="flex items-center space-x-2">
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => {
+                // Decrease from new batch first if available
+                if (newBatchQuantity > 0) {
+                  updateQuantity(groupedItem._id, true, newBatchQuantity - 1);
+                } else if (currentBatchQuantity > 0) {
+                  updateQuantity(
+                    groupedItem._id,
+                    false,
+                    currentBatchQuantity - 1
+                  );
+                }
+              }}
             >
-              {item.isNewBatch ? 'New Batch' : 'Current Batch'}
-            </Badge>
-          </div>
-          <div className="text-sm text-gray-500">
-            ${item.sellPrice.toFixed(2)} each
+              <Minus className="h-4 w-4" />
+            </Button>
+
+            <Button
+              variant="ghost"
+              className="w-12 px-0"
+              onClick={() => {
+                setSelectedCartItem(groupedItem);
+                setNewQuantity(totalQuantity.toString());
+                setIsQuantityDialogOpen(true);
+              }}
+            >
+              {totalQuantity}
+            </Button>
+
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => {
+                // If there's new batch quantity, increment that
+                if (groupedItem.isNewBatch) {
+                  updateQuantity(groupedItem._id, true, newBatchQuantity + 1);
+                } else {
+                  // Otherwise increment current batch
+                  updateQuantity(
+                    groupedItem._id,
+                    false,
+                    currentBatchQuantity + 1
+                  );
+                }
+              }}
+            >
+              <Plus className="h-4 w-4" />
+            </Button>
+
+            <Button
+              size="sm"
+              variant="destructive"
+              onClick={() => {
+                groupedItem.batches.forEach(
+                  (batch: { isNewBatch: boolean }) => {
+                    removeFromCart(groupedItem._id, batch.isNewBatch);
+                  }
+                );
+              }}
+            >
+              <Trash2 className="h-4 w-4" />
+            </Button>
           </div>
         </div>
-        <div className="flex items-center space-x-2">
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={() =>
-              updateQuantity(item._id, item.isNewBatch, item.quantity - 1)
-            }
-          >
-            <Minus className="h-4 w-4" />
-          </Button>
-          <span>{item.quantity}</span>
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={() =>
-              updateQuantity(item._id, item.isNewBatch, item.quantity + 1)
-            }
-          >
-            <Plus className="h-4 w-4" />
-          </Button>
-          <Button
-            size="sm"
-            variant="destructive"
-            onClick={() => removeFromCart(item._id, item.isNewBatch)}
-          >
-            <Trash2 className="h-4 w-4" />
-          </Button>
-        </div>
-      </div>
-    ));
+      );
+    });
   };
 
   return (
@@ -1248,7 +1356,7 @@ export default function EnhancedPOSSystem() {
                     Shopping Cart{' '}
                     <span className="float-right text-base">
                       {' '}
-                      {cart.length}{' '}
+                      ({getUniqueProductCount(cart)})
                     </span>{' '}
                   </CardTitle>
                 </CardHeader>
@@ -1645,6 +1753,75 @@ export default function EnhancedPOSSystem() {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* > */}
+
+      <Dialog
+        open={isQuantityDialogOpen}
+        onOpenChange={setIsQuantityDialogOpen}
+      >
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Update Quantity</DialogTitle>
+            <DialogDescription>
+              Enter the desired quantity for {selectedCartItem?.name}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid grid-cols-4 gap-4">
+              {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((num) => (
+                <Button
+                  key={num}
+                  variant="outline"
+                  onClick={() =>
+                    setNewQuantity((prev) => prev + num.toString())
+                  }
+                >
+                  {num}
+                </Button>
+              ))}
+              <Button
+                variant="outline"
+                onClick={() => setNewQuantity((prev) => prev + '0')}
+              >
+                0
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => setNewQuantity('')}
+                className="col-span-2"
+              >
+                Clear
+              </Button>
+            </div>
+            <Input
+              type="number"
+              value={newQuantity}
+              onChange={(e) => setNewQuantity(e.target.value)}
+              className="text-center text-lg"
+            />
+          </div>
+          <DialogFooter>
+            <Button
+              onClick={() => {
+                if (selectedCartItem && newQuantity) {
+                  const quantity = parseInt(newQuantity);
+                  // Ask which batch to update
+                  const isNewBatch = selectedCartItem.batches.some(
+                    (batch: { isNewBatch: boolean }) => batch.isNewBatch
+                  );
+                  updateQuantity(selectedCartItem._id, isNewBatch, quantity);
+                  setIsQuantityDialogOpen(false);
+                  setNewQuantity('');
+                }
+              }}
+            >
+              Update Quantity
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       {/* Customer Dialog */}
       <Dialog
         open={isCustomerDialogOpen}
