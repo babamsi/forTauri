@@ -214,6 +214,7 @@ export default function ProductManagement() {
   const [restockingProduct, setRestockingProduct] = useState<Product | null>(
     null
   );
+  const [showNewBatch, setShowNewBatch] = useState(false);
   const [user, setUser] = useState({});
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const searchInputRef = useRef(null);
@@ -268,13 +269,16 @@ export default function ProductManagement() {
         product.sellPrice <= priceRange[1];
       const matchesExpiring =
         !showExpiringProducts || isProductExpiring(product);
+      // @ts-ignore
+      const matchesNewBatch = !showNewBatch || product.newBatch === true;
       return (
         matchesSearch &&
         matchesCategory &&
         matchesVendor &&
         matchesLowStock &&
         matchesPriceRange &&
-        matchesExpiring
+        matchesExpiring &&
+        matchesNewBatch
       );
     });
   }, [
@@ -284,7 +288,8 @@ export default function ProductManagement() {
     selectedVendor,
     showLowStock,
     priceRange,
-    showExpiringProducts
+    showExpiringProducts,
+    showNewBatch
   ]);
 
   const sortedProducts = useMemo(() => {
@@ -318,6 +323,7 @@ export default function ProductManagement() {
     setSelectedVendor('');
     setShowLowStock(false);
     setShowExpiringProducts(false);
+    setShowNewBatch(false);
     setPriceRange([0, 2000]);
     setSortConfig({ key: '', direction: '' });
     setCurrentPage(1);
@@ -688,6 +694,8 @@ export default function ProductManagement() {
                       setShowExpiringProducts={setShowExpiringProducts}
                       priceRange={priceRange}
                       setPriceRange={setPriceRange}
+                      showNewBatch={showNewBatch}
+                      setShowNewBatch={setShowNewBatch}
                     />
                   </DialogContent>
                 </Dialog>
@@ -711,6 +719,8 @@ export default function ProductManagement() {
                   setShowExpiringProducts={setShowExpiringProducts}
                   priceRange={priceRange}
                   setPriceRange={setPriceRange}
+                  showNewBatch={showNewBatch}
+                  setShowNewBatch={setShowNewBatch}
                 />
               </BottomSheet>
               <Button
@@ -828,7 +838,10 @@ export default function ProductManagement() {
                             }
                             className="w-12 justify-center"
                           >
-                            {product.quantity}
+                            {showNewBatch
+                              ? // @ts-ignore
+                                product.newBatchQuantity
+                              : product.quantity}
                           </Badge>
                         </TableCell>
                         <TableCell className="hidden text-right sm:table-cell">
@@ -1546,7 +1559,11 @@ function FilterOptions({
   // @ts-ignore
   priceRange,
   // @ts-ignore
-  setPriceRange
+  setPriceRange,
+  // @ts-ignore
+  showNewBatch,
+  // @ts-ignore
+  setShowNewBatch
 }) {
   return (
     <div className="space-y-4">
@@ -1606,6 +1623,15 @@ function FilterOptions({
           onCheckedChange={setShowExpiringProducts}
         />
         <Label htmlFor="show-expiring-products">Show Expiring Products</Label>
+      </div>
+
+      <div className="flex items-center space-x-2">
+        <Switch
+          id="show-new-batch"
+          checked={showNewBatch}
+          onCheckedChange={setShowNewBatch}
+        />
+        <Label htmlFor="show-new-batch">Show New Batch Products</Label>
       </div>
 
       <div>

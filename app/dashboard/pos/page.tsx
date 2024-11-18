@@ -1862,10 +1862,20 @@ export default function EnhancedPOSSystem() {
                           </TableCell>
                           {selectedTransaction.status === 'Refunded' && (
                             <TableCell className="text-xs">
-                              {
-                                // @ts-ignore
-                                item.returnQuantity
-                              }
+                              <Badge
+                                variant={
+                                  // @ts-ignore
+                                  item.returnQuantity
+                                    ? 'destructive'
+                                    : 'outline'
+                                }
+                                className="ml-2"
+                              >
+                                {
+                                  // @ts-ignore
+                                  item.returnQuantity
+                                }
+                              </Badge>
                             </TableCell>
                           )}
                           <TableCell className="text-xs">
