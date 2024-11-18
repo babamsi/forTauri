@@ -867,7 +867,7 @@ export default function ProductManagement() {
                           </div>
                         </TableCell>
                         <TableCell className="hidden text-right sm:table-cell">
-                          ${product.price}
+                          ${product.sellPrice}
                         </TableCell>
                         <TableCell className="hidden md:table-cell">
                           {product.vendor}
@@ -976,7 +976,7 @@ export default function ProductManagement() {
                     </div>
                     <div className="space-y-1">
                       <p className="font-semibold">Price</p>
-                      <p>${product.price.toFixed(2)}</p>
+                      <p>${product.sellPrice.toFixed(2)}</p>
                     </div>
                     <div className="space-y-1">
                       <p className="font-semibold">Supplier</p>

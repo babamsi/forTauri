@@ -539,32 +539,10 @@ export default function EnhancedPOSSystem() {
               )
               .filter((item) => item.quantity > 0);
           } else {
-            // If exceeding new batch quantity, try to use current batch
-            const remainingQuantity = newQuantity - product.newBatchQuantity;
-            if (remainingQuantity <= product.quantity) {
-              // Can fulfill with current batch
-              const updatedCart = prevCart.filter(
-                (item) => !(item._id === productId)
-              );
-              if (product.newBatchQuantity > 0) {
-                updatedCart.push({
-                  ...product,
-                  isNewBatch: true,
-                  quantity: product.newBatchQuantity
-                });
-              }
-              updatedCart.push({
-                ...product,
-                isNewBatch: false,
-                quantity: remainingQuantity
-              });
-              return updatedCart;
-            } else {
-              toast.error(
-                `Cannot add more than available stock (New: ${product.newBatchQuantity}, Current: ${product.quantity})`
-              );
-              return prevCart;
-            }
+            toast.error(
+              `Cannot exceed new batch quantity (${product.newBatchQuantity})`
+            );
+            return prevCart;
           }
         } else {
           // Trying to update current batch
@@ -579,7 +557,7 @@ export default function EnhancedPOSSystem() {
               .filter((item) => item.quantity > 0);
           } else {
             toast.error(
-              `Cannot exceed available quantity (${product.quantity})`
+              `Cannot exceed current batch quantity (${product.quantity})`
             );
             return prevCart;
           }
@@ -1058,54 +1036,61 @@ export default function EnhancedPOSSystem() {
           (batch: { isNewBatch: boolean }) => !batch.isNewBatch
         )?.quantity || 0;
 
-      const handleIncrease = () => {
-        // @ts-ignore
-        const product = productServer?.find((p) => p._id === groupedItem._id);
+      const handleIncrease = (groupedItem: any) => {
+        // Find the product in server data
+        const product = productServer?.find(
+          // @ts-ignore
+          (p) => p._id === groupedItem._id
+        );
         if (!product) return;
 
-        const currentTotal = groupedItem.batches.reduce(
-          (sum: number, batch: any) => sum + batch.quantity,
-          0
+        // Try to increase current batch first
+        const currentBatchItem = cart.find(
+          (item) => item._id === groupedItem._id && !item.isNewBatch
         );
 
-        // Try to increase new batch first if available
-        if (product.newBatchQuantity > 0) {
-          const newBatchCurrent =
-            groupedItem.batches.find((b: any) => b.isNewBatch)?.quantity || 0;
-          if (newBatchCurrent < product.newBatchQuantity) {
-            updateQuantity(groupedItem._id, true, newBatchCurrent + 1);
-            return;
-          }
+        if (currentBatchItem && currentBatchItem.quantity < product.quantity) {
+          updateQuantity(groupedItem._id, false, currentBatchItem.quantity + 1);
+          return;
         }
 
-        // If no new batch or new batch is full, try current batch
-        const currentBatchCurrent =
-          groupedItem.batches.find((b: any) => !b.isNewBatch)?.quantity || 0;
-        if (currentBatchCurrent < product.quantity) {
-          updateQuantity(groupedItem._id, false, currentBatchCurrent + 1);
+        // If current batch is maxed out or doesn't exist, try new batch
+        const newBatchItem = cart.find(
+          (item) => item._id === groupedItem._id && item.isNewBatch
+        );
+
+        if (newBatchItem && newBatchItem.quantity < product.newBatchQuantity) {
+          updateQuantity(groupedItem._id, true, newBatchItem.quantity + 1);
+          return;
+        }
+
+        // If neither batch exists, add to current batch
+        if (!currentBatchItem && !newBatchItem && product.quantity > 0) {
+          addProductToCart(product, false);
           return;
         }
 
         toast.error('Maximum quantity reached');
       };
 
-      const handleDecrease = () => {
-        // Decrease from current batch first
-        const currentBatchQty = groupedItem.batches.find(
-          (b: any) => !b.isNewBatch
-        )?.quantity;
+      const handleDecrease = (groupedItem: any) => {
+        // Try to decrease current batch first
+        const currentBatchItem = cart.find(
+          (item) => item._id === groupedItem._id && !item.isNewBatch
+        );
 
-        if (currentBatchQty > 0) {
-          updateQuantity(groupedItem._id, false, currentBatchQty - 1);
+        if (currentBatchItem && currentBatchItem.quantity > 0) {
+          updateQuantity(groupedItem._id, false, currentBatchItem.quantity - 1);
           return;
         }
 
-        // If no current batch quantity, decrease from new batch
-        const newBatchQty = groupedItem.batches.find((b: any) => b.isNewBatch)
-          ?.quantity;
+        // If no current batch or it's at 0, try new batch
+        const newBatchItem = cart.find(
+          (item) => item._id === groupedItem._id && item.isNewBatch
+        );
 
-        if (newBatchQty > 0) {
-          updateQuantity(groupedItem._id, true, newBatchQty - 1);
+        if (newBatchItem && newBatchItem.quantity > 0) {
+          updateQuantity(groupedItem._id, true, newBatchItem.quantity - 1);
         }
       };
 
@@ -1127,21 +1112,19 @@ export default function EnhancedPOSSystem() {
               ${groupedItem.sellPrice.toFixed(2)} each
             </div>
           </div>
-          <div className="flex items-center space-x-2">
+          <div className="flex items-center space-x-1">
             <Button
               size="sm"
               variant="outline"
-              onClick={() =>
-                // @ts-ignore
-                handleDecrease(groupedItem)
-              }
+              className="h-7 w-7 p-0"
+              onClick={() => handleDecrease(groupedItem)}
             >
-              <Minus className="h-4 w-4" />
+              <Minus className="h-3 w-3" />
             </Button>
 
             <Button
               variant="ghost"
-              className="w-12 px-0"
+              className="h-7 w-8 px-0 text-sm"
               onClick={() => {
                 setSelectedCartItem(groupedItem);
                 setNewQuantity(totalQuantity.toString());
@@ -1154,17 +1137,16 @@ export default function EnhancedPOSSystem() {
             <Button
               size="sm"
               variant="outline"
-              onClick={() =>
-                // @ts-ignore
-                handleIncrease(groupedItem)
-              }
+              className="h-7 w-7 p-0"
+              onClick={() => handleIncrease(groupedItem)}
             >
-              <Plus className="h-4 w-4" />
+              <Plus className="h-3 w-3" />
             </Button>
 
             <Button
               size="sm"
               variant="destructive"
+              className="h-7 w-7 p-0"
               onClick={() => {
                 groupedItem.batches.forEach(
                   (batch: { isNewBatch: boolean }) => {
@@ -1173,7 +1155,7 @@ export default function EnhancedPOSSystem() {
                 );
               }}
             >
-              <Trash2 className="h-4 w-4" />
+              <Trash2 className="h-3 w-3" />
             </Button>
           </div>
         </div>
