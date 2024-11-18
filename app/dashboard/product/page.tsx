@@ -257,9 +257,10 @@ export default function ProductManagement() {
         product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
         product.vendor.toLowerCase().includes(searchQuery.toLowerCase()) ||
         product.addedBy.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        product.receiptNumber
-          .toLowerCase()
-          .includes(searchQuery.toLowerCase()) ||
+        (product.receiptNumber &&
+          product.receiptNumber
+            .toLowerCase()
+            .includes(searchQuery.toLowerCase())) ||
         product.barcode === searchQuery;
       const matchesCategory =
         !selectedCategory || product.category === selectedCategory;

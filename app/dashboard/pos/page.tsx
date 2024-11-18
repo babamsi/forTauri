@@ -509,34 +509,81 @@ export default function EnhancedPOSSystem() {
   const updateQuantity = useCallback(
     (productId: string, isNewBatch: boolean, newQuantity: number) => {
       setCart((prevCart) => {
-        return prevCart
-          .map((item) => {
-            if (item._id === productId && item.isNewBatch === isNewBatch) {
-              // @ts-ignore
-              const product = productServer.find((p) => p._id === productId);
-              if (!product) {
-                toast.error(`Product not found in inventory.`);
-                return item;
+        // Find the product in server data
+        const product = productServer?.find(
+          // @ts-ignore
+          (p) => p._id === productId
+        );
+        if (!product) {
+          toast.error(`Product not found in inventory.`);
+          return prevCart;
+        }
+
+        // Get current cart items for this product
+        const currentBatchItem = prevCart.find(
+          (item) => item._id === productId && !item.isNewBatch
+        );
+        const newBatchItem = prevCart.find(
+          (item) => item._id === productId && item.isNewBatch
+        );
+
+        // If trying to update new batch
+        if (isNewBatch) {
+          if (newQuantity <= product.newBatchQuantity) {
+            // Update new batch quantity directly
+            return prevCart
+              .map((item) =>
+                item._id === productId && item.isNewBatch
+                  ? { ...item, quantity: newQuantity }
+                  : item
+              )
+              .filter((item) => item.quantity > 0);
+          } else {
+            // If exceeding new batch quantity, try to use current batch
+            const remainingQuantity = newQuantity - product.newBatchQuantity;
+            if (remainingQuantity <= product.quantity) {
+              // Can fulfill with current batch
+              const updatedCart = prevCart.filter(
+                (item) => !(item._id === productId)
+              );
+              if (product.newBatchQuantity > 0) {
+                updatedCart.push({
+                  ...product,
+                  isNewBatch: true,
+                  quantity: product.newBatchQuantity
+                });
               }
-
-              const maxQuantity = isNewBatch
-                ? product.newBatchQuantity
-                : product.quantity;
-
-              if (newQuantity > maxQuantity) {
-                toast.error(
-                  `Cannot add more ${item.name} from ${
-                    isNewBatch ? 'new' : 'current'
-                  } batch. Stock limit reached.`
-                );
-                return item;
-              }
-
-              return { ...item, quantity: newQuantity };
+              updatedCart.push({
+                ...product,
+                isNewBatch: false,
+                quantity: remainingQuantity
+              });
+              return updatedCart;
+            } else {
+              toast.error(
+                `Cannot add more than available stock (New: ${product.newBatchQuantity}, Current: ${product.quantity})`
+              );
+              return prevCart;
             }
-            return item;
-          })
-          .filter((item) => item.quantity > 0);
+          }
+        } else {
+          // Trying to update current batch
+          if (newQuantity <= product.quantity) {
+            // Update current batch quantity directly
+            return prevCart
+              .map((item) =>
+                item._id === productId && !item.isNewBatch
+                  ? { ...item, quantity: newQuantity }
+                  : item
+              )
+              .filter((item) => item.quantity > 0);
+          } else {
+            toast.error(
+              `Cannot exceed available quantity (${product.quantity})`
+            );
+            return prevCart;
+          }
+        }
       });
     },
     [productServer]
@@ -1011,6 +1058,57 @@ export default function EnhancedPOSSystem() {
           (batch: { isNewBatch: boolean }) => !batch.isNewBatch
         )?.quantity || 0;
 
+      const handleIncrease = () => {
+        // @ts-ignore
+        const product = productServer?.find((p) => p._id === groupedItem._id);
+        if (!product) return;
+
+        const currentTotal = groupedItem.batches.reduce(
+          (sum: number, batch: any) => sum + batch.quantity,
+          0
+        );
+
+        // Try to increase new batch first if available
+        if (product.newBatchQuantity > 0) {
+          const newBatchCurrent =
+            groupedItem.batches.find((b: any) => b.isNewBatch)?.quantity || 0;
+          if (newBatchCurrent < product.newBatchQuantity) {
+            updateQuantity(groupedItem._id, true, newBatchCurrent + 1);
+            return;
+          }
+        }
+
+        // If no new batch or new batch is full, try current batch
+        const currentBatchCurrent =
+          groupedItem.batches.find((b: any) => !b.isNewBatch)?.quantity || 0;
+        if (currentBatchCurrent < product.quantity) {
+          updateQuantity(groupedItem._id, false, currentBatchCurrent + 1);
+          return;
+        }
+
+        toast.error('Maximum quantity reached');
+      };
+
+      const handleDecrease = () => {
+        // Decrease from current batch first
+        const currentBatchQty = groupedItem.batches.find(
+          (b: any) => !b.isNewBatch
+        )?.quantity;
+
+        if (currentBatchQty > 0) {
+          updateQuantity(groupedItem._id, false, currentBatchQty - 1);
+          return;
+        }
+
+        // If no current batch quantity, decrease from new batch
+        const newBatchQty = groupedItem.batches.find((b: any) => b.isNewBatch)
+          ?.quantity;
+
+        if (newBatchQty > 0) {
+          updateQuantity(groupedItem._id, true, newBatchQty - 1);
+        }
+      };
+
       return (
         <div
           key={groupedItem._id}
@@ -1033,18 +1131,10 @@ export default function EnhancedPOSSystem() {
             <Button
               size="sm"
               variant="outline"
-              onClick={() => {
-                // Decrease from new batch first if available
-                if (newBatchQuantity > 0) {
-                  updateQuantity(groupedItem._id, true, newBatchQuantity - 1);
-                } else if (currentBatchQuantity > 0) {
-                  updateQuantity(
-                    groupedItem._id,
-                    false,
-                    currentBatchQuantity - 1
-                  );
-                }
-              }}
+              onClick={() =>
+                // @ts-ignore
+                handleDecrease(groupedItem)
+              }
             >
               <Minus className="h-4 w-4" />
             </Button>
@@ -1064,19 +1154,10 @@ export default function EnhancedPOSSystem() {
             <Button
               size="sm"
               variant="outline"
-              onClick={() => {
-                // If there's new batch quantity, increment that
-                if (groupedItem.isNewBatch) {
-                  updateQuantity(groupedItem._id, true, newBatchQuantity + 1);
-                } else {
-                  // Otherwise increment current batch
-                  updateQuantity(
-                    groupedItem._id,
-                    false,
-                    currentBatchQuantity + 1
-                  );
-                }
-              }}
+              onClick={() =>
+                // @ts-ignore
+                handleIncrease(groupedItem)
+              }
             >
               <Plus className="h-4 w-4" />
             </Button>
@@ -1098,6 +1179,37 @@ export default function EnhancedPOSSystem() {
         </div>
       );
     });
+  };
+
+  // Update the quantity dialog handler
+  const handleQuantityUpdate = (productId: string, newQty: number) => {
+    // @ts-ignore
+    const product = productServer?.find((p) => p._id === productId);
+    if (!product) return;
+
+    const totalAvailable = (product.newBatchQuantity || 0) + product.quantity;
+
+    if (newQty > totalAvailable) {
+      toast.error(`Cannot exceed total available quantity (${totalAvailable})`);
+      return;
+    }
+
+    // Try to allocate to new batch first, then current batch
+    let newBatchQty = Math.min(newQty, product.newBatchQuantity || 0);
+    let currentBatchQty = Math.max(0, newQty - newBatchQty);
+
+    // Update new batch if needed
+    if (newBatchQty > 0) {
+      updateQuantity(productId, true, newBatchQty);
+    }
+
+    // Update current batch if needed
+    if (currentBatchQty > 0) {
+      updateQuantity(productId, false, currentBatchQty);
+    }
+
+    setIsQuantityDialogOpen(false);
+    setNewQuantity('');
   };
 
   return (
@@ -1805,14 +1917,10 @@ export default function EnhancedPOSSystem() {
             <Button
               onClick={() => {
                 if (selectedCartItem && newQuantity) {
-                  const quantity = parseInt(newQuantity);
-                  // Ask which batch to update
-                  const isNewBatch = selectedCartItem.batches.some(
-                    (batch: { isNewBatch: boolean }) => batch.isNewBatch
+                  handleQuantityUpdate(
+                    selectedCartItem._id,
+                    parseInt(newQuantity)
                   );
-                  updateQuantity(selectedCartItem._id, isNewBatch, quantity);
-                  setIsQuantityDialogOpen(false);
-                  setNewQuantity('');
                 }
               }}
             >
