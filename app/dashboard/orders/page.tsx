@@ -400,14 +400,17 @@ export default function TransactionHistory() {
                   <span>Subtotal:</span>
                   <span>
                     $
-                    {// @ts-ignore
-                    (
-                      selectedTransaction.totalAmount -
+                    {
                       // @ts-ignore
-                      selectedTransaction.vat +
                       // @ts-ignore
-                      selectedTransaction.discount
-                    ).toFixed(2)}
+                      (
+                        selectedTransaction.totalAmount -
+                        // @ts-ignore
+                        selectedTransaction.vat +
+                        // @ts-ignore
+                        selectedTransaction.discount
+                      ).toFixed(2)
+                    }
                   </span>
                 </div>
                 <div className="flex justify-between">
