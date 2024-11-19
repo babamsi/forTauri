@@ -4,6 +4,18 @@ import { Employee } from '@/constants/data';
 import { ColumnDef } from '@tanstack/react-table';
 import { CellAction } from './cell-action';
 
+import { format, parseISO } from 'date-fns';
+
+const formatDate = (dateString: string | undefined) => {
+  if (!dateString) return 'N/A';
+  try {
+    return format(parseISO(dateString), 'MMM d, yyyy');
+  } catch (error) {
+    console.error('Error formatting date:', error);
+    return 'Invalid Date';
+  }
+};
+
 export const columns: ColumnDef<Employee>[] = [
   {
     id: 'select',
@@ -25,27 +37,40 @@ export const columns: ColumnDef<Employee>[] = [
     enableHiding: false
   },
   {
-    accessorKey: 'first_name',
+    accessorKey: 'name',
     header: 'NAME'
   },
   {
-    accessorKey: 'country',
-    header: 'COUNTRY'
+    accessorKey: 'username',
+    header: 'USERNAME'
   },
   {
-    accessorKey: 'email',
-    header: 'EMAIL'
+    accessorKey: 'role',
+    header: 'ROLE'
   },
   {
-    accessorKey: 'job',
-    header: 'COMPANY'
+    accessorKey: 'createdAt',
+    header: 'JOINED',
+    cell: ({ row }) =>
+      // @ts-ignore
+      formatDate(row.original.createdAt)
   },
   {
-    accessorKey: 'gender',
-    header: 'GENDER'
+    accessorKey: 'soldItems.length',
+    header: 'SOLD ITEMS',
+    cell: ({ row }) =>
+      // @ts-ignore
+      row.original.soldItems.length
   },
   {
     id: 'actions',
-    cell: ({ row }) => <CellAction data={row.original} />
+    cell: ({ row }) => (
+      <CellAction
+        data={
+          // @ts-ignore
+          row.original
+        }
+      />
+    )
   }
 ];

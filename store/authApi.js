@@ -201,6 +201,48 @@ export const authApi = createApi({
           Authorization: `Bearer ${cred.cookies}`
         }
       })
+    }),
+    getAllStuffs: builder.query({
+      query: (cred) => ({
+        url: `/auth/getStuffs`,
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${cred}`
+        }
+      })
+    }),
+    getStuff: builder.query({
+      query: (cred) => ({
+        url: `/auth/getStuff/${cred.id}`,
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${cred.cookies}`
+        }
+      })
+    }),
+    createStuff: builder.mutation({
+      query: (cred) => ({
+        url: `/auth/createStuff`,
+        method: 'POST',
+        body: cred.data,
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${cred.cookies}`
+        }
+      })
+    }),
+    updateStuff: builder.mutation({
+      query: (cred) => ({
+        url: `/auth/updateStuff/${cred.id}`,
+        method: 'POST',
+        body: cred.data,
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${cred.cookies}`
+        }
+      })
     })
   })
 });
@@ -224,5 +266,9 @@ export const {
   useGetAllOrdersQuery,
   useGetAllCustomerQuery,
   useGetOrderFromCustomerQuery,
-  useRegisterCustomerMutation
+  useRegisterCustomerMutation,
+  useGetAllStuffsQuery,
+  useGetStuffQuery,
+  useCreateStuffMutation,
+  useUpdateStuffMutation
 } = authApi;

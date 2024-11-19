@@ -60,56 +60,37 @@ export function EmployeeTable<TData, TValue>({
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  // Search params
-  const page = searchParams?.get('page') ?? '1';
-  const pageAsNumber = Number(page);
-  const fallbackPage =
-    isNaN(pageAsNumber) || pageAsNumber < 1 ? 1 : pageAsNumber;
-  const per_page = searchParams?.get('limit') ?? '10';
-  const perPageAsNumber = Number(per_page);
-  const fallbackPerPage = isNaN(perPageAsNumber) ? 10 : perPageAsNumber;
 
-  /* this can be used to get the selectedrows 
-  console.log("value", table.getFilteredSelectedRowModel()); */
-
-  // Create query string
-  const createQueryString = React.useCallback(
-    (params: Record<string, string | number | null>) => {
-      const newSearchParams = new URLSearchParams(searchParams?.toString());
-
-      for (const [key, value] of Object.entries(params)) {
-        if (value === null) {
-          newSearchParams.delete(key);
-        } else {
-          newSearchParams.set(key, String(value));
-        }
-      }
-
-      return newSearchParams.toString();
-    },
-    [searchParams]
-  );
-
-  // Handle server-side pagination
+  // Add pagination state
   const [{ pageIndex, pageSize }, setPagination] =
     React.useState<PaginationState>({
-      pageIndex: fallbackPage - 1,
-      pageSize: fallbackPerPage
+      pageIndex: pageNo - 1,
+      pageSize: 10
     });
 
-  React.useEffect(() => {
-    router.push(
-      `${pathname}?${createQueryString({
-        page: pageIndex + 1,
-        limit: pageSize
-      })}`,
-      {
-        scroll: false
-      }
-    );
+  // Add state for search value
+  const [globalFilter, setGlobalFilter] = React.useState('');
 
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pageIndex, pageSize]);
+  // Function to filter data
+  const filterData = React.useCallback(
+    (data: TData[]) => {
+      if (!globalFilter) return data;
+
+      return data.filter((item: any) => {
+        return Object.keys(item).some((key) => {
+          const value = item[key];
+          if (typeof value === 'string') {
+            return value.toLowerCase().includes(globalFilter.toLowerCase());
+          }
+          if (typeof value === 'number') {
+            return value.toString().includes(globalFilter);
+          }
+          return false;
+        });
+      });
+    },
+    [globalFilter]
+  );
 
   const table = useReactTable({
     data,
@@ -118,102 +99,66 @@ export function EmployeeTable<TData, TValue>({
     getCoreRowModel: getCoreRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
     state: {
-      pagination: { pageIndex, pageSize }
+      pagination: { pageIndex, pageSize },
+      globalFilter
     },
     onPaginationChange: setPagination,
+    onGlobalFilterChange: setGlobalFilter,
     getPaginationRowModel: getPaginationRowModel(),
-    manualPagination: true,
-    manualFiltering: true
+    filterFns: {
+      fuzzy: (row, columnId, value, addMeta) => {
+        const itemValue = row.getValue(columnId);
+        if (typeof itemValue === 'string') {
+          return itemValue.toLowerCase().includes(value.toLowerCase());
+        }
+        if (typeof itemValue === 'number') {
+          return itemValue.toString().includes(value);
+        }
+        return false;
+      }
+    },
+    // @ts-ignore
+    globalFilterFn: 'fuzzy'
   });
 
-  const searchValue = table.getColumn(searchKey)?.getFilterValue() as string;
+  // Handle search input change
+  const handleSearchChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const value = event.target.value;
+    setGlobalFilter(value);
 
-  // React.useEffect(() => {
-  //   if (debounceValue.length > 0) {
-  //     router.push(
-  //       `${pathname}?${createQueryString({
-  //         [selectedOption.value]: `${debounceValue}${
-  //           debounceValue.length > 0 ? `.${filterVariety}` : ""
-  //         }`,
-  //       })}`,
-  //       {
-  //         scroll: false,
-  //       }
-  //     )
-  //   }
-
-  //   if (debounceValue.length === 0) {
-  //     router.push(
-  //       `${pathname}?${createQueryString({
-  //         [selectedOption.value]: null,
-  //       })}`,
-  //       {
-  //         scroll: false,
-  //       }
-  //     )
-  //   }
-  //   // eslint-disable-next-line react-hooks/exhaustive-deps
-  // }, [debounceValue, filterVariety, selectedOption.value])
-
-  React.useEffect(() => {
-    if (searchValue?.length > 0) {
-      router.push(
-        `${pathname}?${createQueryString({
-          page: null,
-          limit: null,
-          search: searchValue
-        })}`,
-        {
-          scroll: false
-        }
-      );
+    // Reset to first page when searching
+    if (table.getState().pagination.pageIndex !== 0) {
+      table.setPageIndex(0);
     }
-    if (searchValue?.length === 0 || searchValue === undefined) {
-      router.push(
-        `${pathname}?${createQueryString({
-          page: null,
-          limit: null,
-          search: null
-        })}`,
-        {
-          scroll: false
-        }
-      );
-    }
-
-    setPagination((prev) => ({ ...prev, pageIndex: 0 }));
-
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchValue]);
+  };
 
   return (
     <>
       <Suspense>
-        <Input
-          placeholder={`Search ${searchKey}...`}
-          value={(table.getColumn(searchKey)?.getFilterValue() as string) ?? ''}
-          onChange={(event) =>
-            table.getColumn(searchKey)?.setFilterValue(event.target.value)
-          }
-          className="w-full md:max-w-sm"
-        />
+        <div className="flex items-center py-4">
+          <Input
+            placeholder={`Search ${searchKey}...`}
+            value={globalFilter}
+            onChange={handleSearchChange}
+            className="w-full md:max-w-sm"
+          />
+        </div>
+
         <ScrollArea className="h-[calc(80vh-220px)] rounded-md border">
           <Table className="relative">
             <TableHeader>
               {table.getHeaderGroups().map((headerGroup) => (
                 <TableRow key={headerGroup.id}>
-                  {headerGroup.headers.map((header) => {
-                    return (
-                      <TableHead key={header.id}>
-                        {header.isPlaceholder
-                          ? null
-                          : flexRender(
-                              header.column.columnDef.header,
-                              header.getContext()
-                            )}
-                      </TableHead>
-                    );
-                  })}
+                  {headerGroup.headers.map((header) => (
+                    <TableHead key={header.id}>
+                      {header.isPlaceholder
+                        ? null
+                        : flexRender(
+                            header.column.columnDef.header,
+                            header.getContext()
+                          )}
+                    </TableHead>
+                  ))}
                 </TableRow>
               ))}
             </TableHeader>
@@ -240,7 +185,7 @@ export function EmployeeTable<TData, TValue>({
                     colSpan={columns.length}
                     className="h-24 text-center"
                   >
-                    No results.
+                    No results found.
                   </TableCell>
                 </TableRow>
               )}

@@ -146,10 +146,16 @@ export const adminNavItems: NavItem[] = [
     label: 'employee'
   },
   {
+    title: 'Customers',
+    href: '/dashboard/customermanager',
+    icon: 'sold',
+    label: 'customers'
+  },
+  {
     title: 'Orders',
     href: '/dashboard/orders',
-    icon: 'profile',
-    label: 'profile'
+    icon: 'order',
+    label: 'orders'
   }
 ];
 
