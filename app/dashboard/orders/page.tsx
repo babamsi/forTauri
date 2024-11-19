@@ -402,6 +402,8 @@ export default function TransactionHistory() {
                     $
                     {
                       // @ts-ignore
+                      // @ts-ignore
+                      // @ts-ignore
                       (
                         selectedTransaction.totalAmount -
                         // @ts-ignore
