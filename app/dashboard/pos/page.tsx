@@ -1053,12 +1053,19 @@ export default function EnhancedPOSSystem() {
         );
 
         const currentBatchQty = currentBatchItem?.quantity || 0;
-        const newBatchQty = newBatchItem?.newBatchQuantity || 0;
+        const newBatchQty = newBatchItem?.quantity || 0;
+
+        // If this is a new batch item, increase new batch quantity
+        if (groupedItem.isNewBatch && newBatchQty < product.newBatchQuantity) {
+          updateQuantity(groupedItem._id, true, newBatchQty + 1);
+          return;
+        }
 
         // Try to increase current batch first
         if (
           currentBatchQty <
-          Math.abs(product.quantity - product.newBatchQuantity)
+            Math.abs(product.quantity - product.newBatchQuantity) ||
+          currentBatchQty < product.quantity
         ) {
           updateQuantity(groupedItem._id, false, currentBatchQty + 1);
           return;

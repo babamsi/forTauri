@@ -1,7 +1,7 @@
 'use client';
 
 import { Breadcrumbs } from '@/components/breadcrumbs';
-import { ProductForm } from '@/components/forms/product-form';
+// import { ProductForm } from '@/components/forms/product-form';
 import { EmployeeForm } from '@/components/forms/employee-form';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import React, { useState, useEffect } from 'react';
@@ -44,6 +44,7 @@ export default function Page() {
           <div>Loading...</div>
         ) : (
           <EmployeeForm
+            // @ts-ignore
             categories={[
               { _id: 'shirts', name: 'shirts' },
               { _id: 'pants', name: 'pants' }
