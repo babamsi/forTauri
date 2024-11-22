@@ -56,6 +56,7 @@ export default function AppSidebar() {
   const { data: session } = useSession();
   const [user, setUser] = React.useState(null);
   const pathname = usePathname();
+  // @ts-ignore
   const nav = user?.role === 'stuff' ? navItems : adminNavItems;
   React.useEffect(() => {
     getUserInfo().then((k: any) => {

@@ -644,8 +644,8 @@ export default function TransactionHistory() {
                   <span>Subtotal:</span>
                   <span>
                     $
-                    {// @ts-ignore
-                    (
+                    {(
+                      // @ts-ignore
                       selectedTransaction.totalAmount -
                       // @ts-ignore
                       selectedTransaction.vat +
