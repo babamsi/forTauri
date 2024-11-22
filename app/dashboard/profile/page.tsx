@@ -10,7 +10,7 @@ export default function page() {
   return (
     <PageContainer scrollable={true}>
       <div className="space-y-4">
-        <Breadcrumbs items={breadcrumbItems} />
+        {/* <Breadcrumbs items={breadcrumbItems} /> */}
         <CreateProfileOne categories={[]} initialData={null} />
       </div>
     </PageContainer>
