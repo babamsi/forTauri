@@ -13,7 +13,7 @@ export default function Page() {
   return (
     <PageContainer>
       <div className="space-y-4">
-        <Breadcrumbs items={breadcrumbItems} />
+        {/* <Breadcrumbs items={breadcrumbItems} /> */}
         <div className="flex items-start justify-between">
           <Heading title={`Kanban`} description="Manage tasks by dnd" />
           <NewTaskDialog />
