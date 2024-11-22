@@ -243,6 +243,17 @@ export const authApi = createApi({
           Authorization: `Bearer ${cred.cookies}`
         }
       })
+    }),
+    deleteStuff: builder.mutation({
+      query: (cred) => ({
+        url: `/auth/deleteStuff/${cred.id}`,
+        method: 'DELETE',
+        body: cred.data,
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${cred.cookies}`
+        }
+      })
     })
   })
 });
@@ -270,5 +281,6 @@ export const {
   useGetAllStuffsQuery,
   useGetStuffQuery,
   useCreateStuffMutation,
-  useUpdateStuffMutation
+  useUpdateStuffMutation,
+  useDeleteStuffMutation
 } = authApi;

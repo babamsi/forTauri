@@ -25,7 +25,9 @@ import {
   SelectTrigger,
   SelectValue
 } from '@/components/ui/select';
-import { useToast } from '../ui/use-toast';
+// import { useToast } from '../ui/use-toast';
+import { toast, ToastContainer } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 import {
   useUpdateStuffMutation,
   useCreateStuffMutation
@@ -53,7 +55,7 @@ interface EmployeeFormProps {
 export const EmployeeForm: React.FC<EmployeeFormProps> = ({ initialData }) => {
   const params = useParams();
   const router = useRouter();
-  const { toast } = useToast();
+  // const { toast } = useToast();
   const [loading, setLoading] = useState(false);
   const [cookies, setCookies] = useState(null);
 
@@ -117,11 +119,12 @@ export const EmployeeForm: React.FC<EmployeeFormProps> = ({ initialData }) => {
         });
         console.log(result);
         if ('data' in result) {
-          toast({
-            variant: 'default',
-            title: 'Success',
-            description: 'Employee Updated Successfully'
-          });
+          // toast({
+          //   variant: 'default',
+          //   title: 'Success',
+          //   description: 'Employee Updated Successfully'
+          // });
+          toast.success('Employee Update ');
           router.push('/dashboard/employee');
         } else if ('error' in result) {
           const error = result.error as any;
@@ -134,11 +137,7 @@ export const EmployeeForm: React.FC<EmployeeFormProps> = ({ initialData }) => {
         });
 
         if ('data' in result) {
-          toast({
-            variant: 'default',
-            title: 'Success',
-            description: 'Employee Created Successfully'
-          });
+          toast.success('Employee Created Succesfully');
           router.push('/dashboard/employee');
         } else if ('error' in result) {
           const error = result.error as any;
@@ -147,11 +146,7 @@ export const EmployeeForm: React.FC<EmployeeFormProps> = ({ initialData }) => {
       }
     } catch (error: any) {
       console.error('Submission Error:', error);
-      toast({
-        variant: 'destructive',
-        title: 'Error',
-        description: error.message || 'Something went wrong'
-      });
+      toast.error(error?.message || 'Something Went Wrong');
     } finally {
       setLoading(false);
     }
@@ -159,6 +154,7 @@ export const EmployeeForm: React.FC<EmployeeFormProps> = ({ initialData }) => {
 
   return (
     <>
+      <ToastContainer />
       <div className="flex items-center justify-between">
         <Heading title={title} description={description} />
         {initialData && (

@@ -9,12 +9,16 @@ import { Heading } from '@/components/ui/heading';
 import { Separator } from '@/components/ui/separator';
 import { Employee } from '@/constants/data';
 import { cn } from '@/lib/utils';
-import { Plus } from 'lucide-react';
+import { Plus, Router } from 'lucide-react';
 import Link from 'next/link';
 import { useState, useEffect } from 'react';
-import { getAuthCookie, getUserInfo } from '@/actions/auth.actions';
-
+import {
+  deleteAuthCookie,
+  getAuthCookie,
+  getUserInfo
+} from '@/actions/auth.actions';
 import { useGetAllStuffsQuery } from '@/store/authApi';
+import { useRouter } from 'next/navigation';
 
 const breadcrumbItems = [
   { title: 'Dashboard', link: '/dashboard' },
@@ -28,6 +32,8 @@ type paramsProps = {
 };
 
 export default function Page({ searchParams }: paramsProps) {
+  const router = useRouter();
+
   const [cookies, setCookies] = useState('');
   const [user, setUser] = useState(null);
   const [allStuffs, setAllStuffs] = useState([]);
@@ -57,6 +63,22 @@ export default function Page({ searchParams }: paramsProps) {
   // );
   // const employeeRes = await res.json();
   // const totalUsers = employeeRes.total_users; //1000
+  console.log(data);
+  if (
+    // @ts-ignore
+    user?.role !== 'admin'
+  ) {
+    router.push('/dashboard');
+  }
+
+  if (
+    // @ts-ignore
+    error?.status === 401
+  ) {
+    deleteAuthCookie();
+    return;
+  }
+
   const pageCount = Math.ceil(data?.length / pageLimit);
   // const employee: Employee[] = employeeRes.users;
   return (

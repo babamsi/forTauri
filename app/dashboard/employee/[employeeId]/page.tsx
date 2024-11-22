@@ -8,6 +8,7 @@ import React, { useState, useEffect } from 'react';
 import { useGetStuffQuery } from '@/store/authApi';
 import { useParams } from 'next/navigation';
 import { getAuthCookie } from '@/actions/auth.actions';
+import { useRouter } from 'next/navigation';
 
 const breadcrumbItems = [
   { title: 'Dashboard', link: '/dashboard' },
@@ -16,6 +17,7 @@ const breadcrumbItems = [
 ];
 
 export default function Page() {
+  const router = useRouter();
   const params = useParams();
   const employeeId = params.employeeId as string;
   const [cookies, setCookies] = useState(null);
@@ -28,13 +30,24 @@ export default function Page() {
   }, []);
 
   // Fetch specific user data using the id from params
-  const { data: user, isLoading } = useGetStuffQuery(
+  const {
+    data: user,
+    isLoading,
+    error
+  } = useGetStuffQuery(
     { cookies, id: employeeId },
     { skip: !cookies || !employeeId }
   );
 
   console.log('Employee ID:', employeeId);
-  console.log('User Data:', user);
+  console.log(error);
+
+  if (
+    // @ts-ignore
+    error?.status === 403
+  ) {
+    return router.push('/');
+  }
 
   return (
     <ScrollArea className="h-full">
