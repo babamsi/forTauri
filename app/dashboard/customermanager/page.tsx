@@ -359,6 +359,7 @@ const TransactionsTable: React.FC<{
   onViewInvoice: (invoice: Invoice) => void;
   onViewCustomer: (customer: Customer) => void;
 }> = ({ transactions, onViewInvoice, onViewCustomer }) => {
+  console.log(transactions);
   return (
     <Card>
       <CardHeader>
@@ -953,6 +954,7 @@ export default function CustomersPage() {
   }, []);
 
   const filteredData = useMemo(() => {
+    // console.log(customers);
     return customers
       .filter((customer) => {
         const customerDate = new Date(customer.updatedAt);
@@ -989,6 +991,8 @@ export default function CustomersPage() {
     const startIndex = (transactionsPage - 1) * transactionsPerPage;
     return filteredData.slice(startIndex, startIndex + transactionsPerPage);
   }, [filteredData, transactionsPage]);
+
+  // console.log(paginatedData);
 
   const totalPages = Math.ceil(filteredData.length / itemsPerPage);
   const totalTransactionPages = Math.ceil(

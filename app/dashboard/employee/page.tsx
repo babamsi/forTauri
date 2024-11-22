@@ -62,7 +62,10 @@ export default function Page({ searchParams }: paramsProps) {
   return (
     <PageContainer>
       <div className="space-y-4">
-        <Breadcrumbs items={breadcrumbItems} />
+        {
+          // @ts-ignore
+          <Breadcrumbs items={breadcrumbItems} />
+        }
 
         <div className="flex items-start justify-between">
           <Heading

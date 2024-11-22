@@ -114,6 +114,7 @@ import {
 import { Calendar } from '@/components/ui/calendar';
 import { useMediaQuery } from 'react-responsive';
 import { cn } from '@/lib/utils';
+import PageContainer from '@/components/layout/page-container';
 
 interface Product {
   _id: string;
@@ -578,165 +579,199 @@ export default function ProductManagement() {
   }
 
   return (
-    <div className="min-h-screen p-4 sm:p-6">
-      <div className="mx-auto max-w-7xl space-y-4 sm:space-y-6">
-        <div className="flex flex-col items-start justify-between space-y-4 sm:flex-row sm:items-center sm:space-y-0">
-          <h1 className="text-2xl font-bold">Product Management</h1>
-          <div className="flex w-full flex-col space-y-2 sm:w-auto sm:flex-row sm:space-x-2 sm:space-y-0">
-            {isMobile ? (
-              <Button
-                className="w-full sm:w-auto"
-                onClick={() => setIsAddProductDialogOpen(true)}
-              >
-                <Plus className="mr-2 h-4 w-4" />
-                Add Product
-              </Button>
-            ) : (
-              <Dialog
-                open={isAddProductDialogOpen}
-                onOpenChange={setIsAddProductDialogOpen}
-              >
-                <DialogTrigger asChild>
-                  <Button className="w-full sm:w-auto">
-                    <Plus className="mr-2 h-4 w-4" />
-                    Add Product
-                  </Button>
-                </DialogTrigger>
-                <DialogContent className="max-h-[80vh] overflow-y-auto sm:max-w-[425px]">
-                  <DialogHeader>
-                    <DialogTitle>Add New Product</DialogTitle>
-                    <DialogDescription>
-                      Enter the details for the new product.
-                    </DialogDescription>
-                  </DialogHeader>
-                  <div className="flex-1 overflow-y-auto pr-1">
-                    <ProductForm
-                      onSubmit={handleAddProduct}
-                      categories={categories}
-                      vendors={vendors}
-                    />
-                  </div>
-                </DialogContent>
-              </Dialog>
-            )}
-
-            <BottomSheet
-              isOpen={isMobile && isAddProductDialogOpen}
-              onClose={() => setIsAddProductDialogOpen(false)}
-              title="Add New Product"
-            >
-              <ProductForm
-                onSubmit={handleAddProduct}
-                categories={categories}
-                vendors={vendors}
-              />
-            </BottomSheet>
-
-            <BottomSheet
-              isOpen={isMobile && isEditProductDialogOpen}
-              onClose={() => setIsEditProductDialogOpen(false)}
-              title="Edit Product"
-            >
-              <ProductForm
-                onSubmit={handleEditProduct}
-                // @ts-ignore
-                initialData={editingProduct}
-                categories={categories}
-                vendors={vendors}
-              />
-            </BottomSheet>
-          </div>
-        </div>
-
-        <div className="rounded-lg p-4 shadow">
-          <div className="flex flex-col space-y-4">
-            <div className="flex flex-col items-center space-y-2 sm:flex-row sm:space-x-2 sm:space-y-0">
-              <div className="relative w-full sm:w-64">
-                <Search className="absolute left-2 top-2.5 h-4 w-4 text-gray-400" />
-                <Input
-                  ref={searchInputRef}
-                  placeholder="Search products, suppliers, buyers"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-8 pr-10"
-                />
-              </div>
+    <PageContainer scrollable>
+      <div className="min-h-screen p-4 sm:p-6">
+        <div className="mx-auto max-w-7xl space-y-4 sm:space-y-6">
+          <div className="flex flex-col items-start justify-between space-y-4 sm:flex-row sm:items-center sm:space-y-0">
+            <h1 className="text-2xl font-bold">Product Management</h1>
+            <div className="flex w-full flex-col space-y-2 sm:w-auto sm:flex-row sm:space-x-2 sm:space-y-0">
               {isMobile ? (
                 <Button
-                  variant="outline"
                   className="w-full sm:w-auto"
-                  onClick={() => setIsFilterOpen(true)}
+                  onClick={() => setIsAddProductDialogOpen(true)}
                 >
-                  <Filter className="mr-2 h-4 w-4" />
-                  Filters
+                  <Plus className="mr-2 h-4 w-4" />
+                  Add Product
                 </Button>
               ) : (
-                <Dialog open={isFilterOpen} onOpenChange={setIsFilterOpen}>
+                <Dialog
+                  open={isAddProductDialogOpen}
+                  onOpenChange={setIsAddProductDialogOpen}
+                >
                   <DialogTrigger asChild>
-                    <Button variant="outline" className="w-full sm:w-auto">
-                      <Filter className="mr-2 h-4 w-4" />
-                      Filters
+                    <Button className="w-full sm:w-auto">
+                      <Plus className="mr-2 h-4 w-4" />
+                      Add Product
                     </Button>
                   </DialogTrigger>
-                  <DialogContent className="sm:max-w-[425px]">
+                  <DialogContent className="max-h-[80vh] overflow-y-auto sm:max-w-[425px]">
                     <DialogHeader>
-                      <DialogTitle>Filters</DialogTitle>
+                      <DialogTitle>Add New Product</DialogTitle>
                       <DialogDescription>
-                        Apply filters to refine your product list.
+                        Enter the details for the new product.
                       </DialogDescription>
                     </DialogHeader>
-                    <FilterOptions
-                      categories={categories}
-                      vendors={vendors}
-                      selectedCategory={selectedCategory}
-                      setSelectedCategory={setSelectedCategory}
-                      selectedVendor={selectedVendor}
-                      setSelectedVendor={setSelectedVendor}
-                      showLowStock={showLowStock}
-                      setShowLowStock={setShowLowStock}
-                      showExpiringProducts={showExpiringProducts}
-                      setShowExpiringProducts={setShowExpiringProducts}
-                      priceRange={priceRange}
-                      setPriceRange={setPriceRange}
-                      showNewBatch={showNewBatch}
-                      setShowNewBatch={setShowNewBatch}
-                    />
+                    <div className="flex-1 overflow-y-auto pr-1">
+                      <ProductForm
+                        onSubmit={handleAddProduct}
+                        categories={categories}
+                        vendors={vendors}
+                      />
+                    </div>
                   </DialogContent>
                 </Dialog>
               )}
 
               <BottomSheet
-                isOpen={isMobile && isFilterOpen}
-                onClose={() => setIsFilterOpen(false)}
-                title="Filters"
+                isOpen={isMobile && isAddProductDialogOpen}
+                onClose={() => setIsAddProductDialogOpen(false)}
+                title="Add New Product"
               >
-                <FilterOptions
+                <ProductForm
+                  onSubmit={handleAddProduct}
                   categories={categories}
                   vendors={vendors}
-                  selectedCategory={selectedCategory}
-                  setSelectedCategory={setSelectedCategory}
-                  selectedVendor={selectedVendor}
-                  setSelectedVendor={setSelectedVendor}
-                  showLowStock={showLowStock}
-                  setShowLowStock={setShowLowStock}
-                  showExpiringProducts={showExpiringProducts}
-                  setShowExpiringProducts={setShowExpiringProducts}
-                  priceRange={priceRange}
-                  setPriceRange={setPriceRange}
-                  showNewBatch={showNewBatch}
-                  setShowNewBatch={setShowNewBatch}
                 />
               </BottomSheet>
-              <Button
-                variant="outline"
-                className="w-full sm:w-auto"
-                onClick={resetFilters}
+
+              <BottomSheet
+                isOpen={isMobile && isEditProductDialogOpen}
+                onClose={() => setIsEditProductDialogOpen(false)}
+                title="Edit Product"
               >
-                <RefreshCw className="mr-2 h-4 w-4" />
-                Reset Filters
-              </Button>
+                <ProductForm
+                  onSubmit={handleEditProduct}
+                  // @ts-ignore
+                  initialData={editingProduct}
+                  categories={categories}
+                  vendors={vendors}
+                />
+              </BottomSheet>
             </div>
-            <div className="flex flex-col items-center justify-between space-y-2 sm:flex-row sm:space-y-0">
+          </div>
+
+          <div className="rounded-lg p-4 shadow">
+            <div className="flex flex-col space-y-4">
+              <div className="flex flex-col items-center space-y-2 sm:flex-row sm:space-x-2 sm:space-y-0">
+                <div className="relative w-full sm:w-64">
+                  <Search className="absolute left-2 top-2.5 h-4 w-4 text-gray-400" />
+                  <Input
+                    ref={searchInputRef}
+                    placeholder="Search products, suppliers, buyers"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="pl-8 pr-10"
+                  />
+                </div>
+                {isMobile ? (
+                  <Button
+                    variant="outline"
+                    className="w-full sm:w-auto"
+                    onClick={() => setIsFilterOpen(true)}
+                  >
+                    <Filter className="mr-2 h-4 w-4" />
+                    Filters
+                  </Button>
+                ) : (
+                  <Dialog open={isFilterOpen} onOpenChange={setIsFilterOpen}>
+                    <DialogTrigger asChild>
+                      <Button variant="outline" className="w-full sm:w-auto">
+                        <Filter className="mr-2 h-4 w-4" />
+                        Filters
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent className="sm:max-w-[425px]">
+                      <DialogHeader>
+                        <DialogTitle>Filters</DialogTitle>
+                        <DialogDescription>
+                          Apply filters to refine your product list.
+                        </DialogDescription>
+                      </DialogHeader>
+                      <FilterOptions
+                        categories={categories}
+                        vendors={vendors}
+                        selectedCategory={selectedCategory}
+                        setSelectedCategory={setSelectedCategory}
+                        selectedVendor={selectedVendor}
+                        setSelectedVendor={setSelectedVendor}
+                        showLowStock={showLowStock}
+                        setShowLowStock={setShowLowStock}
+                        showExpiringProducts={showExpiringProducts}
+                        setShowExpiringProducts={setShowExpiringProducts}
+                        priceRange={priceRange}
+                        setPriceRange={setPriceRange}
+                        showNewBatch={showNewBatch}
+                        setShowNewBatch={setShowNewBatch}
+                      />
+                    </DialogContent>
+                  </Dialog>
+                )}
+
+                <BottomSheet
+                  isOpen={isMobile && isFilterOpen}
+                  onClose={() => setIsFilterOpen(false)}
+                  title="Filters"
+                >
+                  <FilterOptions
+                    categories={categories}
+                    vendors={vendors}
+                    selectedCategory={selectedCategory}
+                    setSelectedCategory={setSelectedCategory}
+                    selectedVendor={selectedVendor}
+                    setSelectedVendor={setSelectedVendor}
+                    showLowStock={showLowStock}
+                    setShowLowStock={setShowLowStock}
+                    showExpiringProducts={showExpiringProducts}
+                    setShowExpiringProducts={setShowExpiringProducts}
+                    priceRange={priceRange}
+                    setPriceRange={setPriceRange}
+                    showNewBatch={showNewBatch}
+                    setShowNewBatch={setShowNewBatch}
+                  />
+                </BottomSheet>
+                <Button
+                  variant="outline"
+                  className="w-full sm:w-auto"
+                  onClick={resetFilters}
+                >
+                  <RefreshCw className="mr-2 h-4 w-4" />
+                  Reset Filters
+                </Button>
+                <Select value={currentView} onValueChange={setCurrentView}>
+                  <SelectTrigger className="w-full sm:w-[180px]">
+                    <SelectValue placeholder="Select view" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="list">
+                      <div className="flex items-center">
+                        <LayoutList className="mr-2 h-4 w-4" />
+                        List View
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="grid">
+                      <div className="flex items-center">
+                        <Grid className="mr-2 h-4 w-4" />
+                        Grid View
+                      </div>
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+                <Select
+                  value={itemsPerPage.toString()}
+                  onValueChange={(value) => setItemsPerPage(Number(value))}
+                >
+                  <SelectTrigger className="w-full sm:w-[100px]">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="5">5 / page</SelectItem>
+                    <SelectItem value="10">10 / page</SelectItem>
+                    <SelectItem value="20">20 / page</SelectItem>
+                    <SelectItem value="50">50 / page</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              {/* <div className="flex flex-col items-center justify-between space-y-2 sm:flex-row sm:space-y-0">
               <Select value={currentView} onValueChange={setCurrentView}>
                 <SelectTrigger className="w-full sm:w-[180px]">
                   <SelectValue placeholder="Select view" />
@@ -770,416 +805,443 @@ export default function ProductManagement() {
                   <SelectItem value="50">50 / page</SelectItem>
                 </SelectContent>
               </Select>
+            </div> */}
             </div>
           </div>
-        </div>
 
-        <AnimatePresence mode="wait">
-          {currentView === 'list' && (
-            <motion.div
-              key="list"
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -20 }}
-              transition={{ duration: 0.2 }}
-              className="overflow-hidden rounded-lg shadow-md"
-            >
-              <div className="overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead className="font-medium">Image</TableHead>
-                      <TableHead className="font-medium">Product</TableHead>
-                      <TableHead className="hidden font-medium sm:table-cell">
-                        Category
-                      </TableHead>
-                      <TableHead className="text-right font-medium">
-                        Stock
-                      </TableHead>
-                      <TableHead className="hidden text-right font-medium sm:table-cell">
-                        Price
-                      </TableHead>
-                      <TableHead className="hidden font-medium md:table-cell">
-                        Supplier
-                      </TableHead>
-                      <TableHead>Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {paginatedProducts.map((product) => (
-                      <TableRow
-                        key={product._id}
-                        className="transition-colors hover:bg-muted/50"
-                      >
-                        <TableCell>
-                          {product.image ? (
-                            <img
-                              src={product.image}
-                              alt={product.name}
-                              className="h-10 w-10 rounded-full object-cover"
-                            />
-                          ) : (
-                            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary text-primary-foreground">
-                              {product.name.charAt(0).toUpperCase()}
-                            </div>
-                          )}
-                        </TableCell>
-                        <TableCell className="font-medium">
-                          {product.name}
-                          <p className="text-sm text-muted-foreground sm:hidden">
-                            {product.category}
-                          </p>
-                        </TableCell>
-                        <TableCell className="hidden sm:table-cell">
-                          {product.category}
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <div className="flex flex-col items-end gap-1">
-                            <Badge
-                              variant={
-                                product.quantity <= product.reorderPoint
-                                  ? 'destructive'
-                                  : 'secondary'
-                              }
-                              className="w-12 justify-center"
-                            >
-                              {product.quantity}
-                            </Badge>
-
-                            {/* Show new batch indicator if newBatchQuantity exists and is greater than 0 */}
-                            {product.newBatchQuantity > 0 && (
-                              <div className="flex items-center gap-1">
-                                <Badge
-                                  variant="outline"
-                                  className="bg-blue-300 text-xs"
-                                >
-                                  +{product.newBatchQuantity}
-                                </Badge>
+          <AnimatePresence mode="wait">
+            {currentView === 'list' && (
+              <motion.div
+                key="list"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -20 }}
+                transition={{ duration: 0.2 }}
+                className="overflow-hidden rounded-lg shadow-md"
+              >
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead className="font-medium">Image</TableHead>
+                        <TableHead className="font-medium">Product</TableHead>
+                        <TableHead className="hidden font-medium sm:table-cell">
+                          Category
+                        </TableHead>
+                        <TableHead className="text-right font-medium">
+                          Stock
+                        </TableHead>
+                        <TableHead className="hidden text-right font-medium sm:table-cell">
+                          Price
+                        </TableHead>
+                        <TableHead className="hidden font-medium md:table-cell">
+                          Supplier
+                        </TableHead>
+                        <TableHead>Actions</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {paginatedProducts.map((product) => (
+                        <TableRow
+                          key={product._id}
+                          className="transition-colors hover:bg-muted/50"
+                        >
+                          <TableCell>
+                            {product.image ? (
+                              <img
+                                src={product.image}
+                                alt={product.name}
+                                className="h-10 w-10 rounded-full object-cover"
+                              />
+                            ) : (
+                              <div className="flex items-center space-x-3">
+                                <Avatar className="hidden sm:block">
+                                  <AvatarFallback>
+                                    {
+                                      // @ts-ignore
+                                      product.name
+                                        .split(' ')
+                                        .map(
+                                          // @ts-ignore
+                                          (n) => n[0]
+                                        )
+                                        .join('')
+                                    }
+                                  </AvatarFallback>
+                                </Avatar>
                               </div>
                             )}
+                          </TableCell>
+                          <TableCell className="font-medium">
+                            {product.name}
+                            <p className="text-sm text-muted-foreground sm:hidden">
+                              {product.category}
+                            </p>
+                          </TableCell>
+                          <TableCell className="hidden sm:table-cell">
+                            {product.category}
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <div className="flex flex-col items-end gap-1">
+                              <Badge
+                                variant={
+                                  product.quantity <= product.reorderPoint
+                                    ? 'destructive'
+                                    : 'secondary'
+                                }
+                                className="w-12 justify-center"
+                              >
+                                {product.quantity}
+                              </Badge>
 
-                            {/* Show total if there are multiple batches */}
-                            {/* {product.newBatchQuantity > 0 && (
+                              {/* Show new batch indicator if newBatchQuantity exists and is greater than 0 */}
+                              {product.newBatchQuantity > 0 && (
+                                <div className="flex items-center gap-1">
+                                  <Badge
+                                    variant="outline"
+                                    className="bg-blue-300 text-xs"
+                                  >
+                                    +{product.newBatchQuantity}
+                                  </Badge>
+                                </div>
+                              )}
+
+                              {/* Show total if there are multiple batches */}
+                              {/* {product.newBatchQuantity > 0 && (
       <div className="text-xs text-muted-foreground">
         Total: {product.quantity + product.newBatchQuantity}
       </div>
     )} */}
+                            </div>
+                          </TableCell>
+                          <TableCell className="hidden text-right sm:table-cell">
+                            ${product.sellPrice}
+                          </TableCell>
+                          <TableCell className="hidden md:table-cell">
+                            {product.vendor}
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex justify-end">
+                              <Popover>
+                                <PopoverTrigger asChild>
+                                  <Button
+                                    variant="ghost"
+                                    className="h-8 w-8 p-0"
+                                  >
+                                    <MoreHorizontal className="h-4 w-4" />
+                                    <span className="sr-only">Open menu</span>
+                                  </Button>
+                                </PopoverTrigger>
+                                <PopoverContent
+                                  align="end"
+                                  className="w-[160px]"
+                                >
+                                  <div className="grid gap-1">
+                                    <Button
+                                      variant="ghost"
+                                      className="justify-start"
+                                      onClick={() => {
+                                        setEditingProduct(product);
+                                        setIsEditProductDialogOpen(true);
+                                      }}
+                                    >
+                                      <Edit className="mr-2 h-4 w-4" />
+                                      Edit
+                                    </Button>
+                                    <Button
+                                      disabled={(user as any)?.role !== 'Admin'}
+                                      variant="ghost"
+                                      className="justify-start"
+                                      onClick={() =>
+                                        handleDeleteProduct(product._id)
+                                      }
+                                    >
+                                      <Trash2 className="mr-2 h-4 w-4" />
+                                      Delete
+                                    </Button>
+                                    <Button
+                                      variant="ghost"
+                                      className="justify-start"
+                                      onClick={() => {
+                                        setSelectedProductLog(product);
+                                        setIsProductLogDialogOpen(true);
+                                      }}
+                                    >
+                                      <List className="mr-2 h-4 w-4" />
+                                      View Log
+                                    </Button>
+                                    <Button
+                                      variant="ghost"
+                                      className="justify-start"
+                                      onClick={() => {
+                                        setRestockingProduct(product);
+                                        setIsRestockDialogOpen(true);
+                                      }}
+                                    >
+                                      <Package className="mr-2 h-4 w-4" />
+                                      Restock
+                                    </Button>
+                                  </div>
+                                </PopoverContent>
+                              </Popover>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              </motion.div>
+            )}
+            {currentView === 'grid' && (
+              <motion.div
+                key="grid"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -20 }}
+                transition={{ duration: 0.2 }}
+                className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
+              >
+                {paginatedProducts.map((product) => (
+                  <Card
+                    key={product._id}
+                    className="flex h-full flex-col overflow-hidden transition-shadow hover:shadow-lg"
+                  >
+                    <CardHeader className="bg-primary/5 p-4">
+                      <CardTitle className="truncate text-lg">
+                        {product.name}
+                      </CardTitle>
+                      <CardDescription className="truncate text-sm">
+                        {product.category}
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent className="grid flex-grow grid-cols-2 gap-2 p-4 text-sm">
+                      <div className="space-y-1">
+                        <p className="font-semibold">Stock</p>
+                        <Badge
+                          variant={
+                            product.quantity <= product.reorderPoint
+                              ? 'destructive'
+                              : 'default'
+                          }
+                        >
+                          {product.quantity}
+                        </Badge>
+                      </div>
+                      <div className="space-y-1">
+                        <p className="font-semibold">Price</p>
+                        <p>${product.sellPrice.toFixed(2)}</p>
+                      </div>
+                      <div className="space-y-1">
+                        <p className="font-semibold">Supplier</p>
+                        <p className="truncate">{product.vendor}</p>
+                      </div>
+                      <div className="space-y-1">
+                        <p className="font-semibold">Expiration</p>
+                        <p className="truncate">
+                          {product.expirationDate
+                            ? format(
+                                new Date(product.expirationDate),
+                                'MM/dd/yyyy'
+                              )
+                            : 'N/A'}
+                        </p>
+                      </div>
+                    </CardContent>
+                    <CardFooter className="flex items-center justify-between bg-secondary/10 p-4">
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <Button variant="ghost" size="icon">
+                            <MoreHorizontal className="h-4 w-4" />
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-40">
+                          <div className="flex flex-col space-y-1">
+                            <Button
+                              variant="ghost"
+                              className="justify-start"
+                              onClick={() => {
+                                setEditingProduct(product);
+                                setIsEditProductDialogOpen(true);
+                              }}
+                            >
+                              <Edit className="mr-2 h-4 w-4" />
+                              Edit
+                            </Button>
+                            <Button
+                              disabled={(user as any).role !== 'Admin'}
+                              variant="ghost"
+                              className="justify-start"
+                              onClick={() => handleDeleteProduct(product._id)}
+                            >
+                              <Trash2 className="mr-2 h-4 w-4" />
+                              Delete
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              className="justify-start"
+                              onClick={() => {
+                                setSelectedProductLog(product);
+                                setIsProductLogDialogOpen(true);
+                              }}
+                            >
+                              <List className="mr-2 h-4 w-4" />
+                              View Log
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              className="justify-start"
+                              onClick={() => {
+                                setRestockingProduct(product);
+                                setIsRestockDialogOpen(true);
+                              }}
+                            >
+                              <Package className="mr-2 h-4 w-4" />
+                              Restock
+                            </Button>
                           </div>
-                        </TableCell>
-                        <TableCell className="hidden text-right sm:table-cell">
-                          ${product.sellPrice}
-                        </TableCell>
-                        <TableCell className="hidden md:table-cell">
-                          {product.vendor}
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex justify-end">
-                            <Popover>
-                              <PopoverTrigger asChild>
-                                <Button variant="ghost" className="h-8 w-8 p-0">
-                                  <MoreHorizontal className="h-4 w-4" />
-                                  <span className="sr-only">Open menu</span>
-                                </Button>
-                              </PopoverTrigger>
-                              <PopoverContent align="end" className="w-[160px]">
-                                <div className="grid gap-1">
-                                  <Button
-                                    variant="ghost"
-                                    className="justify-start"
-                                    onClick={() => {
-                                      setEditingProduct(product);
-                                      setIsEditProductDialogOpen(true);
-                                    }}
-                                  >
-                                    <Edit className="mr-2 h-4 w-4" />
-                                    Edit
-                                  </Button>
-                                  <Button
-                                    disabled={(user as any)?.role !== 'Admin'}
-                                    variant="ghost"
-                                    className="justify-start"
-                                    onClick={() =>
-                                      handleDeleteProduct(product._id)
-                                    }
-                                  >
-                                    <Trash2 className="mr-2 h-4 w-4" />
-                                    Delete
-                                  </Button>
-                                  <Button
-                                    variant="ghost"
-                                    className="justify-start"
-                                    onClick={() => {
-                                      setSelectedProductLog(product);
-                                      setIsProductLogDialogOpen(true);
-                                    }}
-                                  >
-                                    <List className="mr-2 h-4 w-4" />
-                                    View Log
-                                  </Button>
-                                  <Button
-                                    variant="ghost"
-                                    className="justify-start"
-                                    onClick={() => {
-                                      setRestockingProduct(product);
-                                      setIsRestockDialogOpen(true);
-                                    }}
-                                  >
-                                    <Package className="mr-2 h-4 w-4" />
-                                    Restock
-                                  </Button>
-                                </div>
-                              </PopoverContent>
-                            </Popover>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
-            </motion.div>
-          )}
-          {currentView === 'grid' && (
-            <motion.div
-              key="grid"
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -20 }}
-              transition={{ duration: 0.2 }}
-              className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
-            >
-              {paginatedProducts.map((product) => (
-                <Card
-                  key={product._id}
-                  className="flex h-full flex-col overflow-hidden transition-shadow hover:shadow-lg"
-                >
-                  <CardHeader className="bg-primary/5 p-4">
-                    <CardTitle className="truncate text-lg">
-                      {product.name}
-                    </CardTitle>
-                    <CardDescription className="truncate text-sm">
-                      {product.category}
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="grid flex-grow grid-cols-2 gap-2 p-4 text-sm">
-                    <div className="space-y-1">
-                      <p className="font-semibold">Stock</p>
-                      <Badge
-                        variant={
-                          product.quantity <= product.reorderPoint
-                            ? 'destructive'
-                            : 'default'
-                        }
-                      >
-                        {product.quantity}
-                      </Badge>
-                    </div>
-                    <div className="space-y-1">
-                      <p className="font-semibold">Price</p>
-                      <p>${product.sellPrice.toFixed(2)}</p>
-                    </div>
-                    <div className="space-y-1">
-                      <p className="font-semibold">Supplier</p>
-                      <p className="truncate">{product.vendor}</p>
-                    </div>
-                    <div className="space-y-1">
-                      <p className="font-semibold">Expiration</p>
-                      <p className="truncate">
-                        {product.expirationDate
-                          ? format(
-                              new Date(product.expirationDate),
-                              'MM/dd/yyyy'
-                            )
-                          : 'N/A'}
-                      </p>
-                    </div>
-                  </CardContent>
-                  <CardFooter className="flex items-center justify-between bg-secondary/10 p-4">
-                    <Popover>
-                      <PopoverTrigger asChild>
-                        <Button variant="ghost" size="icon">
-                          <MoreHorizontal className="h-4 w-4" />
-                        </Button>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-40">
-                        <div className="flex flex-col space-y-1">
-                          <Button
-                            variant="ghost"
-                            className="justify-start"
-                            onClick={() => {
-                              setEditingProduct(product);
-                              setIsEditProductDialogOpen(true);
-                            }}
-                          >
-                            <Edit className="mr-2 h-4 w-4" />
-                            Edit
-                          </Button>
-                          <Button
-                            disabled={(user as any).role !== 'Admin'}
-                            variant="ghost"
-                            className="justify-start"
-                            onClick={() => handleDeleteProduct(product._id)}
-                          >
-                            <Trash2 className="mr-2 h-4 w-4" />
-                            Delete
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            className="justify-start"
-                            onClick={() => {
-                              setSelectedProductLog(product);
-                              setIsProductLogDialogOpen(true);
-                            }}
-                          >
-                            <List className="mr-2 h-4 w-4" />
-                            View Log
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            className="justify-start"
-                            onClick={() => {
-                              setRestockingProduct(product);
-                              setIsRestockDialogOpen(true);
-                            }}
-                          >
-                            <Package className="mr-2 h-4 w-4" />
-                            Restock
-                          </Button>
-                        </div>
-                      </PopoverContent>
-                    </Popover>
-                  </CardFooter>
-                </Card>
-              ))}
-            </motion.div>
-          )}
-        </AnimatePresence>
+                        </PopoverContent>
+                      </Popover>
+                    </CardFooter>
+                  </Card>
+                ))}
+              </motion.div>
+            )}
+          </AnimatePresence>
 
-        <Pagination className="mt-4">
-          <PaginationContent>
-            <PaginationItem>
-              <PaginationPrevious
-                // @ts-ignore
-                onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
-                // @ts-ignore
-                disabled={currentPage === 1}
-              />
-            </PaginationItem>
-            {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
-              <PaginationItem key={page}>
-                <PaginationLink
-                  onClick={() => setCurrentPage(page)}
-                  isActive={currentPage === page}
-                >
-                  {page}
-                </PaginationLink>
+          <Pagination className="mt-4">
+            <PaginationContent>
+              <PaginationItem>
+                <PaginationPrevious
+                  // @ts-ignore
+                  onClick={() =>
+                    setCurrentPage((prev) => Math.max(prev - 1, 1))
+                  }
+                  // @ts-ignore
+                  disabled={currentPage === 1}
+                />
               </PaginationItem>
-            ))}
-            <PaginationItem>
-              <PaginationNext
-                onClick={() =>
-                  setCurrentPage((prev) => Math.min(prev + 1, totalPages))
-                }
-                // @ts-ignore
-                disabled={currentPage === totalPages}
-              />
-            </PaginationItem>
-          </PaginationContent>
-        </Pagination>
-      </div>
+              {Array.from({ length: totalPages }, (_, i) => i + 1).map(
+                (page) => (
+                  <PaginationItem key={page}>
+                    <PaginationLink
+                      onClick={() => setCurrentPage(page)}
+                      isActive={currentPage === page}
+                    >
+                      {page}
+                    </PaginationLink>
+                  </PaginationItem>
+                )
+              )}
+              <PaginationItem>
+                <PaginationNext
+                  onClick={() =>
+                    setCurrentPage((prev) => Math.min(prev + 1, totalPages))
+                  }
+                  // @ts-ignore
+                  disabled={currentPage === totalPages}
+                />
+              </PaginationItem>
+            </PaginationContent>
+          </Pagination>
+        </div>
 
-      {!isMobile && (
+        {!isMobile && (
+          <Dialog
+            open={isEditProductDialogOpen}
+            onOpenChange={setIsEditProductDialogOpen}
+          >
+            <DialogContent className="max-h-[80vh] overflow-y-auto sm:max-w-[425px]">
+              <DialogHeader>
+                <DialogTitle>Edit Product</DialogTitle>
+                <DialogDescription>
+                  Make changes to the product details.
+                </DialogDescription>
+              </DialogHeader>
+              <div className="flex-1 overflow-y-auto pr-1">
+                <ProductForm
+                  onSubmit={handleEditProduct}
+                  // @ts-ignore
+                  initialData={editingProduct}
+                  categories={categories}
+                  vendors={vendors}
+                />
+              </div>
+            </DialogContent>
+          </Dialog>
+        )}
+
         <Dialog
-          open={isEditProductDialogOpen}
-          onOpenChange={setIsEditProductDialogOpen}
+          open={isProductLogDialogOpen}
+          onOpenChange={setIsProductLogDialogOpen}
         >
-          <DialogContent className="max-h-[80vh] overflow-y-auto sm:max-w-[425px]">
+          <DialogContent className="sm:max-w-[425px]">
             <DialogHeader>
-              <DialogTitle>Edit Product</DialogTitle>
+              <DialogTitle>Product Log</DialogTitle>
               <DialogDescription>
-                Make changes to the product details.
+                View the log history for this product.
               </DialogDescription>
             </DialogHeader>
-            <div className="flex-1 overflow-y-auto pr-1">
-              <ProductForm
-                onSubmit={handleEditProduct}
-                // @ts-ignore
-                initialData={editingProduct}
-                categories={categories}
-                vendors={vendors}
-              />
-            </div>
+            <ScrollArea className="h-[300px]">
+              {selectedProductLog?.logs?.map((log, index) => (
+                <div key={index} className="mb-4 border-b pb-2">
+                  <p className="text-sm font-medium">{log.action}</p>
+                  <p className="text-xs text-gray-500">
+                    By: {log.updatedBy} on {new Date(log.date).toLocaleString()}
+                  </p>
+                </div>
+              ))}
+            </ScrollArea>
           </DialogContent>
         </Dialog>
-      )}
 
-      <Dialog
-        open={isProductLogDialogOpen}
-        onOpenChange={setIsProductLogDialogOpen}
-      >
-        <DialogContent className="sm:max-w-[425px]">
-          <DialogHeader>
-            <DialogTitle>Product Log</DialogTitle>
-            <DialogDescription>
-              View the log history for this product.
-            </DialogDescription>
-          </DialogHeader>
-          <ScrollArea className="h-[300px]">
-            {selectedProductLog?.logs?.map((log, index) => (
-              <div key={index} className="mb-4 border-b pb-2">
-                <p className="text-sm font-medium">{log.action}</p>
-                <p className="text-xs text-gray-500">
-                  By: {log.updatedBy} on {new Date(log.date).toLocaleString()}
-                </p>
-              </div>
-            ))}
-          </ScrollArea>
-        </DialogContent>
-      </Dialog>
-
-      <Dialog open={isRestockDialogOpen} onOpenChange={setIsRestockDialogOpen}>
-        <DialogContent className="sm:max-w-[425px]">
-          <DialogHeader>
-            <DialogTitle>Restock Product</DialogTitle>
-            <DialogDescription>
-              Enter the amount to restock for {restockingProduct?.name}.
-            </DialogDescription>
-          </DialogHeader>
-          <RestockForm
-            onSubmit={(
-              // @ts-ignore
-              amount,
-              // @ts-ignore
-              receiptNumber,
-              // @ts-ignore
-              newPrice,
-              // @ts-ignore
-              newSellPrice,
-              // @ts-ignore
-              newExpirationDate
-            ) =>
-              handleRestock(
-                restockingProduct?._id,
+        <Dialog
+          open={isRestockDialogOpen}
+          onOpenChange={setIsRestockDialogOpen}
+        >
+          <DialogContent className="sm:max-w-[425px]">
+            <DialogHeader>
+              <DialogTitle>Restock Product</DialogTitle>
+              <DialogDescription>
+                Enter the amount to restock for {restockingProduct?.name}.
+              </DialogDescription>
+            </DialogHeader>
+            <RestockForm
+              onSubmit={(
+                // @ts-ignore
                 amount,
+                // @ts-ignore
                 receiptNumber,
+                // @ts-ignore
                 newPrice,
+                // @ts-ignore
                 newSellPrice,
+                // @ts-ignore
                 newExpirationDate
-              )
-            }
-            currentQuantity={restockingProduct?.quantity}
-            isQuantityBased={restockingProduct?.isQuantityBased}
-            currentPrice={restockingProduct?.price}
-            // @ts-ignore
-            currentExpirationDate={restockingProduct?.expirationDate}
-            // @ts-ignore
-            product={restockingProduct}
-          />
-        </DialogContent>
-      </Dialog>
+              ) =>
+                handleRestock(
+                  restockingProduct?._id,
+                  amount,
+                  receiptNumber,
+                  newPrice,
+                  newSellPrice,
+                  newExpirationDate
+                )
+              }
+              currentQuantity={restockingProduct?.quantity}
+              isQuantityBased={restockingProduct?.isQuantityBased}
+              currentPrice={restockingProduct?.price}
+              // @ts-ignore
+              currentExpirationDate={restockingProduct?.expirationDate}
+              // @ts-ignore
+              product={restockingProduct}
+            />
+          </DialogContent>
+        </Dialog>
 
-      <ToastContainer />
-    </div>
+        <ToastContainer />
+      </div>
+    </PageContainer>
   );
 }
 

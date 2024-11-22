@@ -189,6 +189,12 @@ export const navItems: NavItem[] = [
     href: '/dashboard/customermanager',
     icon: 'sold',
     label: 'sold'
+  },
+  {
+    title: 'Expanses',
+    href: '/dashboard/expanses',
+    icon: 'expanse',
+    label: 'expanses'
   }
   // {
   //   title: 'Employee',
