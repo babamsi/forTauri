@@ -1400,7 +1400,7 @@ export default function EnhancedPOSSystem() {
                 {isProductCatalogVisible && (
                   <CardContent>
                     <ScrollArea
-                      className="h-[calc(100vh-300px)]"
+                      className="h-[calc(100vh-220px)]"
                       ref={searchResultsRef}
                     >
                       <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4">
@@ -1486,7 +1486,7 @@ export default function EnhancedPOSSystem() {
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="p-4">
-                  <div className="h-[calc(100vh-450px)] overflow-y-auto">
+                  <div className="h-[calc(100vh-390px)] overflow-y-auto">
                     <AnimatePresence>{renderCartItems()}</AnimatePresence>
                   </div>
                   <div className="mt-4 space-y-1 text-base">
