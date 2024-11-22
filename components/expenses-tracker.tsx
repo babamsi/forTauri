@@ -412,11 +412,11 @@ export function ExpensesTracker() {
     );
   }
 
-  // @ts-ignore
   if (
-    staffError.status === 401 ||
     // @ts-ignore
-    adminError.status === 401
+    staffError?.status === 401 ||
+    // @ts-ignore
+    adminError?.status === 401
   ) {
     return deleteAuthCookie();
   }
