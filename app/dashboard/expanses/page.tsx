@@ -22,10 +22,13 @@ function Page() {
   return (
     <div className="container mx-auto p-4">
       <PageContainer scrollable>
-        <ExpensesTracker />
+        {
+          // @ts-ignore
+          <ExpensesTracker />
+        }
       </PageContainer>
     </div>
   );
 }
 
-export default page;
+export default Page;
