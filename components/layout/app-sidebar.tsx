@@ -122,10 +122,13 @@ export default function AppSidebar() {
                     tooltip={item.title}
                     isActive={pathname === item.href}
                   >
-                    <Link href={item.href}>
-                      <Icon />
-                      <span>{item.title}</span>
-                    </Link>
+                    {
+                      // @ts-ignore
+                      <Link href={item.href}>
+                        <Icon />
+                        <span>{item.title}</span>
+                      </Link>
+                    }
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               );
