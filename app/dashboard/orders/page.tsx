@@ -1,7 +1,15 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Eye, ArrowUpDown } from 'lucide-react';
+import {
+  Eye,
+  ArrowUpDown,
+  Search,
+  MoreHorizontal,
+  Loader2,
+  ChevronLeftIcon,
+  ChevronRightIcon
+} from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import {
   Select,
@@ -19,6 +27,12 @@ import {
   TableRow
 } from '@/components/ui/table';
 import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger
+} from '@/components/ui/dropdown-menu';
+import {
   Dialog,
   DialogContent,
   DialogDescription,
@@ -31,13 +45,37 @@ import { Label } from '@/components/ui/label';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { format, parseISO } from 'date-fns';
+import { format, parseISO, isWithinInterval } from 'date-fns';
 import { useGetAllOrdersQuery } from '@/store/authApi';
 import {
   getAuthCookie,
   getUserInfo,
   deleteAuthCookie
 } from '@/actions/auth.actions';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle
+} from '@/components/ui/card';
+import PageContainer from '@/components/layout/page-container';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { CalendarDateRangePicker } from '@/components/date-range-picker';
+import { DateRange } from 'react-day-picker';
+import {
+  ColumnDef,
+  flexRender,
+  getCoreRowModel,
+  getFilteredRowModel,
+  getPaginationRowModel,
+  useReactTable
+} from '@tanstack/react-table';
+import {
+  DoubleArrowLeftIcon,
+  DoubleArrowRightIcon
+} from '@radix-ui/react-icons';
 
 const formatDate = (dateString: string | undefined) => {
   if (!dateString) return 'N/A';
@@ -47,6 +85,14 @@ const formatDate = (dateString: string | undefined) => {
     console.error('Error formatting date:', error);
     return 'Invalid Date';
   }
+};
+
+// Utility function for currency formatting
+const formatCurrency = (amount: number) => {
+  return new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: 'USD'
+  }).format(amount);
 };
 
 export default function TransactionHistory() {
@@ -60,7 +106,19 @@ export default function TransactionHistory() {
     key: 'updatedAt',
     direction: 'descending'
   });
+  const [currentPage, setCurrentPage] = useState(1);
   const [cookies, setCookies] = useState(null);
+  const [date, setDate] = useState<DateRange | undefined>({
+    from: undefined,
+    to: undefined
+  });
+  const [pageIndex, setPageIndex] = useState(0);
+  const itemsPerPage = 10;
+
+  // Add this handler function
+  const handleDateChange = (newDate: DateRange | undefined) => {
+    setDate(newDate);
+  };
 
   // Fetch orders data
   const {
@@ -115,7 +173,15 @@ export default function TransactionHistory() {
           const matchesType =
             transactionTypeFilter === 'all' ||
             transaction.status === transactionTypeFilter;
-          return matchesSearch && matchesType;
+          let matchesDateRange = true;
+          if (date?.from && date?.to && transaction.updatedAt) {
+            const orderDate = parseISO(transaction.updatedAt);
+            matchesDateRange = isWithinInterval(orderDate, {
+              start: date.from,
+              end: date.to
+            });
+          }
+          return matchesSearch && matchesType && matchesDateRange;
         })
         .sort((a, b) => {
           if (!sortConfig.key) return 0;
@@ -136,127 +202,305 @@ export default function TransactionHistory() {
         })
     : [];
 
-  return (
-    <div className="container mx-auto p-6">
-      <div className="mb-8">
-        <h1 className="mb-2 text-2xl font-bold">Transaction History</h1>
-        <p className="text-muted-foreground">
-          View and manage all transactions
-        </p>
-      </div>
+  // Calculate total pages
+  const totalPages = Math.ceil(
+    (sortedTransactions?.length || 0) / itemsPerPage
+  );
 
-      <div className="space-y-4">
-        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-          <Input
-            placeholder="Search transactions..."
-            className="w-full md:w-64"
-            value={transactionSearchQuery}
-            onChange={(e) => setTransactionSearchQuery(e.target.value)}
-          />
-          <Select
-            value={transactionTypeFilter}
-            onValueChange={setTransactionTypeFilter}
+  // Calculate paginated data
+  const paginatedTransactions = sortedTransactions.slice(
+    pageIndex * itemsPerPage,
+    (pageIndex + 1) * itemsPerPage
+  );
+
+  // Define columns for the table
+  const columns: ColumnDef<any>[] = [
+    {
+      accessorKey: 'invoiceNumber',
+      header: () => <div className="w-[150px] text-left">Invoice</div>,
+      cell: ({ row }) => (
+        <div className="w-[150px] text-left">{row.original.invoiceNumber}</div>
+      )
+    },
+    {
+      accessorKey: 'updatedAt',
+      header: () => <div className="w-[200px] text-left">Date</div>,
+      cell: ({ row }) => (
+        <div className="w-[200px] text-left">
+          {formatDate(row.original.updatedAt)}
+        </div>
+      )
+    },
+    {
+      accessorKey: 'user',
+      header: () => <div className="w-[300px] text-left">Customer</div>,
+      cell: ({ row }) => (
+        <div className="flex w-[300px] items-center gap-2">
+          <Avatar className="h-8 w-8">
+            <AvatarFallback>
+              {row.original.user?.name?.charAt(0) || 'G'}
+            </AvatarFallback>
+          </Avatar>
+          <div className="flex flex-col">
+            <span className="text-sm font-medium">
+              {row.original.user?.name || 'Guest User'}
+            </span>
+            <span className="text-xs text-muted-foreground">
+              {row.original.user?.email || 'No email'}
+            </span>
+          </div>
+        </div>
+      )
+    },
+    {
+      accessorKey: 'status',
+      header: () => <div className="w-[150px] text-left">Status</div>,
+      cell: ({ row }) => (
+        <div className="w-[150px]">
+          <Badge
+            variant={
+              row.original.status !== 'Refunded' ? 'outline' : 'destructive'
+            }
           >
-            <SelectTrigger className="w-full md:w-[200px]">
-              <SelectValue placeholder="Filter by type" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Transactions</SelectItem>
-              <SelectItem value="Refunded">Refunds</SelectItem>
-            </SelectContent>
-          </Select>
+            {row.original.status !== 'Refunded'
+              ? 'Completed'
+              : row.original.status}
+          </Badge>
+        </div>
+      )
+    },
+    {
+      accessorKey: 'totalAmount',
+      header: () => <div className="w-[150px] text-right">Amount</div>,
+      cell: ({ row }) => (
+        <div className="w-[150px] text-right font-medium">
+          {formatCurrency(row.original.totalAmount)}
+        </div>
+      )
+    },
+    {
+      id: 'actions',
+      header: () => <div className="w-[100px]"></div>,
+      cell: ({ row }) => (
+        <div className="w-[100px]">
+          <Button
+            variant="ghost"
+            size="sm"
+            className="text-xs"
+            onClick={() => {
+              setSelectedTransaction(row.original);
+              setIsTransactionDetailsOpen(true);
+            }}
+          >
+            <Eye className="mr-2 h-3 w-3" />
+            View
+          </Button>
+        </div>
+      )
+    }
+  ];
+
+  // Initialize table with proper pagination
+  const table = useReactTable({
+    data: paginatedTransactions,
+    columns,
+    getCoreRowModel: getCoreRowModel(),
+    getFilteredRowModel: getFilteredRowModel(),
+    getPaginationRowModel: getPaginationRowModel(),
+    pageCount: totalPages,
+    state: {
+      pagination: {
+        pageIndex,
+        pageSize: itemsPerPage
+      }
+    },
+    onPaginationChange: (updater) => {
+      if (typeof updater === 'function') {
+        const newState = updater({
+          pageIndex,
+          pageSize: itemsPerPage
+        });
+        setPageIndex(newState.pageIndex);
+      }
+    },
+    manualPagination: true
+  });
+
+  // Pagination handlers
+  const handlePreviousPage = () => {
+    setPageIndex((prev) => Math.max(0, prev - 1));
+  };
+
+  const handleNextPage = () => {
+    setPageIndex((prev) => Math.min(totalPages - 1, prev + 1));
+  };
+
+  const handleFirstPage = () => {
+    setPageIndex(0);
+  };
+
+  const handleLastPage = () => {
+    setPageIndex(totalPages - 1);
+  };
+
+  return (
+    <div className="container flex h-[calc(100vh-2rem)] flex-col">
+      {/* Header Section - Fixed */}
+      <div className="flex-none space-y-4">
+        <div className="mb-8">
+          <h1 className="mb-2 text-2xl font-bold">Orders Management</h1>
+          <p className="text-muted-foreground">
+            View and manage all customer orders
+          </p>
         </div>
 
-        <div className="rounded-md border">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead className="w-[100px]">
-                  <Button
-                    variant="ghost"
-                    onClick={() => requestSort('invoiceNumber')}
-                    className="text-xs"
-                  >
-                    Invoice
-                    <ArrowUpDown className="ml-2 h-3 w-3" />
-                  </Button>
-                </TableHead>
-                <TableHead>
-                  <Button
-                    variant="ghost"
-                    onClick={() => requestSort('updatedAt')}
-                    className="text-xs"
-                  >
-                    Date
-                    <ArrowUpDown className="ml-2 h-3 w-3" />
-                  </Button>
-                </TableHead>
-                <TableHead className="text-xs">Customer</TableHead>
-                <TableHead className="text-right">
-                  <Button
-                    variant="ghost"
-                    onClick={() => requestSort('totalAmount')}
-                    className="text-xs"
-                  >
-                    Total
-                    <ArrowUpDown className="ml-2 h-3 w-3" />
-                  </Button>
-                </TableHead>
-                <TableHead className="text-xs">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {isLoading ? (
-                <TableRow>
-                  <TableCell colSpan={5} className="py-4 text-center">
-                    Loading transactions...
-                  </TableCell>
-                </TableRow>
-              ) : sortedTransactions.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={5} className="py-4 text-center">
-                    No transactions found
-                  </TableCell>
-                </TableRow>
-              ) : (
-                sortedTransactions.map((transaction) => (
-                  <TableRow key={transaction._id}>
-                    <TableCell className="text-xs font-medium">
-                      {transaction.invoiceNumber}
-                    </TableCell>
-                    <TableCell className="text-xs">
-                      {formatDate(transaction.updatedAt)}
-                    </TableCell>
-                    <TableCell className="text-xs">
-                      {transaction.user?.name || 'Guest'}
-                    </TableCell>
+        {/* Search and Filter Bar */}
+        <div className="flex items-center justify-between space-x-4">
+          <div className="flex items-center space-x-2">
+            <div className="relative">
+              <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Search orders..."
+                className="w-[300px] pl-8"
+                value={transactionSearchQuery}
+                onChange={(e) => setTransactionSearchQuery(e.target.value)}
+              />
+            </div>
+          </div>
+          <div className="flex items-center space-x-2">
+            <CalendarDateRangePicker
+              date={date}
+              onDateChange={handleDateChange}
+            />
+            <Select
+              value={transactionTypeFilter}
+              onValueChange={setTransactionTypeFilter}
+            >
+              <SelectTrigger className="w-[180px]">
+                <SelectValue placeholder="Filter by status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Orders</SelectItem>
+                <SelectItem value="Refunded">Refunded</SelectItem>
+                {/* <SelectItem value="Completed">Completed</SelectItem> */}
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+      </div>
+
+      {/* Table Section with Fixed Header and Scrollable Body */}
+      <Card className="mt-4 flex flex-1 flex-col overflow-hidden">
+        <CardContent className="flex h-full flex-col p-0">
+          {/* Fixed Header */}
+          <div className="flex-none">
+            <Table>
+              <TableHeader>
+                {table.getHeaderGroups().map((headerGroup) => (
+                  <TableRow key={headerGroup.id}>
+                    {headerGroup.headers.map((header) => (
+                      <TableHead key={header.id}>
+                        {header.isPlaceholder
+                          ? null
+                          : flexRender(
+                              header.column.columnDef.header,
+                              header.getContext()
+                            )}
+                      </TableHead>
+                    ))}
+                  </TableRow>
+                ))}
+              </TableHeader>
+            </Table>
+          </div>
+
+          {/* Scrollable Body */}
+          <div className="flex-1 overflow-auto">
+            <Table>
+              <TableBody>
+                {isLoading ? (
+                  <TableRow>
                     <TableCell
-                      className={`text-right text-xs ${
-                        transaction.status === 'Refunded' ? 'text-red-500' : ''
-                      }`}
+                      colSpan={columns.length}
+                      className="h-24 text-center"
                     >
-                      ${Math.abs(transaction.totalAmount).toFixed(2)}
-                    </TableCell>
-                    <TableCell>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="text-xs"
-                        onClick={() => {
-                          console.log(transaction);
-                          setSelectedTransaction(transaction);
-                          setIsTransactionDetailsOpen(true);
-                        }}
-                      >
-                        <Eye className="mr-2 h-3 w-3" />
-                        View
-                      </Button>
+                      <Loader2 className="mx-auto h-6 w-6 animate-spin" />
                     </TableCell>
                   </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
+                ) : table.getRowModel().rows?.length ? (
+                  table.getRowModel().rows.map((row) => (
+                    <TableRow key={row.id}>
+                      {row.getVisibleCells().map((cell) => (
+                        <TableCell key={cell.id}>
+                          {flexRender(
+                            cell.column.columnDef.cell,
+                            cell.getContext()
+                          )}
+                        </TableCell>
+                      ))}
+                    </TableRow>
+                  ))
+                ) : (
+                  <TableRow>
+                    <TableCell
+                      colSpan={columns.length}
+                      className="h-24 text-center"
+                    >
+                      No results found.
+                    </TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Pagination - Fixed at bottom */}
+      <div className="sticky bottom-0 mt-4 flex-none border-t bg-background px-4 py-2">
+        <div className="mx-auto flex max-w-screen-xl items-center justify-between">
+          <div className="flex-1 text-sm text-muted-foreground">
+            {sortedTransactions.length} total rows
+          </div>
+          <div className="flex items-center space-x-6 lg:space-x-8">
+            <div className="flex items-center space-x-2">
+              <Button
+                variant="outline"
+                className="hidden h-8 w-8 p-0 lg:flex"
+                onClick={handleFirstPage}
+                disabled={pageIndex === 0}
+              >
+                <DoubleArrowLeftIcon className="h-4 w-4" />
+              </Button>
+              <Button
+                variant="outline"
+                className="h-8 w-8 p-0"
+                onClick={handlePreviousPage}
+                disabled={pageIndex === 0}
+              >
+                <ChevronLeftIcon className="h-4 w-4" />
+              </Button>
+              <div className="flex w-[100px] items-center justify-center text-sm font-medium">
+                Page {pageIndex + 1} of {totalPages}
+              </div>
+              <Button
+                variant="outline"
+                className="h-8 w-8 p-0"
+                onClick={handleNextPage}
+                disabled={pageIndex === totalPages - 1}
+              >
+                <ChevronRightIcon className="h-4 w-4" />
+              </Button>
+              <Button
+                variant="outline"
+                className="hidden h-8 w-8 p-0 lg:flex"
+                onClick={handleLastPage}
+                disabled={pageIndex === totalPages - 1}
+              >
+                <DoubleArrowRightIcon className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -400,8 +644,8 @@ export default function TransactionHistory() {
                   <span>Subtotal:</span>
                   <span>
                     $
-                    {(
-                      // @ts-ignore
+                    {// @ts-ignore
+                    (
                       selectedTransaction.totalAmount -
                       // @ts-ignore
                       selectedTransaction.vat +

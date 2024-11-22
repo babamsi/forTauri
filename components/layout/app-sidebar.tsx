@@ -1,4 +1,5 @@
 'use client';
+import { getUserInfo, deleteAuthCookie } from '@/actions/auth.actions';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
   Collapsible,
@@ -29,7 +30,7 @@ import {
   SidebarMenuSubItem,
   SidebarRail
 } from '@/components/ui/sidebar';
-import { navItems } from '@/constants/data';
+import { navItems, adminNavItems } from '@/constants/data';
 import {
   BadgeCheck,
   Bell,
@@ -53,7 +54,14 @@ export const company = {
 
 export default function AppSidebar() {
   const { data: session } = useSession();
+  const [user, setUser] = React.useState(null);
   const pathname = usePathname();
+  const nav = user?.role === 'stuff' ? navItems : adminNavItems;
+  React.useEffect(() => {
+    getUserInfo().then((k: any) => {
+      setUser(k);
+    });
+  }, []);
 
   return (
     <Sidebar collapsible="icon">
@@ -72,7 +80,7 @@ export default function AppSidebar() {
         <SidebarGroup>
           <SidebarGroupLabel>Overview</SidebarGroupLabel>
           <SidebarMenu>
-            {navItems.map((item) => {
+            {nav.map((item) => {
               const Icon = item.icon ? Icons[item.icon] : Icons.logo;
               // @ts-ignore
               return item?.items && item?.items?.length > 0 ? (
@@ -146,20 +154,29 @@ export default function AppSidebar() {
                   className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
                 >
                   <Avatar className="h-8 w-8 rounded-lg">
-                    <AvatarImage
+                    {/* <AvatarImage
                       src={session?.user?.image || ''}
                       alt={session?.user?.name || ''}
-                    />
+                    /> */}
                     <AvatarFallback className="rounded-lg">
-                      {session?.user?.name?.slice(0, 2)?.toUpperCase() || 'CN'}
+                      {
+                        // @ts-ignore
+                        user?.username?.slice(0, 2)?.toUpperCase() || 'CN'
+                      }
                     </AvatarFallback>
                   </Avatar>
                   <div className="grid flex-1 text-left text-sm leading-tight">
                     <span className="truncate font-semibold">
-                      {session?.user?.name || ''}
+                      {
+                        // @ts-ignore
+                        user?.username || ''
+                      }
                     </span>
                     <span className="truncate text-xs">
-                      {session?.user?.email || ''}
+                      {
+                        // @ts-ignore
+                        user?.role || ''
+                      }
                     </span>
                   </div>
                   <ChevronsUpDown className="ml-auto size-4" />
@@ -174,22 +191,30 @@ export default function AppSidebar() {
                 <DropdownMenuLabel className="p-0 font-normal">
                   <div className="flex items-center gap-2 px-1 py-1.5 text-left text-sm">
                     <Avatar className="h-8 w-8 rounded-lg">
-                      <AvatarImage
+                      {/* <AvatarImage
                         src={session?.user?.image || ''}
                         alt={session?.user?.name || ''}
-                      />
+                      /> */}
                       <AvatarFallback className="rounded-lg">
-                        {session?.user?.name?.slice(0, 2)?.toUpperCase() ||
-                          'CN'}
+                        {
+                          // @ts-ignore
+                          user?.username?.slice(0, 2)?.toUpperCase() || 'CN'
+                        }
                       </AvatarFallback>
                     </Avatar>
                     <div className="grid flex-1 text-left text-sm leading-tight">
                       <span className="truncate font-semibold">
-                        {session?.user?.name || ''}
+                        {
+                          // @ts-ignore
+                          user?.username || ''
+                        }
                       </span>
                       <span className="truncate text-xs">
                         {' '}
-                        {session?.user?.email || ''}
+                        {
+                          // @ts-ignore
+                          user?.role || ''
+                        }
                       </span>
                     </div>
                   </div>
@@ -211,7 +236,7 @@ export default function AppSidebar() {
                   </DropdownMenuItem>
                 </DropdownMenuGroup>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem>
+                <DropdownMenuItem onClick={() => deleteAuthCookie()}>
                   <LogOut />
                   Log out
                 </DropdownMenuItem>

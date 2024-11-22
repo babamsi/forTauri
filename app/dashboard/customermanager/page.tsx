@@ -864,8 +864,9 @@ export default function CustomersPage() {
   const [error, setError] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [date, setDate] = useState({
-    from: null,
-    to: null
+    // @ts-ignore
+    from: new Date() - 7 * 24 * 60 * 60 * 1000,
+    to: new Date()
   });
   const [cookies, setCookies] = useState(null);
   const [transactionsPage, setTransactionsPage] = useState(1);
@@ -971,11 +972,8 @@ export default function CustomersPage() {
             customer.invoiceNumber
               .toLowerCase()
               .includes(searchTerm.toLowerCase())) &&
-          // @ts-ignore
           (!date?.from || customerDate >= startOfDay(date.from)) &&
-          // @ts-ignore
           (!date?.to || customerDate <= endOfDay(date.to)) &&
-          // @ts-ignore
           (date?.from ? true : isToday) // Apply "Today" filter only if no date range is selected
         );
       })
@@ -995,7 +993,7 @@ export default function CustomersPage() {
     return filteredData.slice(startIndex, startIndex + transactionsPerPage);
   }, [filteredData, transactionsPage]);
 
-  // console.log(paginatedData);
+  console.log(paginatedTransactions);
 
   const totalPages = Math.ceil(filteredData.length / itemsPerPage);
   const totalTransactionPages = Math.ceil(

@@ -76,7 +76,7 @@ import {
   useGetExpenseQuery,
   useGetMyExpansesQuery
 } from '@/store/authApi';
-import { getUserInfo } from '@/actions/auth.actions';
+import { deleteAuthCookie, getUserInfo } from '@/actions/auth.actions';
 import { getAuthCookie } from '@/actions/auth.actions';
 
 const useMediaQuery = (query: string): boolean => {
@@ -398,7 +398,7 @@ export function ExpensesTracker() {
 
   // Add error state JSX
   if (isError) {
-    console.log(isError);
+    // console.log(isError);
     return (
       <div className="flex h-[200px] items-center justify-center">
         <div className="space-y-2 text-center">
@@ -412,8 +412,14 @@ export function ExpensesTracker() {
     );
   }
 
-  console.log(staffError);
-  console.log(staffExpenses);
+  // @ts-ignore
+  if (
+    staffError.status === 401 ||
+    // @ts-ignore
+    adminError.status === 401
+  ) {
+    return deleteAuthCookie();
+  }
 
   return (
     <div className="flex h-full flex-col">
