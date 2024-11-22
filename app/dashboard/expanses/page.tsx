@@ -6,7 +6,7 @@ import PageContainer from '@/components/layout/page-container';
 import { getAuthCookie, getUserInfo } from '@/actions/auth.actions';
 import { useParams, useRouter } from 'next/navigation';
 
-function page() {
+function Page() {
   const router = useRouter();
   const [user, setUser] = useState('');
   useEffect(() => {
