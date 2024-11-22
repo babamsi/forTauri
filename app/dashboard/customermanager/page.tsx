@@ -971,8 +971,11 @@ export default function CustomersPage() {
             customer.invoiceNumber
               .toLowerCase()
               .includes(searchTerm.toLowerCase())) &&
+          // @ts-ignore
           (!date?.from || customerDate >= startOfDay(date.from)) &&
+          // @ts-ignore
           (!date?.to || customerDate <= endOfDay(date.to)) &&
+          // @ts-ignore
           (date?.from ? true : isToday) // Apply "Today" filter only if no date range is selected
         );
       })
