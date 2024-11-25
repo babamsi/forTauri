@@ -1658,7 +1658,7 @@ function FilterOptions({
             <SelectValue placeholder="All Categories" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="">All Categories</SelectItem>
+            <SelectItem value="all">All Categories</SelectItem>
             {categories.map(
               // @ts-ignore
               (category) => (
@@ -1678,7 +1678,7 @@ function FilterOptions({
             <SelectValue placeholder="All Vendors" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="">All Vendors</SelectItem>
+            <SelectItem value="all">All Vendors</SelectItem>
             {vendors.map(
               // @ts-ignore
               (vendor) => (
