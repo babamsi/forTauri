@@ -899,7 +899,7 @@ export default function ProductManagement() {
                                 <div className="flex items-center gap-1">
                                   <Badge
                                     variant="outline"
-                                    className="bg-blue-300 text-xs"
+                                    className="w-12 bg-blue-300 text-xs"
                                   >
                                     +{product.newBatchQuantity}
                                   </Badge>

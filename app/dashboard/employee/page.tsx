@@ -66,7 +66,7 @@ export default function Page({ searchParams }: paramsProps) {
   console.log(data);
   if (
     // @ts-ignore
-    user?.role !== 'admin'
+    user?.role === 'stuff'
   ) {
     router.push('/dashboard');
   }
