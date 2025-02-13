@@ -105,6 +105,8 @@ import { format, parseISO } from 'date-fns';
 import 'react-phone-number-input/style.css';
 import PhoneInput from 'react-phone-number-input';
 
+import io from 'socket.io-client';
+
 interface Product {
   _id: string;
   name: string;
@@ -246,6 +248,12 @@ export default function EnhancedPOSSystem() {
   const [selectedCartItem, setSelectedCartItem] = useState<any>(null);
   const [newQuantity, setNewQuantity] = useState<string>('');
   const [batchAllocationDialog, setBatchAllocationDialog] = useState(false);
+  const [mpesaStatus, setMpesaStatus] = useState<
+    'idle' | 'initiated' | 'processing' | 'success' | 'failed'
+  >('idle');
+  const [error, setError] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [transactionId, setTransactionId] = useState('');
 
   const ITEMS_PER_PAGE = 20;
 
@@ -333,14 +341,14 @@ export default function EnhancedPOSSystem() {
   }, [filteredProducts, page]);
 
   const addToCart = useCallback((product: Product) => {
-    if (product.newBatch && product.newBatchQuantity > 0) {
-      // @ts-ignore
-      setSelectedProduct(product);
-      setIsBatchDialogOpen(true);
-    } else {
-      // @ts-ignore
-      addProductToCart(product);
-    }
+    // if (product.newBatch && product.newBatchQuantity > 0) {
+    //   // @ts-ignore
+    //   setSelectedProduct(product);
+    //   setIsBatchDialogOpen(true);
+    // } else {
+    // @ts-ignore
+    addProductToCart(product);
+    // }
   }, []);
 
   // Add this function to handle quantity allocation between batches
@@ -603,7 +611,8 @@ export default function EnhancedPOSSystem() {
 
   const processPayment = async () => {
     setIsProcessingPayment(true);
-    console.log(cart);
+    // await handleMpesaPayment()
+    // console.log(cart);
     // Simulate payment processing
     const newTransaction = {
       // id: `T${transactions.length + 1}`.padStart(4, '0'),
@@ -614,13 +623,15 @@ export default function EnhancedPOSSystem() {
         id: item._id,
         name: item.name,
         price: item.price,
-        quantity: String(item.quantity),
+        quantity: String(item.quantity)
         // @ts-ignore
-        isNewBatch: item.isNewBatch
+        // isNewBatch: item.isNewBatch
       })),
       cashType: paymentMethod,
       vat: calculateVAT(),
+      paidNumber: valuePhoneNumber,
       discount: calculateDiscount(),
+      transactionId: transactionId,
       cookies
     };
     // console.log(newTransaction);
@@ -635,6 +646,8 @@ export default function EnhancedPOSSystem() {
         return;
       }
       toast.success('Order placed successfully');
+      setIsSubmitting(false);
+
       // console.log(result);
       await refetchProducts();
       await refetchCustomers();
@@ -644,6 +657,7 @@ export default function EnhancedPOSSystem() {
       setIsSaleComplete(true);
     } catch (error) {
       toast.error('An unexpected error occurred during checkout');
+      setIsSubmitting(false);
     }
 
     // Update inventory
@@ -720,6 +734,8 @@ export default function EnhancedPOSSystem() {
       (t) => t.invoiceNumber === returnInvoice
     );
 
+    // console.log('return search', transaction)
+
     if (transaction) {
       const consolidatedProducts = transaction.products.reduce(
         // @ts-ignore
@@ -741,9 +757,11 @@ export default function EnhancedPOSSystem() {
               returnQuantity: 0,
               status: transaction.status,
               originalPrice: findProduct(item),
-              revenue: transaction.revenue
+              revenue: transaction.revenue,
+              returnedQuantity: Number(item.returnQuantity)
             });
           }
+          console.log('acccc', acc);
           return acc;
         },
         []
@@ -869,16 +887,93 @@ export default function EnhancedPOSSystem() {
     //
   };
 
-  const handlePayment = () => {
+  const handleMpesaPayment = async () => {
+    setMpesaStatus('initiated');
+    const response = await fetch('/api/mpesa/c2b', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        amount: calculateTotal(),
+        phoneNumber: valuePhoneNumber
+        // orderData: orderData,
+      })
+    });
+
+    // console.log(currentCustomer)
+
+    const data = await response.json();
+    console.log(data);
+
+    if (data.success) {
+      setMpesaStatus('processing');
+
+      // Wait for M-Pesa callback to complete the order
+    } else {
+      setIsSubmitting(false);
+      setMpesaStatus('failed');
+      toast.error(data.error || 'Failed to initiate M-Pesa payment');
+      throw new Error(data.error || 'Failed to initiate M-Pesa payment');
+    }
+  };
+
+  useEffect(() => {
+    const socket = io('https://webhook-alqurashi.onrender.com');
+
+    socket.on('connect', () => {
+      console.log('Connected to M-Pesa WebSocket server');
+    });
+
+    socket.on('paymentStatus', (data) => {
+      console.log('Received payment status:', data);
+      if (data) {
+        const { ResultCode, ResultDesc, TransID, FirstName } = data;
+        if (ResultCode === 0) {
+          setMpesaStatus('success');
+          console.log('userrr', FirstName);
+          setTransactionId(TransID);
+          toast.success(`Got the payment from ${FirstName}`);
+          setIsSubmitting(false);
+          processPayment();
+          // createOrderAfterPayment()
+        } else {
+          setMpesaStatus('failed');
+          // console.log("failed")
+          setIsSubmitting(false);
+          toast.error(ResultDesc || 'M-Pesa payment failed');
+          setError(ResultDesc || 'M-Pesa payment failed');
+        }
+      }
+    });
+    // socket.on("GetTransactionDetails", (data) => {
+    //   console.log("Transaction Details", data);
+    //   if (data) {
+    //     setTransactionId(data.TransID)
+    //     toast.success(`Got the payment from ${data.FirstName}`)
+    //   }
+    // })
+
+    return () => {
+      socket.disconnect();
+    };
+  }, [mpesaStatus]);
+
+  const handlePayment = async () => {
+    setIsSubmitting(true);
+
     if (
       paymentMethod === 'Cash' &&
       parseFloat(cashReceived) < calculateTotal()
     ) {
       toast.error('Insufficient cash received');
+      setIsSubmitting(false);
+
       return;
     }
     if (paymentMethod === 'Bank' && !selectedBank) {
       toast.error('Please select a bank');
+      setIsSubmitting(false);
       return;
     }
     if (
@@ -886,9 +981,15 @@ export default function EnhancedPOSSystem() {
       (!parseFloat(cashReceived) && paymentMethod === 'Cash')
     ) {
       toast.error('Please select a payment method and cash received');
+      setIsSubmitting(false);
       return;
     }
-    processPayment();
+    if (paymentMethod === 'Mobile') {
+      await handleMpesaPayment();
+      // processPayment()
+    } else {
+      processPayment();
+    }
   };
 
   const filteredTransactions = useMemo(() => {
@@ -1027,10 +1128,10 @@ export default function EnhancedPOSSystem() {
         (sum: number, batch: { quantity: number }) => sum + batch.quantity,
         0
       );
-      const newBatchQuantity =
-        groupedItem.batches.find(
-          (batch: { isNewBatch: boolean }) => batch.isNewBatch
-        )?.quantity || 0;
+      // const newBatchQuantity =
+      //   groupedItem.batches.find(
+      //     (batch: { isNewBatch: boolean }) => batch.isNewBatch
+      //   )?.quantity || 0;
       const currentBatchQuantity =
         groupedItem.batches.find(
           (batch: { isNewBatch: boolean }) => !batch.isNewBatch
@@ -1046,41 +1147,37 @@ export default function EnhancedPOSSystem() {
 
         // Get current quantities from both batches
         const currentBatchItem = cart.find(
-          (item) => item._id === groupedItem._id && !item.isNewBatch
+          (item) => item._id === groupedItem._id
         );
-        const newBatchItem = cart.find(
-          (item) => item._id === groupedItem._id && item.isNewBatch
-        );
+        // const newBatchItem = cart.find(
+        //   (item) => item._id === groupedItem._id && item.isNewBatch
+        // );
 
         const currentBatchQty = currentBatchItem?.quantity || 0;
-        const newBatchQty = newBatchItem?.quantity || 0;
+        // const newBatchQty = newBatchItem?.quantity || 0;
 
         // If this is a new batch item, increase new batch quantity
-        if (groupedItem.isNewBatch && newBatchQty < product.newBatchQuantity) {
-          updateQuantity(groupedItem._id, true, newBatchQty + 1);
-          return;
-        }
+        // if (groupedItem.isNewBatch && newBatchQty < product.newBatchQuantity) {
+        //   updateQuantity(groupedItem._id, true, newBatchQty + 1);
+        //   return;
+        // }
 
         // Try to increase current batch first
-        if (
-          currentBatchQty <
-            Math.abs(product.quantity - product.newBatchQuantity) ||
-          currentBatchQty < product.quantity
-        ) {
+        if (currentBatchQty < product.quantity) {
           updateQuantity(groupedItem._id, false, currentBatchQty + 1);
           return;
         }
 
         // If current batch is full, automatically switch to new batch
-        if (newBatchQty < product.newBatchQuantity) {
-          // If new batch doesn't exist yet, create it
-          if (!newBatchItem) {
-            addProductToCart(product, true);
-          } else {
-            updateQuantity(groupedItem._id, true, newBatchQty + 1);
-          }
-          return;
-        }
+        // if (newBatchQty < product.newBatchQuantity) {
+        //   // If new batch doesn't exist yet, create it
+        //   if (!newBatchItem) {
+        //     addProductToCart(product, true);
+        //   } else {
+        //     updateQuantity(groupedItem._id, true, newBatchQty + 1);
+        //   }
+        //   return;
+        // }
 
         // If both batches are at maximum
         toast.error('Maximum quantity reached for both batches');
@@ -1089,7 +1186,7 @@ export default function EnhancedPOSSystem() {
       const handleDecrease = (groupedItem: any) => {
         // Try to decrease current batch first
         const currentBatchItem = cart.find(
-          (item) => item._id === groupedItem._id && !item.isNewBatch
+          (item) => item._id === groupedItem._id
         );
 
         if (currentBatchItem && currentBatchItem.quantity > 0) {
@@ -1098,13 +1195,13 @@ export default function EnhancedPOSSystem() {
         }
 
         // If no current batch or it's at 0, try new batch
-        const newBatchItem = cart.find(
-          (item) => item._id === groupedItem._id && item.isNewBatch
-        );
+        // const newBatchItem = cart.find(
+        //   (item) => item._id === groupedItem._id && item.isNewBatch
+        // );
 
-        if (newBatchItem && newBatchItem.quantity > 0) {
-          updateQuantity(groupedItem._id, true, newBatchItem.quantity - 1);
-        }
+        // if (newBatchItem && newBatchItem.quantity > 0) {
+        //   updateQuantity(groupedItem._id, true, newBatchItem.quantity - 1);
+        // }
       };
 
       return (
@@ -1115,11 +1212,11 @@ export default function EnhancedPOSSystem() {
           <div>
             <div className="flex items-center gap-2 font-medium">
               {groupedItem.name}
-              {newBatchQuantity > 0 && (
+              {/* {newBatchQuantity > 0 && (
                 <Badge variant="secondary" className="text-xs">
                   +{newBatchQuantity} new
                 </Badge>
-              )}
+              )} */}
             </div>
             <div className="text-sm text-gray-500">
               ${groupedItem.sellPrice.toFixed(2)} each
@@ -1184,26 +1281,24 @@ export default function EnhancedPOSSystem() {
     );
     if (!product) return;
 
-    const currentBatchItem = cart.find(
-      (item) => item._id === productId && !item.isNewBatch
-    );
-    const newBatchItem = cart.find(
-      (item) => item._id === productId && item.isNewBatch
-    );
+    const currentBatchItem = cart.find((item) => item._id === productId);
+    // const newBatchItem = cart.find(
+    //   (item) => item._id === productId && item.isNewBatch
+    // );
 
     // Validate total quantity against available stock
-    const maxAvailableQuantity = product.quantity || 0;
-    if (newQty > maxAvailableQuantity) {
-      toast.error(`Maximum available quantity is ${maxAvailableQuantity}`);
-      return;
-    }
+    // const maxAvailableQuantity = product.quantity || 0;
+    // if (newQty > maxAvailableQuantity) {
+    //   toast.error(`Maximum available quantity is ${maxAvailableQuantity}`);
+    //   return;
+    // }
 
     // If only current batch exists
-    if (currentBatchItem && !newBatchItem) {
-      if (newQty > product.quantity - product.newBatchQuantity) {
+    if (currentBatchItem) {
+      if (newQty > product.quantity) {
         toast.error(
           `Maximum available quantity in current batch is ${
-            product.quantity - product.newBatchQuantity
+            product.quantity - newQty
           }`
         );
         return;
@@ -1211,15 +1306,15 @@ export default function EnhancedPOSSystem() {
       updateQuantity(productId, false, newQty);
     }
     // If only new batch exists
-    else if (newBatchItem && !currentBatchItem) {
-      if (newQty > product.newBatchQuantity) {
-        toast.error(
-          `Maximum available quantity in new batch is ${product.newBatchQuantity}`
-        );
-        return;
-      }
-      updateQuantity(productId, true, newQty);
-    }
+    // else if (newBatchItem && !currentBatchItem) {
+    //   if (newQty > product.newBatchQuantity) {
+    //     toast.error(
+    //       `Maximum available quantity in new batch is ${product.newBatchQuantity}`
+    //     );
+    //     return;
+    //   }
+    //   updateQuantity(productId, true, newQty);
+    // }
 
     setIsQuantityDialogOpen(false);
     setNewQuantity('');
@@ -1539,7 +1634,7 @@ export default function EnhancedPOSSystem() {
       </main>
 
       {/* Batch Selection Dialog */}
-      <Dialog
+      {/* <Dialog
         open={isBatchDialogOpen}
         onOpenChange={(open) => {
           if (open === false) {
@@ -1617,7 +1712,7 @@ export default function EnhancedPOSSystem() {
             </div>
           )}
         </DialogContent>
-      </Dialog>
+      </Dialog> */}
 
       {/* Checkout Dialog */}
       <Dialog
@@ -1818,7 +1913,7 @@ export default function EnhancedPOSSystem() {
                 )}
                 {paymentMethod === 'Mobile' && (
                   <div className="mt-4 space-y-2">
-                    <Select>
+                    {/* <Select>
                       <SelectTrigger className="text-sm">
                         <SelectValue placeholder="Select Mobile Payment" />
                       </SelectTrigger>
@@ -1827,8 +1922,8 @@ export default function EnhancedPOSSystem() {
                         <SelectItem value="zaad">Zaad</SelectItem>
                         <SelectItem value="sahal">Sahal</SelectItem>
                       </SelectContent>
-                    </Select>
-                    {currentCustomer ? (
+                    </Select> */}
+                    {/* {currentCustomer ? (
                       <Input
                         placeholder="Phone Number"
                         value={
@@ -1848,7 +1943,15 @@ export default function EnhancedPOSSystem() {
                         onChange={setValuePhoneNumber}
                         className="text-sm"
                       />
-                    )}
+                    )} */}
+                    <PhoneInput
+                      defaultCountry="SO"
+                      placeholder="Enter phone number"
+                      value={valuePhoneNumber}
+                      // @ts-ignore
+                      onChange={setValuePhoneNumber}
+                      className="text-sm"
+                    />
                   </div>
                 )}
               </div>
@@ -1867,11 +1970,22 @@ export default function EnhancedPOSSystem() {
                     (paymentMethod === 'Cash' &&
                       parseFloat(cashReceived) < calculateTotal()) ||
                     (paymentMethod === 'Bank' && !selectedBank) ||
-                    (paymentMethod === 'Mobile' && !valuePhoneNumber)
+                    (paymentMethod === 'Mobile' && !valuePhoneNumber) ||
+                    isSubmitting ||
+                    mpesaStatus === 'processing'
                   }
                   className="text-sm"
                 >
-                  Complete Payment
+                  {isSubmitting || mpesaStatus === 'processing' ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      {mpesaStatus === 'processing'
+                        ? 'Processing M-Pesa Payment...'
+                        : 'Processing...'}
+                    </>
+                  ) : (
+                    'Complete Payment'
+                  )}
                 </Button>
               </DialogFooter>
             </div>
@@ -2142,7 +2256,7 @@ export default function EnhancedPOSSystem() {
                               // @ts-ignore
                               item.product
                             }
-                            <Badge
+                            {/* <Badge
                               variant={
                                 // @ts-ignore
                                 item.isNewBatch ? 'secondary' : 'outline'
@@ -2153,7 +2267,7 @@ export default function EnhancedPOSSystem() {
                                 // @ts-ignore
                                 item.isNewBatch ? 'New Batch' : 'Current Batch'
                               }
-                            </Badge>
+                            </Badge> */}
                           </TableCell>
                           <TableCell className="text-xs">
                             {item.quantity}
@@ -2358,7 +2472,7 @@ export default function EnhancedPOSSystem() {
                         <TableCell className="text-xs">
                           {
                             // @ts-ignore
-                            item.quantity
+                            item.quantity - item.returnedQuantity
                           }
                         </TableCell>
                         <TableCell>
@@ -2367,7 +2481,7 @@ export default function EnhancedPOSSystem() {
                             min="0"
                             max={
                               // @ts-ignore
-                              item.quantity
+                              item.quantity - item.returnedQuantity
                             }
                             value={
                               // @ts-ignore
@@ -2377,7 +2491,8 @@ export default function EnhancedPOSSystem() {
                               const newValue = parseInt(e.target.value);
                               if (
                                 // @ts-ignore
-                                newValue <= item.quantity
+                                newValue <=
+                                item.quantity - item.returnedQuantity
                               ) {
                                 const newReturnItems = returnItems.map((i) =>
                                   // @ts-ignore

@@ -3,7 +3,7 @@ import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
 export const authApi = createApi({
   reducerPath: 'authApi',
   baseQuery: fetchBaseQuery({
-    baseUrl: 'https://pignaqfwhj.ap-south-1.awsapprunner.com/api',
+    baseUrl: 'http://localhost:5000/api',
     prepareHeaders: (headers) => {
       headers.set('Accept', 'application/json');
 
@@ -254,6 +254,58 @@ export const authApi = createApi({
           Authorization: `Bearer ${cred.cookies}`
         }
       })
+    }),
+    getAllSuppliers: builder.query({
+      query: (cred) => ({
+        url: `/supplier/getSuppliers`,
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${cred}`
+        }
+      })
+    }),
+    getSupplier: builder.query({
+      query: (cred) => ({
+        url: `/supplier/getSupplier/${cred.id}`,
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${cred.cookies}`
+        }
+      })
+    }),
+    createSupplier: builder.mutation({
+      query: (cred) => ({
+        url: `/supplier/createSupplier`,
+        method: 'POST',
+        body: cred.data,
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${cred.cookies}`
+        }
+      })
+    }),
+    updateSupplier: builder.mutation({
+      query: (cred) => ({
+        url: `/supplier/updateSupplier/${cred.id}`,
+        method: 'POST',
+        body: cred.data,
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${cred.cookies}`
+        }
+      })
+    }),
+    deleteSupplier: builder.mutation({
+      query: (cred) => ({
+        url: `/supplier/deleteSupplier/${cred.id}`,
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${cred.cookies}`
+        }
+      })
     })
   })
 });
@@ -282,5 +334,10 @@ export const {
   useGetStuffQuery,
   useCreateStuffMutation,
   useUpdateStuffMutation,
-  useDeleteStuffMutation
+  useDeleteStuffMutation,
+  useGetAllSuppliersQuery,
+  useGetSupplierQuery,
+  useCreateSupplierMutation,
+  useUpdateSupplierMutation,
+  useDeleteSupplierMutation
 } = authApi;
