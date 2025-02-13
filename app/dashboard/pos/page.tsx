@@ -2492,6 +2492,7 @@ export default function EnhancedPOSSystem() {
                               if (
                                 // @ts-ignore
                                 newValue <=
+                                // @ts-ignore
                                 item.quantity - item.returnedQuantity
                               ) {
                                 const newReturnItems = returnItems.map((i) =>
