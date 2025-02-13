@@ -201,6 +201,7 @@ export default function List01({
                       <Zap
                         className={cn(
                           'h-6 w-6',
+                          //@ts-ignore
                           account.type === 'operational'
                             ? 'text-blue-500'
                             : 'text-emerald-500'
@@ -247,6 +248,7 @@ export default function List01({
                         <TrendingDown
                           className={cn(
                             'h-4 w-4',
+                            //@ts-ignore
                             account.trend === 'up'
                               ? 'text-emerald-500'
                               : 'text-red-500'

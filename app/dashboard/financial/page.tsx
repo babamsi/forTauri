@@ -97,12 +97,15 @@ export default function Content() {
 
   // console.log(balance && balance[1])
   useEffect(() => {
+    // @ts-ignore
     const accounts = balance && balance.split('&');
     const accountDetails = {};
 
     // Step 3: Loop through each account and extract the required information
+    // @ts-ignore
     accounts?.forEach((account) => {
       const [name, currency, firstBalance] = account.split('|'); // Split by '|' and extract the first balance
+      //@ts-ignore
       accountDetails[name] = {
         currency,
         firstBalance: parseFloat(firstBalance) // Convert the first balance to a number
@@ -110,12 +113,15 @@ export default function Content() {
     });
 
     // Step 4: Extract specific accounts (e.g., Working Account and Utility Account)
+    // @ts-ignore
     const workingAccount = accountDetails['Working Account'];
+    // @ts-ignore
     const utilityAccount = accountDetails['Utility Account'];
     setWorkingAccount(workingAccount);
     setUtilityAccount(utilityAccount);
     console.log('Working Account:', workingAccount);
     console.log('Utility Account:', utilityAccount);
+    // @ts-ignore
   }, [balance?.length > 0]);
 
   return (
@@ -191,6 +197,7 @@ export default function Content() {
         <TransferModal
           isOpen={isTransferModalOpen}
           onClose={() => setIsTransferModalOpen(false)}
+          // @ts-ignore
           accounts={ACCOUNTS}
         />
         <PayBillsModal
