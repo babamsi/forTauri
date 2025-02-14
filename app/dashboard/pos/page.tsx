@@ -593,10 +593,9 @@ export default function EnhancedPOSSystem() {
   }, [calculateSubtotal, calculateDiscount]);
 
   const calculateTotal = useCallback(() => {
-    const total =
-      calculateSubtotal() + calculateVAT() - calculateDiscount() || 0;
+    const total = calculateSubtotal() - calculateDiscount() || 0;
     return total;
-  }, [calculateSubtotal, calculateDiscount, calculateVAT]);
+  }, [calculateSubtotal, calculateDiscount]);
 
   const calculateChange = useCallback(() => {
     const total = Math.round(calculateTotal() * 2) / 2;
@@ -866,7 +865,7 @@ export default function EnhancedPOSSystem() {
       // console.log(total);
 
       toast.success(
-        `Return processed. Refund amount: $${
+        `Return processed. Refund amount: KES${
           Math.round(afterReturnAmount * 2) / 2
         }`
       );
@@ -1219,7 +1218,7 @@ export default function EnhancedPOSSystem() {
               )} */}
             </div>
             <div className="text-sm text-gray-500">
-              ${groupedItem.sellPrice.toFixed(2)} each
+              {groupedItem.sellPrice.toFixed(2)} each
             </div>
           </div>
           <div className="flex items-center space-x-1">
@@ -1520,7 +1519,7 @@ export default function EnhancedPOSSystem() {
                                 )}
                               </div>
                               <div className="text-sm text-gray-500">
-                                $
+                                KES
                                 {
                                   // @ts-ignore
                                   product.sellPrice.toFixed(2)
@@ -1587,19 +1586,19 @@ export default function EnhancedPOSSystem() {
                   <div className="mt-4 space-y-1 text-base">
                     <div className="flex justify-between">
                       <span>Subtotal:</span>
-                      <span>${calculateSubtotal().toFixed(2)}</span>
+                      <span>KES{calculateSubtotal().toFixed(2)}</span>
                     </div>
-                    <div className="flex justify-between">
+                    {/* <div className="flex justify-between">
                       <span>VAT ({(VAT_RATE * 100).toFixed(0)}%):</span>
                       <span>${calculateVAT().toFixed(2)}</span>
-                    </div>
+                    </div> */}
                     <div className="flex justify-between">
                       <span>Discount:</span>
-                      <span>${calculateDiscount().toFixed(2) || 0}</span>
+                      <span>KES{calculateDiscount().toFixed(2) || 0}</span>
                     </div>
                     <div className="flex justify-between text-lg font-bold">
                       <span>Total:</span>
-                      <span>${Math.round(calculateTotal() * 2) / 2}</span>
+                      <span>KES{Math.round(calculateTotal() * 2) / 2}</span>
                     </div>
                   </div>
                   <div className="mt-4 space-y-2">
@@ -1744,7 +1743,7 @@ export default function EnhancedPOSSystem() {
               </div>
               <div className="space-y-2 text-sm">
                 <p>
-                  <strong>Total:</strong> ${calculateTotal().toFixed(2)}
+                  <strong>Total:</strong> KES{calculateTotal().toFixed(2)}
                 </p>
                 <p>
                   <strong>Payment Method:</strong> {paymentMethod}
@@ -1752,10 +1751,10 @@ export default function EnhancedPOSSystem() {
                 {paymentMethod === 'Cash' && (
                   <>
                     <p>
-                      <strong>Cash Received:</strong> ${cashReceived}
+                      <strong>Cash Received:</strong> KES{cashReceived}
                     </p>
                     <p>
-                      <strong>Change:</strong> ${calculateChange()}
+                      <strong>Change:</strong> KES{calculateChange()}
                     </p>
                   </>
                 )}
@@ -1877,7 +1876,7 @@ export default function EnhancedPOSSystem() {
                       className="text-sm"
                     />
                     <div className="text-base font-semibold">
-                      Change: ${calculateChange()}
+                      Change: KES{calculateChange()}
                     </div>
                   </div>
                 )}
@@ -2291,10 +2290,10 @@ export default function EnhancedPOSSystem() {
                             </TableCell>
                           )}
                           <TableCell className="text-xs">
-                            ${item.price.toFixed(2)}
+                            KES{item.price.toFixed(2)}
                           </TableCell>
                           <TableCell className="text-xs">
-                            ${(item.price * item.quantity).toFixed(2)}
+                            KES{(item.price * item.quantity).toFixed(2)}
                           </TableCell>
                         </TableRow>
                       ))}
@@ -2306,7 +2305,7 @@ export default function EnhancedPOSSystem() {
                 <div className="flex justify-between">
                   <span>Subtotal:</span>
                   <span>
-                    $
+                    KES
                     {
                       // @ts-ignore
                       (
@@ -2322,7 +2321,7 @@ export default function EnhancedPOSSystem() {
                 <div className="flex justify-between">
                   <span>VAT:</span>
                   <span>
-                    $
+                    KES
                     {
                       // @ts-ignore
                       selectedTransaction.vat.toFixed(2)
@@ -2332,7 +2331,7 @@ export default function EnhancedPOSSystem() {
                 <div className="flex justify-between">
                   <span>Discount:</span>
                   <span>
-                    $
+                    KES
                     {
                       // @ts-ignore
                       selectedTransaction.discount.toFixed(2)
@@ -2353,7 +2352,7 @@ export default function EnhancedPOSSystem() {
                       // @ts-ignore
                       selectedTransaction.status === 'Refunded' ? '-' : ''
                     }
-                    $
+                    KES
                     {
                       // @ts-ignore
                       Math.abs(selectedTransaction.totalAmount).toFixed(2)
@@ -2428,14 +2427,14 @@ export default function EnhancedPOSSystem() {
                     <strong>Payment Method:</strong> {returnPaymentType}
                   </div>
                   <div>
-                    <strong>Total Amount:</strong> $
+                    <strong>Total Amount:</strong> KES
                     {returnTotalAmount.toFixed(2)}
                   </div>
                   <div>
-                    <strong>Discount:</strong> {returnDiscount}$
+                    <strong>Discount:</strong> {returnDiscount}KES
                   </div>
                   <div>
-                    Amount to be returned $
+                    Amount to be returned: KES
                     {Math.round(afterReturnAmount * 2) / 2}
                   </div>
                 </div>
@@ -2463,7 +2462,7 @@ export default function EnhancedPOSSystem() {
                           }
                         </TableCell>
                         <TableCell className="text-xs">
-                          $
+                          KES
                           {
                             // @ts-ignore
                             item.price.toFixed(2)
@@ -2638,7 +2637,7 @@ export default function EnhancedPOSSystem() {
                             : ''
                         }`}
                       >
-                        ${Math.abs(transaction.totalAmount).toFixed(2)}
+                        KES{Math.abs(transaction.totalAmount).toFixed(2)}
                       </TableCell>
                       <TableCell>
                         <Button

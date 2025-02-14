@@ -71,6 +71,7 @@ export async function POST(request: Request) {
         checkoutRequestId: stkPushData.CheckoutRequestID
       });
     } else {
+      console.log(stkPushData);
       throw new Error(stkPushData.ResponseDescription);
     }
   } catch (error: any) {
