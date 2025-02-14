@@ -254,6 +254,7 @@ export default function EnhancedPOSSystem() {
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [transactionId, setTransactionId] = useState('');
+  const [requestId, setRequestId] = useState('');
 
   const ITEMS_PER_PAGE = 20;
 
@@ -907,7 +908,7 @@ export default function EnhancedPOSSystem() {
 
     if (data.success) {
       setMpesaStatus('processing');
-
+      setRequestId(data.checkoutRequestId);
       // Wait for M-Pesa callback to complete the order
     } else {
       setIsSubmitting(false);
@@ -926,7 +927,7 @@ export default function EnhancedPOSSystem() {
 
     socket.on('paymentStatus', (data) => {
       console.log('Received payment status:', data);
-      if (data) {
+      if (data && data.CheckoutRequestID === requestId) {
         const { ResultCode, ResultDesc, TransID, FirstName } = data;
         if (ResultCode === 0) {
           setMpesaStatus('success');
