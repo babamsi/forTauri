@@ -2319,7 +2319,7 @@ export default function EnhancedPOSSystem() {
                     }
                   </span>
                 </div>
-                <div className="flex justify-between">
+                {/* <div className="flex justify-between">
                   <span>VAT:</span>
                   <span>
                     KES
@@ -2328,7 +2328,7 @@ export default function EnhancedPOSSystem() {
                       selectedTransaction.vat.toFixed(2)
                     }
                   </span>
-                </div>
+                </div> */}
                 <div className="flex justify-between">
                   <span>Discount:</span>
                   <span>
