@@ -510,7 +510,7 @@ export default function ProductManagement() {
         receiptNumber: receiptNumber,
         price: newPrice,
         sellPrice: newSellPrice,
-        expirationDate: newExpirationDate + ' newStock', // Make sure this is passed correctly
+        expirationDate: newExpirationDate, // Make sure this is passed correctly
         action: [
           {
             action: `Restocked from ${
@@ -542,6 +542,7 @@ export default function ProductManagement() {
       if ('error' in result) {
         throw new Error(result.error as string);
       }
+      console.log(result);
 
       setProducts((prevProducts) =>
         prevProducts.map((product) =>
