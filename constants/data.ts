@@ -162,6 +162,12 @@ export const adminNavItems: NavItem[] = [
     href: '/dashboard/suppliermanager',
     icon: 'supplier',
     label: 'suppliers'
+  },
+  {
+    title: 'Ecommerce',
+    href: '/dashboard/onlineOrders',
+    icon: 'online',
+    label: 'Online Orders'
   }
 ];
 
@@ -207,6 +213,12 @@ export const navItems: NavItem[] = [
     href: '/dashboard/suppliermanager',
     icon: 'supplier',
     label: 'suppliers'
+  },
+  {
+    title: 'Ecommerce',
+    href: '/dashboard/onlineOrders',
+    icon: 'online',
+    label: 'Online Orders'
   }
   // {
   //   title: 'Employee',

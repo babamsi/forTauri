@@ -35,7 +35,8 @@ import {
   ClipboardCheck,
   BringToFront,
   ScanEye,
-  Cable
+  Cable,
+  ShoppingBag
 } from 'lucide-react';
 
 export type Icon = LucideIcon;
@@ -74,6 +75,7 @@ export const Icons = {
   order: BringToFront,
   expanse: ScanEye,
   supplier: Cable,
+  online: ShoppingBag,
   gitHub: ({ ...props }: LucideProps) => (
     <svg
       aria-hidden="true"
