@@ -104,6 +104,7 @@ import {
 import { format, parseISO } from 'date-fns';
 import 'react-phone-number-input/style.css';
 import PhoneInput from 'react-phone-number-input';
+import { invoke } from '@tauri-apps/api';
 
 import io from 'socket.io-client';
 
@@ -288,9 +289,11 @@ export default function EnhancedPOSSystem() {
     useRegisterCustomerMutation();
 
   useEffect(() => {
-    getAuthCookie().then((k: any) => {
-      setcookies(k);
-    });
+    const user = JSON.parse(localStorage.getItem('userStore'));
+    // getAuthCookie().then((k: any) => {
+    //   setcookies(k);
+    // });
+    setcookies(user.access_token);
   }, []);
 
   useEffect(() => {
@@ -352,37 +355,28 @@ export default function EnhancedPOSSystem() {
     // }
   }, []);
 
-  // Add this function to handle quantity allocation between batches
-  const handleQuantityAllocation = (
-    totalQuantity: number,
-    productId: string
-  ) => {
-    const product = cart.find((item) => item._id === productId);
-    if (!product) return;
+  const handlePrintReceipt = async () => {
+    const receiptText = `
+    STORE NAME
+    ------------------------------
+    Item 1       $10.00
+    Item 2       $15.00
+    ------------------------------
+    TOTAL        $25.00
+    Thank you for shopping!
+  `;
 
-    const availableNewBatch = product.newBatchQuantity || 0;
-    const availableCurrentBatch = product.quantity || 0;
-
-    // If requested quantity is less than or equal to new batch quantity
-    if (totalQuantity <= availableNewBatch) {
-      updateQuantity(productId, true, totalQuantity);
-      updateQuantity(productId, false, 0);
-    } else {
-      // Allocate maximum possible to new batch, rest to current batch
-      const newBatchAllocation = Math.min(totalQuantity, availableNewBatch);
-      const currentBatchAllocation = Math.min(
-        totalQuantity - newBatchAllocation,
-        availableCurrentBatch
-      );
-
-      updateQuantity(productId, true, newBatchAllocation);
-      updateQuantity(productId, false, currentBatchAllocation);
+    try {
+      const result = await invoke('print_receipt', { content: receiptText });
+      console.log(result);
+      alert('Receipt printed successfully!');
+    } catch (error) {
+      console.error('Printing failed:', error);
+      alert('Failed to print the receipt.');
     }
-
-    setBatchAllocationDialog(false);
-    setIsQuantityDialogOpen(false);
-    setNewQuantity('');
   };
+
+  // Add this function to handle quantity allocation between batches
 
   const addProductToCart = useCallback(
     (product: Product, useNewBatch: boolean) => {
@@ -606,7 +600,8 @@ export default function EnhancedPOSSystem() {
   }, [calculateTotal, cashReceived]);
 
   const handleCheckout = useCallback(() => {
-    setIsCheckoutDialogOpen(true);
+    // setIsCheckoutDialogOpen(true);
+    handlePrintReceipt();
   }, []);
 
   const processPayment = async () => {

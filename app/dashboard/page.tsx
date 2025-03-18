@@ -82,9 +82,12 @@ export default function Dashboard() {
   const { data: expenses } = useGetMyExpansesQuery(cookies, { skip: !cookies });
 
   useEffect(() => {
-    getAuthCookie().then((k: any) => {
-      setCookies(k);
-    });
+    // console.log(JSON.parse(localStorage.getItem('userStore')))
+    const userStore = JSON.parse(localStorage.getItem('userStore'));
+    setCookies(userStore.access_token);
+    // getAuthCookie().then((k: any) => {
+    //   setCookies(k);
+    // });
   }, []);
 
   const processUserData =

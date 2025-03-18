@@ -22,7 +22,7 @@ export default async function RootLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const session = await auth();
+  // const session = await auth();
   return (
     <html
       lang="en"
@@ -31,7 +31,7 @@ export default async function RootLayout({
     >
       <body className={'overflow-hidden'}>
         <NextTopLoader showSpinner={false} />
-        <Providers session={session}>
+        <Providers>
           <Toaster />
           {children}
         </Providers>

@@ -17,10 +17,11 @@ import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import GithubSignInButton from '../github-auth-button';
-import { createAuthCookie } from '../../actions/auth.actions';
+// import { createAuthCookie } from '../../actions/auth.actions';
 import { useRouter } from 'next/navigation';
 import { useLoginMutation } from '@/store/authApi';
 import toast, { Toaster } from 'react-hot-toast';
+// import { Store } from '@tauri-apps/plugin-store';
 
 const formSchema = z.object({
   username: z
@@ -39,7 +40,7 @@ export default function UserAuthForm() {
   const [login, { isLoading }] = useLoginMutation();
   const [loading, setLoading] = useState(false);
   const defaultValues = {
-    username: 'testwae',
+    username: 'testwae@maamul.com',
     password: '12345678'
   };
   const form = useForm<UserFormValue>({
@@ -56,6 +57,7 @@ export default function UserAuthForm() {
     // console.log(k);
     setLoading(true);
     try {
+      // const store = new Store("store.json");
       const result = await login({ data }).unwrap();
       // console.log(result)
       if (result) {
@@ -68,17 +70,20 @@ export default function UserAuthForm() {
           name: result.name,
           username: result.username,
           id: result._id,
-          role: result.role
+          role: result.role,
+          access_token: result.access_token
         };
-        await createAuthCookie(
-          result.refresh_token,
-          result.access_token,
-          loggedInfo
-        );
+        // await createAuthCookie(
+        //   result.access_token,
+        //   loggedInfo
+        // );
+        // await store.set('user', loggedInfo.username);
+        // await store.set('role', loggedInfo.role)
+        // await store.set('access', result.access_token)
         localStorage.setItem('userStore', JSON.stringify(loggedInfo));
         // const updateInfo = useStuffInfoStore((state) => state.setUserInfo)
         // updateInfo(loggedInfo)
-        router.replace('/');
+        router.replace('/dashboard');
       }
     } catch (error) {
       console.error('Failed to login:', error);

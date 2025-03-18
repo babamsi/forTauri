@@ -1,5 +1,6 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  output: 'export',
   images: {
     domains: ['hebbkx1anhila5yf.public.blob.vercel-storage.com']
   },
@@ -7,7 +8,7 @@ const nextConfig = {
     return [
       {
         source: '/api/:path*',
-        destination: 'http://localhost:5000/api/:path*'
+        destination: 'https://pignaqfwhj.ap-south-1.awsapprunner.com/api/:path*'
       }
     ];
   }

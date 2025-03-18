@@ -50,6 +50,7 @@
     "@reduxjs/toolkit": "^2.2.7",
     "@t3-oss/env-nextjs": "^0.11.1",
     "@tanstack/react-table": "^8.20.5",
+    "@tauri-apps/plugin-store": "~2",
     "@thewirv/react-barcode-scanner": "^3.3.5",
     "@types/lodash": "^4.17.12",
     "@types/node": "20.5.7",
@@ -97,6 +98,7 @@
     "tailwind-merge": "^1.14.0",
     "tailwindcss": "^3.4.0",
     "tailwindcss-animate": "^1.0.7",
+    "tauri-plugin-store-api": "https://github.com/tauri-apps/tauri-plugin-store#v1",
     "typescript": "5.2.2",
     "uploadthing": "^5.7.4",
     "uuid": "^9.0.1",
@@ -104,6 +106,7 @@
     "zustand": "^4.4.6"
   },
   "devDependencies": {
+    "@tauri-apps/cli": "^2.3.0",
     "@types/uuid": "^9.0.7",
     "@typescript-eslint/eslint-plugin": "^6.11.0",
     "husky": "^9.0.11",

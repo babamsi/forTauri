@@ -16,11 +16,11 @@ export default function DashboardLayout({
   children: React.ReactNode;
 }) {
   // Persisting the sidebar state in the cookie.
-  const cookieStore = cookies();
-  const defaultOpen = cookieStore.get('sidebar:state')?.value === 'true';
+  // const cookieStore = cookies();
+  // const defaultOpen = localStorage.getItem('sidebar:state')?.value === 'true';
   return (
     <KBar>
-      <SidebarProvider defaultOpen={defaultOpen}>
+      <SidebarProvider defaultOpen={true}>
         <AppSidebar />
         <SidebarInset>
           {/* <Header /> */}

@@ -54,14 +54,16 @@ export const company = {
 
 export default function AppSidebar() {
   const { data: session } = useSession();
-  const [user, setUser] = React.useState(null);
+  // const [user, setUser] = React.useState(null);
   const pathname = usePathname();
+  const user = JSON.parse(localStorage.getItem('userStore'));
   // @ts-ignore
   const nav = user?.role === 'stuff' ? navItems : adminNavItems;
+
   React.useEffect(() => {
-    getUserInfo().then((k: any) => {
-      setUser(k);
-    });
+    // getUserInfo().then((k: any) => {
+    //   setUser(k);
+    // });
   }, []);
 
   return (
