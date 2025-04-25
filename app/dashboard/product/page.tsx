@@ -407,7 +407,7 @@ export default function ProductManagement() {
       };
     });
 
-    console.log(logs);
+    // console.log(logs);
     setProducts((prevProducts) =>
       prevProducts.map((product) =>
         product._id === updatedProduct._id ? updatedProduct : product
@@ -431,8 +431,7 @@ export default function ProductManagement() {
       expirationDate: new Date(updatedProduct.expirationDate),
       reminderDays: updatedProduct.reminderDays,
       receiptNumber: updatedProduct.receiptNumber,
-      // @ts-ignore
-      image: updateProduct.image,
+      image: updatedProduct.image,
       action: logs
     };
     const all = {
@@ -440,7 +439,7 @@ export default function ProductManagement() {
       cookies: cookies,
       data: data
     };
-    console.log(all);
+    // console.log(all);
     try {
       const result = await updateProduct(all);
       if ('error' in result) {
